@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.13;
 
-import "openzeppelin-contracts/contracts/utils/Context.sol";
-import "openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Burnable.sol";
-import "openzeppelin-contracts/contracts/access/Ownable.sol";
-import "openzeppelin-contracts/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/utils/Context.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./EUSD.sol";
 
 contract Share is ERC20Burnable, AccessControl, Ownable {
