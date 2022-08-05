@@ -2,11 +2,11 @@
 pragma solidity ^0.8.13;
 
 interface IEUSD {
-    
-    /// Track FRAX burned 
-    event FRAXBurned(address indexed from, address indexed to, uint256 amount);
-    /// Track FRAX minted
-    event FRAXMinted(address indexed from, address indexed to, uint256 amount);
+
+    /// Track EUSD burned 
+    event EUSDBurned(address indexed from, address indexed to, uint256 amount);
+    /// Track EUSD minted
+    event EUSDMinted(address indexed from, address indexed to, uint256 amount);
     /// Track pools added
     event PoolAdded(address pool_address);
     /// Track pools removed
