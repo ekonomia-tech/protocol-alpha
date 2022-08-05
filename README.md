@@ -11,7 +11,7 @@ Alpha version of a DeFi stablecoin protocol
 
 To start the project, clone the repo to your local machine using the following CLI command:
 
-1. Clone the repo onto your local machine and install the submodules: `git clone --recurse-modules <repo link>`
+1. Clone the repo onto your local machine and install the submodules: `git clone --recursive <repo link>`
 
 2. Install forge on your machine if you do not have it already: `forge install`
 
