@@ -54,13 +54,10 @@ contract PIDController is AccessControl, Owned {
 
     constructor (
         IEUSD _EUSD,
-        string memory _name,
-        string memory _symbol,
         address _creator_address,
         address _timelock_address
     ) public Owned(_creator_address){
         require(_timelock_address != address(0), "Zero address detected"); 
-        
         EUSD = _EUSD;
         creator_address = _creator_address;
         timelock_address = _timelock_address;
@@ -115,7 +112,7 @@ contract PIDController is AccessControl, Owned {
         return (
             oracle_price(PriceChoice.EUSD), // EUSD_price()
             oracle_price(PriceChoice.SHARE), // SHARE_price()
-            totalSupply(), // totalSupply()
+            EUSD.totalSupply(), // totalSupply()
             global_collateral_ratio, // global_collateral_ratio()
             globalCollateralValue(), // globalCollateralValue
             minting_fee, // minting_fee()

@@ -5,24 +5,19 @@ import "lib/forge-std/src/Script.sol";
 import "lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
 import "lib/openzeppelin-contracts/contracts/utils/Context.sol";
-import "./Owned.sol"; // TODO assess compared to Governed.
+import "./Owned.sol"; // TODO assess compared to Governed.sol
 
 /// @title EUSD
 /// @notice Fractional stablecoin
 /// @author Ekonomia: https://github.com/Ekonomia
-
-/// TODO - Go over EUSD code now that is has parts of FRAX in it and decide what to keep and what to leave. Are there other parts that you want to add too? All in all, minting, burning, and pool_minting, pool_burning are the main things we need here.
-/// - PIDController gets applied to any pair of tokens and effectively is used with Pools to mint accordingly to upkeep the protocol CR, or whatever else is the controlling factor. 
-    /// NOTE - part of me now is thinking it might not be a bad idea to have the PID within the actual stablecoin. I guess it keeps things tight. We have to very careful about having the controller separate to the stablecoin. As well, are there any gas efficiency reasons that we may want to have them separate?
-
 contract EUSD is ERC20Custom, AccessControl, Owned {
 
     string public symbol;
     string public name;
     uint8 public constant decimals = 18;
-    address public creator_address;
+    address public creator_address; // This is made the owner, and then it is amongst timelock_address, and controller_address to be able to do unique things throughout the contract.
     address public timelock_address; // Governance timelock address - TODO - figure this out, seems like typical timelock
-    uint256 public constant genesis_supply = 2000000e18; // 2M EUSD (only for testing, genesis supply will be 5k on Mainnet). This is to help with establishing the Uniswap pools, as they need liquidity
+    uint256 public constant genesis_supply = 2000000e18; // TODO - assess how much is needed for us, could go with: 2M EUSD (only for testing, genesis supply will be 5k on Mainnet). This is to help with establishing the Uniswap pools, as they need liquidity
     address[] public EUSD_pools_array; // The addresses in this array are added by the oracle and these contracts are able to mint EUSD
     mapping(address => bool) public EUSD_pools; // Mapping is also used for faster verification
     address public DEFAULT_ADMIN_ADDRESS;
@@ -34,13 +29,18 @@ contract EUSD is ERC20Custom, AccessControl, Owned {
     } 
     
     /// TODO - confirm with Niv that this is how we want to go about it
+    /// @params owner of EUSD contract
+    /// @params time_lock_address stop-gap smart contract to require passed on-chain vote proposals to wait X blocks before implementation. This allows for users who disagree with the new changes to withdraw funds
     modifier onlyByOwnerGovernanceOrController() {
         require(msg.sender == owner || msg.sender == timelock_address || msg.sender == controller_address, "Not the owner, controller, or the governance timelock");
         _;
     }
 
     /// CONSTRUCTOR
-
+    /// @params _name of ERC20
+    /// @params _symbol of ERC20
+    /// @params _creator_address owner multisig
+    /// @params _timelock_address stop-gap smart contract for maturing on-chain implementation changes
      constructor (
         string memory _name,
         string memory _symbol,
@@ -101,8 +101,6 @@ contract EUSD is ERC20Custom, AccessControl, Owned {
         emit PoolRemoved(pool_address);
     }
 
-    
-
     /// @notice set controller (owner) of this contract
     function setController(address _controller_address) external onlyByOwnerGovernanceOrController {
         require(_controller_address != address(0), "Zero address detected");
@@ -111,11 +109,5 @@ contract EUSD is ERC20Custom, AccessControl, Owned {
 
         emit ControllerSet(_controller_address);
     }
-
-   
-
-
-    
-
 
 }
