@@ -5,12 +5,13 @@ import "lib/forge-std/src/Script.sol";
 import "lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
 import "lib/openzeppelin-contracts/contracts/utils/Context.sol";
-import "./Owned.sol"; // TODO assess compared to Governed.sol
+// import "./Owned.sol"; // TODO assess compared to Governed.sol
+import "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 
 /// @title EUSD
 /// @notice Fractional stablecoin
 /// @author Ekonomia: https://github.com/Ekonomia
-contract EUSD is ERC20Custom, AccessControl, Owned {
+contract EUSD is ERC20, AccessControl, Ownable {
 
     string public symbol;
     string public name;
