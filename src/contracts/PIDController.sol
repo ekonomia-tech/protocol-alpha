@@ -4,9 +4,11 @@ pragma solidity ^0.8.13;
 import "lib/forge-std/src/Script.sol";
 import "lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "../interfaces/IEUSD.sol";
+import "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
+import "lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
+import "./oracle/ChainlinkETHUSDPriceConsumer.sol";
 
-
-contract PIDController is AccessControl, Owned {
+contract PIDController is AccessControl, Ownable {
 
     IEUSD public EUSD;
         address public creator_address;
