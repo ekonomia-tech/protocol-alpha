@@ -5,18 +5,19 @@ import "lib/forge-std/src/Script.sol";
 import "lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
 import "lib/openzeppelin-contracts/contracts/utils/Context.sol";
-// import "./Owned.sol"; // TODO assess compared to Governed.sol
 import "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
+import "../interfaces/IEUSD.sol";
 
 /// @title EUSD
 /// @notice Fractional stablecoin
 /// @author Ekonomia: https://github.com/Ekonomia
-contract EUSD is ERC20, AccessControl, Ownable {
+contract EUSD is IEUSD, ERC20, AccessControl, Ownable {
 
     string public symbol;
     string public name;
     uint8 public constant decimals = 18;
     address public creator_address; // This is made the owner, and then it is amongst timelock_address, and controller_address to be able to do unique things throughout the contract.
+    address public controller_address;
     address public timelock_address; // Governance timelock address - TODO - figure this out, seems like typical timelock
     uint256 public constant genesis_supply = 2000000e18; // TODO - assess how much is needed for us, could go with: 2M EUSD (only for testing, genesis supply will be 5k on Mainnet). This is to help with establishing the Uniswap pools, as they need liquidity
     address[] public EUSD_pools_array; // The addresses in this array are added by the oracle and these contracts are able to mint EUSD
@@ -47,7 +48,7 @@ contract EUSD is ERC20, AccessControl, Ownable {
         string memory _symbol,
         address _creator_address,
         address _timelock_address
-    ) public Owned(_creator_address){
+    ) public {
         require(_timelock_address != address(0), "Zero address detected"); 
         name = _name;
         symbol = _symbol;

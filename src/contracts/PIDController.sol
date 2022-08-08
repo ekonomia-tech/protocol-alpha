@@ -5,6 +5,8 @@ import "lib/forge-std/src/Script.sol";
 import "lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "../interfaces/IEUSD.sol";
 import "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
+import "lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
+import "./oracle/ChainlinkETHUSDPriceConsumer.sol";
 
 contract PIDController is AccessControl, Ownable {
 
