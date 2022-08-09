@@ -22,7 +22,7 @@ contract EUSD is IEUSD, ERC20Burnable, AccessControl, Ownable {
     uint256 public constant genesis_supply = 2000000e18; // TODO - assess how much is needed for us, could go with: 2M EUSD (only for testing, genesis supply will be 5k on Mainnet). This is to help with establishing the Uniswap pools, as they need liquidity
     address[] public EUSD_pools_array; // The addresses in this array are added by the oracle and these contracts are able to mint EUSD
     mapping(address => bool) public EUSD_pools; // Mapping is also used for faster verification
-    address public DEFAULT_ADMIN_ADDRESS;
+    address public DEFAULT_ADMIN_ADDRESS; // TODO - Need to sort out accessRoles and how we are going to use them.
 
     /// TODO - confirm with Niv that this is how we want to go about it
     modifier onlyPools() {
@@ -59,7 +59,7 @@ contract EUSD is IEUSD, ERC20Burnable, AccessControl, Ownable {
         _mint(creator_address, genesis_supply);
     }
 
-/// VIEW FUNCTIONS
+/// FUNCTIONS
 
     // Used by pools when user redeems
     function pool_burn_from(address b_address, uint256 b_amount) public onlyPools {
@@ -110,6 +110,24 @@ contract EUSD is IEUSD, ERC20Burnable, AccessControl, Ownable {
         controller_address = _controller_address;
 
         emit ControllerSet(_controller_address);
+    }
+
+    /// @notice Burns stablecoin as per ERC20Burnable
+    /// @dev TODO: Might need to be protected by a pausing function, or an only burner function
+    /// @param amount Amount of stablecoins being burnt
+    function burn(uint256 amount) public override(ERC20Burnable, IStableCoin) onlyOwner {
+        super.burn(amount);
+    }
+
+    /// @notice Burns stablecoin of another account
+    /// @param account Account whose stablecoins are being burnt
+    /// @param amount Amount of stablecoins being burnt
+    function burnFrom(address account, uint256 amount)
+        public
+        override(ERC20Burnable, IStableCoin)
+        onlyOwner
+    {
+        super.burnFrom(account, amount);
     }
 
 }
