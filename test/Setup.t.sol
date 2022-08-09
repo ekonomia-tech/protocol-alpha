@@ -15,15 +15,17 @@ contract Setup is Test {
     address public user1 = address(1);
     address public user2 = address(2);
     address public user3 = address(3);
-    address public dummyAddress = address(56);
+    address public dummyAddress = address(23);
 
     uint256 public fiveHundred = 500 * 10**8;
     uint256 public oneHundred = 100 * 10**8;
     uint256 public fifty = 50 * 10**8;
     uint256 public twentyFive = 25 * 10**8;
-    uint96 public initVaultShares = 1000000 * 10**18;
     uint256 public twoHundred = 200 * 10**8;
     uint256 public oneThousand = 1000 * 10**8;
+
+    uint256 public constant GENESIS_SUPPLY = 2000000e18;
+
 
     function setUp() public {
         vm.startPrank(owner);
@@ -38,9 +40,9 @@ contract Setup is Test {
         eusd.transfer(user2, oneThousand);
         eusd.transfer(user3, oneThousand);
         eusd.addPool(owner);
+        eusd.setController(controller);
 
         vm.stopPrank();
-        // share.transfer(address(rewardsVault), initVaultShares);
     }
 
 
