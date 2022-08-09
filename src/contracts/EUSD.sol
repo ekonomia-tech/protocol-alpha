@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+// Inpired by Frax
+// https://github.com/FraxFinance/frax-solidity/blob/7cbe89981ffa5d3cd0eeaf62dd1489c3276de0e4/src/hardhat/contracts/Frax/Frax.sol
 pragma solidity ^0.8.13;
 
 import "forge-std/Script.sol";
@@ -56,7 +58,7 @@ contract EUSD is IEUSD, ERC20Burnable, AccessControl, Ownable {
         timelock_address = _timelock_address;
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
         // DEFAULT_ADMIN_ADDRESS = _msgSender();
-        _mint(creator_address, genesis_supply);
+        // _mint(creator_address, genesis_supply);
     }
 
 /// FUNCTIONS

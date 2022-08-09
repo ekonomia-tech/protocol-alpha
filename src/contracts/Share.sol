@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+// Inspired by Frax
+// https://github.com/FraxFinance/frax-solidity/blob/7cbe89981ffa5d3cd0eeaf62dd1489c3276de0e4/src/hardhat/contracts/FXS/FXS.sol
 pragma solidity 0.8.13;
 
 import "@openzeppelin/contracts/utils/Context.sol";
