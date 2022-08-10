@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import { EUSD } from "../src/contracts/EUSD.sol";
+import {PIDController} from "../src/contracts/PIDController.sol";
 // import { AddressesRegistry } from "../../contracts/AddressesRegistry.sol";
 
 contract Setup is Test {
@@ -30,6 +31,7 @@ contract Setup is Test {
     function setUp() public {
         vm.startPrank(owner);
         eusd = new EUSD("Eusd", "EUSD", owner, timelock_address);
+        pid = new PIDController(eusd, owner, timelock_address);
         
         // TODO - make an addressesRegistry
         // addressesRegistry = new AddressesRegistry();
