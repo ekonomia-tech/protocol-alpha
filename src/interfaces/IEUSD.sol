@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.13;
 
-interface IEUSD {
+import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+
+interface IEUSD is IERC20 {
 
     /// Track EUSD burned 
     event EUSDBurned(address indexed from, address indexed burnCaller, uint256 amount);

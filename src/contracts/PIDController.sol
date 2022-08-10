@@ -7,8 +7,11 @@ import "../interfaces/IEUSD.sol";
 import "openzeppelin-contracts/contracts/access/Ownable.sol";
 import "openzeppelin-contracts/contracts/access/AccessControl.sol";
 import "./oracle/ChainlinkETHUSDPriceConsumer.sol";
+import {DummyUniswapPairOracle} from "./oracle/DummyUniswapPairOracle.sol";
+import "../interfaces/IPIDController.sol";
 
-contract PIDController is AccessControl, Ownable {
+
+contract PIDController is IPIDController, AccessControl, Ownable {
 
     IEUSD public EUSD;
         address public creator_address;
@@ -16,8 +19,8 @@ contract PIDController is AccessControl, Ownable {
     enum PriceChoice { EUSD, SHARE }
     ChainlinkETHUSDPriceConsumer private eth_usd_pricer;
     uint8 private eth_usd_pricer_decimals;
-    UniswapPairOracle private EUSDEthOracle;
-    UniswapPairOracle private SHAREEthOracle;
+    DummyUniswapPairOracle private EUSDEthOracle; // TODO - replace with UniswapPairOracle once we have it set up and ABI matches
+    DummyUniswapPairOracle private SHAREEthOracle; // TODO - same as above comment
     uint8 public constant decimals = 18;
     address public timelock_address; // Governance timelock address
     address public controller_address; // Controller contract to dynamically adjust system parameters automatically
@@ -50,7 +53,7 @@ contract PIDController is AccessControl, Ownable {
     }
 
     modifier onlyByOwnerGovernanceOrController() {
-        require(msg.sender == owner || msg.sender == timelock_address || msg.sender == controller_address, "Not the owner, controller, or the governance timelock");
+        require(msg.sender == owner() || msg.sender == timelock_address || msg.sender == controller_address, "Not the owner, controller, or the governance timelock");
         _;
     }
 
@@ -58,7 +61,7 @@ contract PIDController is AccessControl, Ownable {
         IEUSD _EUSD,
         address _creator_address,
         address _timelock_address
-    ) public Owned(_creator_address){
+    ) {
         require(_timelock_address != address(0), "Zero address detected"); 
         EUSD = _EUSD;
         creator_address = _creator_address;
@@ -91,7 +94,7 @@ contract PIDController is AccessControl, Ownable {
         else revert("INVALID PRICE CHOICE. Needs to be either 0 (EUSD) or 1 (SHARE)");
 
         // Will be in 1e6 format
-        return __eth_usd_price.mul(PRICE_PRECISION) / (price_vs_eth);
+        return __eth_usd_price * (PRICE_PRECISION) / (price_vs_eth);
     }
 
     // Returns X EUSD = 1 USD
@@ -105,7 +108,7 @@ contract PIDController is AccessControl, Ownable {
     }
 
     function eth_usd_price() public view returns (uint256) {
-        return uint256(eth_usd_pricer.getLatestPrice()).mul(PRICE_PRECISION).div(uint256(10) ** eth_usd_pricer_decimals);
+        return uint256(eth_usd_pricer.getLatestPrice()) * (PRICE_PRECISION) / (uint256(10) ** eth_usd_pricer_decimals);
     }
 
     // This is needed to avoid costly repeat calls to different getter functions
@@ -126,16 +129,16 @@ contract PIDController is AccessControl, Ownable {
     // Iterate through all EUSD pools and calculate all value of collateral in all pools globally
     /// TODO - confirm with Niv that this is how we want to go about it 
     function globalCollateralValue() public view returns (uint256) {
-        uint256 total_collateral_value_d18 = 0; 
+        // uint256 total_collateral_value_d18 = 0; 
 
-        for (uint i = 0; i < EUSD_pools_array.length; i++){ 
-            // Exclude null addresses
-            if (EUSD_pools_array[i] != address(0)){
-                total_collateral_value_d18 = total_collateral_value_d18 + (EUSDPool(EUSD_pools_array[i]).collatDollarBalance());
-            }
+        // for (uint i = 0; i < EUSD.EUSD_pools_array.length; i++){ 
+        //     // Exclude null addresses
+        //     if (EUSD.EUSD_pools_array[i] != address(0)){
+        //         total_collateral_value_d18 = total_collateral_value_d18 + (EUSDPool(EUSD.EUSD_pools_array[i]).collatDollarBalance());
+        //     }
 
-        }
-        return total_collateral_value_d18;
+        // }
+        // return total_collateral_value_d18;
     }
 
     /// PUBLIC FUNCTIONS
@@ -149,17 +152,17 @@ contract PIDController is AccessControl, Ownable {
 
         // Step increments are 0.25% (upon genesis, changable by setEUSDStep()) 
         
-        if (EUSD_price_cur > price_target.add(price_band)) { //decrease collateral ratio
+        if (EUSD_price_cur > price_target + (price_band)) { //decrease collateral ratio
             if(global_collateral_ratio <= EUSD_step){ //if within a step of 0, go to 0
                 global_collateral_ratio = 0;
             } else {
-                global_collateral_ratio = global_collateral_ratio.sub(EUSD_step);
+                global_collateral_ratio = global_collateral_ratio - (EUSD_step);
             }
-        } else if (EUSD_price_cur < price_target.sub(price_band)) { //increase collateral ratio
-            if(global_collateral_ratio.add(EUSD_step) >= 1000000){
+        } else if (EUSD_price_cur < price_target - (price_band)) { //increase collateral ratio
+            if(global_collateral_ratio + (EUSD_step) >= 1000000){
                 global_collateral_ratio = 1000000; // cap collateral ratio at 1.000000
             } else {
-                global_collateral_ratio = global_collateral_ratio.add(EUSD_step);
+                global_collateral_ratio = global_collateral_ratio + (EUSD_step);
             }
         }
 
@@ -259,7 +262,7 @@ contract PIDController is AccessControl, Ownable {
     function setEUSDEthOracle(address _EUSD_oracle_addr, address _weth_address) public onlyByOwnerGovernanceOrController {
         require((_EUSD_oracle_addr != address(0)) && (_weth_address != address(0)), "Zero address detected");
         EUSD_eth_oracle_address = _EUSD_oracle_addr;
-        EUSDEthOracle = UniswapPairOracle(_EUSD_oracle_addr); 
+        EUSDEthOracle = DummyUniswapPairOracle(_EUSD_oracle_addr); 
         weth_address = _weth_address;
 
         emit EUSDETHOracleSet(_EUSD_oracle_addr, _weth_address);
@@ -270,7 +273,7 @@ contract PIDController is AccessControl, Ownable {
         require((_SHARE_oracle_addr != address(0)) && (_weth_address != address(0)), "Zero address detected");
 
         SHARE_eth_oracle_address = _SHARE_oracle_addr;
-        SHAREEthOracle = UniswapPairOracle(_SHARE_oracle_addr);
+        SHAREEthOracle = DummyUniswapPairOracle(_SHARE_oracle_addr);
         weth_address = _weth_address;
 
         emit SHAREEthOracleSet(_SHARE_oracle_addr, _weth_address);
