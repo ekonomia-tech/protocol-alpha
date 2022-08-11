@@ -61,6 +61,11 @@ contract EUSD is IEUSD, ERC20Burnable, AccessControl, Ownable {
 
 /// FUNCTIONS
 
+    // get pool count
+    function getPoolCount() public view returns (uint256) {
+        return EUSD_pools_array.length;
+    }
+
     // Used by pools when user redeems
     function pool_burn_from(address b_address, uint256 b_amount) public onlyPools {
         super.burnFrom(b_address, b_amount);

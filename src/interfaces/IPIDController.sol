@@ -21,7 +21,6 @@ interface IPIDController {
     function EUSD_price() external view returns (uint256);
     function SHARE_price()  external view returns (uint256);
     function eth_usd_price() external view returns (uint256);
-    function EUSD_info() external view returns (uint256, uint256, uint256, uint256, uint256, uint256, uint256, uint256);
     function globalCollateralValue() external view returns (uint256);
     function refreshCollateralRatio() external;
     function setRedemptionFee(uint256 red_fee) external;
@@ -30,11 +29,8 @@ interface IPIDController {
     function setPriceTarget (uint256 _new_price_target) external;
     function setRefreshCooldown(uint256 _new_cooldown) external;
     function setSHAREAddress(address _SHARE_address) external; 
-    function setETHUSDOracle(address _eth_usd_consumer_address) external  ;
     function setTimelock(address new_timelock) external  ;
     function setController(address _controller_address) external  ;
     function setPriceBand(uint256 _price_band) external  ;
-    function setEUSDEthOracle(address _EUSD_oracle_addr, address _weth_address) external  ;
-    function setSHAREEthOracle(address _SHARE_oracle_addr, address _weth_address) external  ;
     function toggleCollateralRatio() external;
 }

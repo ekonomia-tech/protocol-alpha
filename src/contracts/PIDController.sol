@@ -6,29 +6,26 @@ import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "../interfaces/IEUSD.sol";
 import "openzeppelin-contracts/contracts/access/Ownable.sol";
 import "openzeppelin-contracts/contracts/access/AccessControl.sol";
-import "./oracle/ChainlinkETHUSDPriceConsumer.sol";
-import {DummyUniswapPairOracle} from "./oracle/DummyUniswapPairOracle.sol";
+// import "./oracle/ChainlinkETHUSDPriceConsumer.sol";
+import {PriceOracle} from "../oracle/PriceOracle.sol";
 import "../interfaces/IPIDController.sol";
+import { Pool } from "./Pool.sol";
+import { EUSD } from "./EUSD.sol";
+
 
 
 contract PIDController is IPIDController, AccessControl, Ownable {
 
-    IEUSD public EUSD;
-        address public creator_address;
+    EUSD public eusd;
+    address public creator_address;
 
     enum PriceChoice { EUSD, SHARE }
-    ChainlinkETHUSDPriceConsumer private eth_usd_pricer;
-    uint8 private eth_usd_pricer_decimals;
-    DummyUniswapPairOracle private EUSDEthOracle; // TODO - replace with UniswapPairOracle once we have it set up and ABI matches
-    DummyUniswapPairOracle private SHAREEthOracle; // TODO - same as above comment
+    PriceOracle public priceOracle; // TODO replace with proper oracle in later tasks
     uint8 public constant decimals = 18;
     address public timelock_address; // Governance timelock address
     address public controller_address; // Controller contract to dynamically adjust system parameters automatically
     address public SHARE_address;
-    address public EUSD_eth_oracle_address;
-    address public SHARE_eth_oracle_address;
     address public weth_address;
-    address public eth_usd_consumer_address;
 
     // Constants for various precisions
     uint256 private constant PRICE_PRECISION = 1e6;
@@ -44,7 +41,6 @@ contract PIDController is IPIDController, AccessControl, Ownable {
 
     bool public collateral_ratio_paused = false;
 
-
 /// MODIFIERS 
 
     modifier onlyCollateralRatioPauser() {
@@ -58,12 +54,17 @@ contract PIDController is IPIDController, AccessControl, Ownable {
     }
 
     constructor (
-        IEUSD _EUSD,
+        address _EUSD,
         address _creator_address,
-        address _timelock_address
+        address _timelock_address,
+        address _priceOracle
     ) {
         require(_timelock_address != address(0), "Zero address detected"); 
-        EUSD = _EUSD;
+        require(_priceOracle != address(0), "Zero address detected"); 
+        require(_creator_address != address(0), "Zero address detected"); 
+
+        priceOracle = PriceOracle(_priceOracle);
+        eusd = EUSD(_EUSD);
         creator_address = _creator_address;
         timelock_address = _timelock_address;
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
@@ -79,62 +80,31 @@ contract PIDController is IPIDController, AccessControl, Ownable {
 
 /// VIEW FUNCTIONS
 
-// Choice = 'EUSD' or 'SHARE' for now
-    function oracle_price(PriceChoice choice) internal view returns (uint256) {
-        // Get the ETH / USD price first, and cut it down to 1e6 precision
-        uint256 __eth_usd_price = uint256(eth_usd_pricer.getLatestPrice()) * (PRICE_PRECISION) / (uint256(10) ** eth_usd_pricer_decimals);
-        uint256 price_vs_eth = 0;
-
-        if (choice == PriceChoice.EUSD) {
-            price_vs_eth = uint256(EUSDEthOracle.consult(weth_address, PRICE_PRECISION)); // How much EUSD if you put in PRICE_PRECISION WETH
-        }
-        else if (choice == PriceChoice.SHARE) {
-            price_vs_eth = uint256(SHAREEthOracle.consult(weth_address, PRICE_PRECISION)); // How much SHARE if you put in PRICE_PRECISION WETH
-        }
-        else revert("INVALID PRICE CHOICE. Needs to be either 0 (EUSD) or 1 (SHARE)");
-
-        // Will be in 1e6 format
-        return __eth_usd_price * (PRICE_PRECISION) / (price_vs_eth);
-    }
-
     // Returns X EUSD = 1 USD
     function EUSD_price() public view returns (uint256) {
-        return oracle_price(PriceChoice.EUSD);
+        return priceOracle.getEUSDETHPrice();
+        // return oracle_price(PriceChoice.EUSD);
     }
 
     // Returns X SHARE = 1 USD
     function SHARE_price()  public view returns (uint256) {
-        return oracle_price(PriceChoice.SHARE);
+        return priceOracle.getShareUSDPrice();
+        // return oracle_price(PriceChoice.SHARE);
     }
 
     function eth_usd_price() public view returns (uint256) {
-        return uint256(eth_usd_pricer.getLatestPrice()) * (PRICE_PRECISION) / (uint256(10) ** eth_usd_pricer_decimals);
+        return priceOracle.getETHUSDPrice();
+        // return uint256(eth_usd_pricer.getLatestPrice()) * (PRICE_PRECISION) / (uint256(10) ** eth_usd_pricer_decimals);
     }
 
-    // This is needed to avoid costly repeat calls to different getter functions
-    // It is cheaper gas-wise to just dump everything and only use some of the info
-    function EUSD_info() public view returns (uint256, uint256, uint256, uint256, uint256, uint256, uint256, uint256) {
-        return (
-            oracle_price(PriceChoice.EUSD), // EUSD_price()
-            oracle_price(PriceChoice.SHARE), // SHARE_price()
-            EUSD.totalSupply(), // totalSupply()
-            global_collateral_ratio, // global_collateral_ratio()
-            globalCollateralValue(), // globalCollateralValue
-            minting_fee, // minting_fee()
-            redemption_fee, // redemption_fee()
-            uint256(eth_usd_pricer.getLatestPrice()) * (PRICE_PRECISION) / (uint256(10) ** eth_usd_pricer_decimals) //eth_usd_price
-        );
-    }
-
-    // Iterate through all EUSD pools and calculate all value of collateral in all pools globally
     /// TODO - confirm with Niv that this is how we want to go about it 
     function globalCollateralValue() public view returns (uint256) {
         uint256 total_collateral_value_d18 = 0; 
-
-        for (uint i = 0; i < EUSD.EUSD_pools_array.length; i++){ 
+        uint256 poolCount = eusd.getPoolCount();
+        for (uint i = 0; i < poolCount; i++){ 
             // Exclude null addresses
-            if (EUSD.EUSD_pools_array[i] != address(0)){
-                total_collateral_value_d18 = total_collateral_value_d18 + (EUSDPool(EUSD.EUSD_pools_array[i]).collatDollarBalance());
+            if (eusd.EUSD_pools_array(i) != address(0)){
+                total_collateral_value_d18 = total_collateral_value_d18 + (Pool(eusd.EUSD_pools_array(i)).collatDollarBalance());
             }
 
         }
@@ -219,18 +189,6 @@ contract PIDController is IPIDController, AccessControl, Ownable {
         emit SHAREAddressSet(_SHARE_address);
     }
 
-    /// @notice setETHUSD oracle used in CR adjustments
-     function setETHUSDOracle(address _eth_usd_consumer_address) public onlyByOwnerGovernanceOrController {
-        require(_eth_usd_consumer_address != address(0), "Zero address detected");
-
-        eth_usd_consumer_address = _eth_usd_consumer_address;
-        eth_usd_pricer = ChainlinkETHUSDPriceConsumer(eth_usd_consumer_address);
-        eth_usd_pricer_decimals = eth_usd_pricer.getDecimals();
-
-        emit ETHUSDOracleSet(_eth_usd_consumer_address);
-    }
-
-
     /// @notice set Timelock
     /// @dev TODO - confirm what timelock does. How is it different than the RefreshCooldown?
     function setTimelock(address new_timelock) external onlyByOwnerGovernanceOrController {
@@ -256,27 +214,6 @@ contract PIDController is IPIDController, AccessControl, Ownable {
         price_band = _price_band;
 
         emit PriceBandSet(_price_band);
-    }
-
-    // Sets the EUSD_ETH Uniswap oracle address 
-    function setEUSDEthOracle(address _EUSD_oracle_addr, address _weth_address) public onlyByOwnerGovernanceOrController {
-        require((_EUSD_oracle_addr != address(0)) && (_weth_address != address(0)), "Zero address detected");
-        EUSD_eth_oracle_address = _EUSD_oracle_addr;
-        EUSDEthOracle = DummyUniswapPairOracle(_EUSD_oracle_addr); 
-        weth_address = _weth_address;
-
-        emit EUSDETHOracleSet(_EUSD_oracle_addr, _weth_address);
-    }
-
-    /// @notice sets the SHARE_ETH Uniswap oracle address 
-    function setSHAREEthOracle(address _SHARE_oracle_addr, address _weth_address) public onlyByOwnerGovernanceOrController {
-        require((_SHARE_oracle_addr != address(0)) && (_weth_address != address(0)), "Zero address detected");
-
-        SHARE_eth_oracle_address = _SHARE_oracle_addr;
-        SHAREEthOracle = DummyUniswapPairOracle(_SHARE_oracle_addr);
-        weth_address = _weth_address;
-
-        emit SHAREEthOracleSet(_SHARE_oracle_addr, _weth_address);
     }
 
     /// @notice turns on and off CR
