@@ -129,16 +129,16 @@ contract PIDController is IPIDController, AccessControl, Ownable {
     // Iterate through all EUSD pools and calculate all value of collateral in all pools globally
     /// TODO - confirm with Niv that this is how we want to go about it 
     function globalCollateralValue() public view returns (uint256) {
-        // uint256 total_collateral_value_d18 = 0; 
+        uint256 total_collateral_value_d18 = 0; 
 
-        // for (uint i = 0; i < EUSD.EUSD_pools_array.length; i++){ 
-        //     // Exclude null addresses
-        //     if (EUSD.EUSD_pools_array[i] != address(0)){
-        //         total_collateral_value_d18 = total_collateral_value_d18 + (EUSDPool(EUSD.EUSD_pools_array[i]).collatDollarBalance());
-        //     }
+        for (uint i = 0; i < EUSD.EUSD_pools_array.length; i++){ 
+            // Exclude null addresses
+            if (EUSD.EUSD_pools_array[i] != address(0)){
+                total_collateral_value_d18 = total_collateral_value_d18 + (EUSDPool(EUSD.EUSD_pools_array[i]).collatDollarBalance());
+            }
 
-        // }
-        // return total_collateral_value_d18;
+        }
+        return total_collateral_value_d18;
     }
 
     /// PUBLIC FUNCTIONS
