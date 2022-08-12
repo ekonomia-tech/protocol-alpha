@@ -28,8 +28,8 @@ contract PIDController is IPIDController, AccessControl, Ownable {
     // Constants for various precisions
     uint256 private constant PRICE_PRECISION = 1e6;
     uint256 public global_collateral_ratio; // 6 decimals of precision, e.g. 924102 = 0.924102
-    uint256 public redemption_fee; // 6 decimals of precision, divide by 1000000 in calculations for fee
-    uint256 public minting_fee; // 6 decimals of precision, divide by 1000000 in calculations for fee
+    uint256 public redemption_fee; // 6 decimals of precision, divide by 1000000 in calculations for fee (4500 at genesis - .45%)
+    uint256 public minting_fee; // 6 decimals of precision, divide by 1000000 in calculations for fee (9500 at genesis - .95%)
     uint256 public EUSD_step; // Amount to change the collateralization ratio by upon refreshCollateralRatio()
     uint256 public refresh_cooldown; // Seconds to wait before being able to run refreshCollateralRatio() again
     uint256 public price_target; // The price of EUSD at which the collateral ratio will respond to; this value is only used for the collateral ratio mechanism and not for minting and redeeming which are hardcoded at $1
@@ -76,26 +76,29 @@ contract PIDController is IPIDController, AccessControl, Ownable {
         price_band = 5000; // Collateral ratio will not adjust if between $0.995 and $1.005 at genesis
     }
 
-/// VIEW FUNCTIONS
+    /// VIEW FUNCTIONS
 
-    // Returns X EUSD = 1 USD
+    /// @notice gets usd/EUSD price (10e18)
     function EUSD_price() public view returns (uint256) {
         return priceOracle.getETHEUSDPrice();
         // return oracle_price(PriceChoice.EUSD);
     }
 
+    /// @notice gets usd/share price (10e18)
     // Returns X SHARE = 1 USD
     function SHARE_price()  public view returns (uint256) {
         return priceOracle.getShareUSDPrice();
         // return oracle_price(PriceChoice.SHARE);
     }
 
+    /// @notice gets usd/eth price (10e18)
     function eth_usd_price() public view returns (uint256) {
         return priceOracle.getETHUSDPrice();
         // return uint256(eth_usd_pricer.getLatestPrice()) * (PRICE_PRECISION) / (uint256(10) ** eth_usd_pricer_decimals);
     }
 
     /// TODO - confirm with Niv that this is how we want to go about it 
+    /// @return dollar value of collateral held in all registered/active EUSD pools in 10e18
     function globalCollateralValue() public view returns (uint256) {
         uint256 total_collateral_value_d18 = 0; 
         uint256 poolCount = eusd.getPoolCount();
@@ -104,7 +107,6 @@ contract PIDController is IPIDController, AccessControl, Ownable {
             if (eusd.EUSD_pools_array(i) != address(0)){
                 total_collateral_value_d18 = total_collateral_value_d18 + (Pool(eusd.EUSD_pools_array(i)).collatDollarBalance());
             }
-
         }
         return total_collateral_value_d18;
     }
@@ -141,14 +143,14 @@ contract PIDController is IPIDController, AccessControl, Ownable {
 
     /// RESTRICTED FUNCTIONS
 
-    /// @notice set fee charged per redemption of EUSD (in SHARE) wrt redeem status of fractional token (1t1, fractional, algo)
+    /// @notice set fee (decimals - 1e6) charged per redemption of EUSD (in SHARE) wrt redeem status of fractional token (1t1, fractional, algo) 
     function setRedemptionFee(uint256 red_fee) public onlyByOwnerGovernanceOrController {
         redemption_fee = red_fee;
 
         emit RedemptionFeeSet(red_fee);
     }
 
-    /// @notice set fee charged per minting of EUSD (in SHARE)
+    /// @notice set fee (decimals - 1e6) charged per minting of EUSD (in SHARE)
     /// TODO - confirm what ERC20 fee is in
     function setMintingFee(uint256 min_fee) public onlyByOwnerGovernanceOrController {
         minting_fee = min_fee;
@@ -156,28 +158,28 @@ contract PIDController is IPIDController, AccessControl, Ownable {
         emit MintingFeeSet(min_fee);
     }  
 
-    /// @notice CR 'step' to take when adjusting CR
+    /// @notice CR 'step' to take when adjusting CR (2500 at genesis)
     function setEUSDStep(uint256 _new_step) public onlyByOwnerGovernanceOrController {
         EUSD_step = _new_step;
 
         emit EUSDStepSet(_new_step);
     }  
 
-     /// @notice CR 'step' to take when adjusting CR
+     /// @notice CR 'step' to take when adjusting CR (1000000 at genesis)
     function setPriceTarget (uint256 _new_price_target) public onlyByOwnerGovernanceOrController {
         price_target = _new_price_target;
 
         emit PriceTargetSet(_new_price_target);
     }
 
-    /// @notice set time rqd btw CR adjustments
+    /// @notice set time rqd btw CR adjustments (3600 (1hr) at genesis)
     function setRefreshCooldown(uint256 _new_cooldown) public onlyByOwnerGovernanceOrController {
     	refresh_cooldown = _new_cooldown;
 
         emit RefreshCooldownSet(_new_cooldown);
     }
 
-    /// @notice setSHAREAddress
+    /// @notice setSHAREAddress (needs to be set at deployment)
     /// TODO - confirm this is needed within this contract
     function setSHAREAddress(address _SHARE_address) public onlyByOwnerGovernanceOrController {
         require(_SHARE_address != address(0), "Zero address detected");
@@ -187,8 +189,7 @@ contract PIDController is IPIDController, AccessControl, Ownable {
         emit SHAREAddressSet(_SHARE_address);
     }
 
-    /// @notice set Timelock
-    /// @dev TODO - confirm what timelock does. How is it different than the RefreshCooldown?
+    /// @notice set Timelock address (needs to be set at deployment)
     function setTimelock(address new_timelock) external onlyByOwnerGovernanceOrController {
         require(new_timelock != address(0), "Zero address detected");
 
@@ -197,7 +198,7 @@ contract PIDController is IPIDController, AccessControl, Ownable {
         emit TimelockSet(new_timelock);
     }
 
-    /// @notice set controller (owner) of this contract
+    /// @notice set controller (owner) of this contract (needs to be set at deployment)
     /// @dev TODO - figure out if this is needed in both EUSD.sol and this contract
     function setController(address _controller_address) external onlyByOwnerGovernanceOrController {
         require(_controller_address != address(0), "Zero address detected");
@@ -207,7 +208,7 @@ contract PIDController is IPIDController, AccessControl, Ownable {
         emit ControllerSet(_controller_address);
     }
 
-    /// @notice sets price band that is acceptable before CR adjustment rqd
+    /// @notice sets price band that is acceptable before CR adjustment rqd (5000 at genesis)
      function setPriceBand(uint256 _price_band) external onlyByOwnerGovernanceOrController {
         price_band = _price_band;
 

@@ -37,6 +37,7 @@ contract Setup is Test {
     uint256 public oneThousand = 1000 * 10 ** 8;
 
     uint256 public constant GENESIS_SUPPLY = 2000000 * 10 ** 18;
+    uint256 public constant PRICE_PRECISION = 1e6;
 
     address weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
@@ -48,7 +49,10 @@ contract Setup is Test {
         priceOracle = new PriceOracle();
 
         pid = new PIDController(address(eusd), owner, timelock_address, address(priceOracle));
-
+        pid.setMintingFee(9500); // .95% at genesis
+        pid.setRedemptionFee(4500); // .45% at genesis
+        pid.setController(controller);
+        
         eusd.transfer(user1, oneThousand);
         eusd.transfer(user2, oneThousand);
         eusd.transfer(user3, oneThousand);
