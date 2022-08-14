@@ -15,7 +15,7 @@ contract PriceOracle {
         eth_share_price = 200 * 10 ** 18; // 200 SHARE/eth
         eth_eusd_price = 2000 * 10 ** 18; // 2000 eusd/eth
         share_usd_price = 10 ** 18; // 10 dollar/share
-        eusd_usd_price = 10 ** 6;
+        eusd_usd_price = 10 ** 18;
     }
 
     function getETHUSDPrice() public view returns(uint256){

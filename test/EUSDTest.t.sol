@@ -22,16 +22,6 @@ contract EUSDTest is Setup {
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
 
-    /// IAccessControl events
-
-    event RoleAdminChanged(
-        bytes32 indexed role,
-        bytes32 indexed previousAdminRole,
-        bytes32 indexed newAdminRole
-    );
-    event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender);
-    event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender);
-
     /// Ownable events
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     
@@ -91,7 +81,6 @@ contract EUSDTest is Setup {
     }
 
     /// mint() tests
-    // TODO - once we implement actual pools, replace owner with an actual pool address
 
     function testCannotMintNonPool() public {
         vm.expectRevert("Only EUSD pools can call this function");
@@ -102,11 +91,11 @@ contract EUSDTest is Setup {
     function testMint() public {
         uint256 user1Balance = eusd.balanceOf(user1);
         uint256 totalSupply = eusd.totalSupply();
-        assertEq(eusd.EUSD_pools(owner), true);
+        assertEq(eusd.EUSD_pools(address(pool_usdc)), true);
 
         vm.expectEmit(true, true, false, true);
         emit Transfer(address(0), user1, fiveHundred);
-        vm.prank(owner);
+        vm.prank(address(pool_usdc));
         eusd.pool_mint(user1, fiveHundred);
 
         totalSupply = totalSupply + fiveHundred;
@@ -301,20 +290,20 @@ contract EUSDTest is Setup {
     // NOTE - this will likely need adjustment once we write EUSDPool contracts
     function testPoolBurn() public {
         vm.prank(user1);
-        eusd.approve(owner, oneHundred);
-        vm.startPrank(owner);
+        eusd.approve(address(pool_usdc), oneHundred);
+        vm.startPrank(address(pool_usdc));
 
         vm.expectEmit(true, true, false, true);
-        emit EUSDBurned(user1, owner, oneHundred);
+        emit EUSDBurned(user1, address(pool_usdc), oneHundred);
         eusd.pool_burn_from(user1, oneHundred);  
         vm.stopPrank();      
     }
 
     function testCannotPoolBurnExcessAllowance() public {
         vm.prank(user1);
-        eusd.approve(owner, oneHundred);
+        eusd.approve(address(pool_usdc), oneHundred);
         uint256 overburn = oneHundred + 1;
-        vm.startPrank(owner);
+        vm.startPrank(address(pool_usdc));
         vm.expectRevert("ERC20: insufficient allowance");
         eusd.pool_burn_from(user1, overburn);  
         vm.stopPrank();
@@ -324,8 +313,8 @@ contract EUSDTest is Setup {
         uint256 userBalance = eusd.balanceOf(user1);
         uint256 excessBurn = userBalance + 1;
         vm.prank(user1);
-        eusd.approve(owner, excessBurn);
-        vm.startPrank(owner);
+        eusd.approve(address(pool_usdc), excessBurn);
+        vm.startPrank(address(pool_usdc));
         vm.expectRevert("ERC20: burn amount exceeds balance");
         eusd.pool_burn_from(user1, excessBurn);  
         vm.stopPrank();
@@ -342,10 +331,9 @@ contract EUSDTest is Setup {
     
     // NOTE - this will likely need adjustment once we write EUSDPool contracts
     function testPoolMint() public {
-        vm.startPrank(owner);
-        
+        vm.startPrank(address(pool_usdc));
         vm.expectEmit(true, true, false, true);
-        emit EUSDMinted(owner, user1, oneHundred);
+        emit EUSDMinted(address(pool_usdc), user1, oneHundred);
         eusd.pool_mint(user1, oneHundred);  
         vm.stopPrank();    
     }
@@ -426,14 +414,14 @@ contract EUSDTest is Setup {
         vm.expectEmit(true, false, false, true);
         emit PoolAdded(dummyAddress);
         eusd.addPool(dummyAddress);
-        address arrayTwo = eusd.EUSD_pools_array(2);
-        assertEq(arrayTwo, dummyAddress);
+        address arrayThree = eusd.EUSD_pools_array(2);
+        assertEq(arrayThree, dummyAddress);
 
         vm.expectEmit(true, false, false, true);
         emit PoolRemoved(dummyAddress);
         eusd.removePool(dummyAddress);
-        address arrayTwoNew = eusd.EUSD_pools_array(2);
-        assertEq(arrayTwoNew, address(0));
+        address arrayThreeNew = eusd.EUSD_pools_array(2);
+        assertEq(arrayThreeNew, address(0));
         vm.stopPrank();
     }
 

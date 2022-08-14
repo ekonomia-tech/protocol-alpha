@@ -18,6 +18,8 @@ contract Setup is Test {
     PriceOracle public priceOracle;
     // DummyUniswapPairOracle public dummyOracle;
     Pool public pool_usdc;
+    Pool public pool_usdc2;
+
     IERC20 usdc;
    
     address public owner = 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045; // vitalik.eth for tests
@@ -28,7 +30,6 @@ contract Setup is Test {
     address public user3 = address(3);
     address public dummyAddress = address(4);
     address public richGuy = 0xed320Bf569E5F3c4e9313391708ddBFc58e296bb;
-
 
     uint256 public fiveHundred = 500 * 10 ** 8;
     uint256 public oneHundred = 100 * 10 ** 8;
@@ -59,22 +60,15 @@ contract Setup is Test {
         eusd.transfer(user1, oneThousand);
         eusd.transfer(user2, oneThousand);
         eusd.transfer(user3, oneThousand);
-        eusd.addPool(owner);
+        // eusd.addPool(owner);
         eusd.setController(controller);
 
         usdc = IERC20(USDC_ADDRESS);
         pool_usdc = new Pool(address(eusd), address(share), address(pid), USDC_ADDRESS, owner, address(priceOracle), POOL_CEILING);
+        pool_usdc2 = new Pool(address(eusd), address(share), address(pid), USDC_ADDRESS, owner, address(priceOracle), POOL_CEILING);
+
         eusd.addPool(address(pool_usdc));
-
-        console.log("owner: %s", owner);
-        console.log("eusd: %s", address(eusd));
-        console.log("share: %s", address(share));
-        console.log("timelock_address: %s", timelock_address);
-        console.log("priceOracle: %s", address(priceOracle));
-        console.log("pid: %s", address(pid));
-        console.log("usdc: %s", address(usdc));
-        console.log("pool_usdc: %s", address(pool_usdc));
-
+        eusd.addPool(address(pool_usdc2));
 
         vm.stopPrank();
     }
