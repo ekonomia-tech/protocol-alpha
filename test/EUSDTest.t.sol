@@ -420,19 +420,20 @@ contract EUSDTest is Setup {
 
     /// removePool() tests
 
+    /// NOTE - test will fail if pool contract not implemented due to array element within question here (pool setup has initialusdc pool setup)
     function testRemovePool() public {
         vm.startPrank(owner);
         vm.expectEmit(true, false, false, true);
         emit PoolAdded(dummyAddress);
         eusd.addPool(dummyAddress);
-        address arrayOne = eusd.EUSD_pools_array(1);
-        assertEq(arrayOne, dummyAddress);
+        address arrayTwo = eusd.EUSD_pools_array(2);
+        assertEq(arrayTwo, dummyAddress);
 
         vm.expectEmit(true, false, false, true);
         emit PoolRemoved(dummyAddress);
         eusd.removePool(dummyAddress);
-        address arrayOneNew = eusd.EUSD_pools_array(1);
-        assertEq(arrayOneNew, address(0));
+        address arrayTwoNew = eusd.EUSD_pools_array(2);
+        assertEq(arrayTwoNew, address(0));
         vm.stopPrank();
     }
 

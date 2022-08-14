@@ -17,7 +17,6 @@ contract PIDController is IPIDController, AccessControl, Ownable {
     EUSD public eusd;
     address public creator_address;
 
-    enum PriceChoice { EUSD, SHARE }
     PriceOracle public priceOracle; // TODO replace with proper oracle in later tasks
     uint8 public constant decimals = 18;
     address public timelock_address; // Governance timelock address
@@ -38,6 +37,7 @@ contract PIDController is IPIDController, AccessControl, Ownable {
     address public DEFAULT_ADMIN_ADDRESS; 
 
     bool public collateral_ratio_paused = false;
+    uint256 public last_call_time; // Last time the refreshCollateralRatio function was called
 
 /// MODIFIERS 
 
@@ -81,23 +81,19 @@ contract PIDController is IPIDController, AccessControl, Ownable {
     /// @notice gets usd/EUSD price (10e18)
     function EUSD_price() public view returns (uint256) {
         return priceOracle.getETHEUSDPrice();
-        // return oracle_price(PriceChoice.EUSD);
     }
 
     /// @notice gets usd/share price (10e18)
     // Returns X SHARE = 1 USD
     function SHARE_price()  public view returns (uint256) {
         return priceOracle.getShareUSDPrice();
-        // return oracle_price(PriceChoice.SHARE);
     }
 
     /// @notice gets usd/eth price (10e18)
     function eth_usd_price() public view returns (uint256) {
         return priceOracle.getETHUSDPrice();
-        // return uint256(eth_usd_pricer.getLatestPrice()) * (PRICE_PRECISION) / (uint256(10) ** eth_usd_pricer_decimals);
     }
 
-    /// TODO - confirm with Niv that this is how we want to go about it 
     /// @return dollar value of collateral held in all registered/active EUSD pools in 10e18
     function globalCollateralValue() public view returns (uint256) {
         uint256 total_collateral_value_d18 = 0; 
@@ -113,8 +109,8 @@ contract PIDController is IPIDController, AccessControl, Ownable {
 
     /// PUBLIC FUNCTIONS
 
-    // There needs to be a time interval that this can be called. Otherwise it can be called multiple times per expansion.
-    uint256 public last_call_time; // Last time the refreshCollateralRatio function was called
+    /// @notice adjusts global collateral ratio as a function of market price vs price_target
+    /// @dev There needs to be a time interval that this can be called. Otherwise it can be called multiple times per expansion.
     function refreshCollateralRatio() public {
         require(collateral_ratio_paused == false, "Collateral Ratio has been paused");
         uint256 EUSD_price_cur = EUSD_price();
@@ -151,21 +147,21 @@ contract PIDController is IPIDController, AccessControl, Ownable {
     }
 
     /// @notice set fee (decimals - 1e6) charged per minting of EUSD (in SHARE)
-    /// TODO - confirm what ERC20 fee is in
+    /// TODO - confirm what ERC20 fee is in - coordinate with Niv
     function setMintingFee(uint256 min_fee) public onlyByOwnerGovernanceOrController {
         minting_fee = min_fee;
 
         emit MintingFeeSet(min_fee);
     }  
 
-    /// @notice CR 'step' to take when adjusting CR (2500 at genesis)
+    /// @notice set CR 'step' to take when adjusting CR (2500 at genesis)
     function setEUSDStep(uint256 _new_step) public onlyByOwnerGovernanceOrController {
         EUSD_step = _new_step;
 
         emit EUSDStepSet(_new_step);
     }  
 
-     /// @notice CR 'step' to take when adjusting CR (1000000 at genesis)
+     /// @notice set price_target (1000000 at genesis)
     function setPriceTarget (uint256 _new_price_target) public onlyByOwnerGovernanceOrController {
         price_target = _new_price_target;
 
@@ -180,7 +176,6 @@ contract PIDController is IPIDController, AccessControl, Ownable {
     }
 
     /// @notice setSHAREAddress (needs to be set at deployment)
-    /// TODO - confirm this is needed within this contract
     function setSHAREAddress(address _SHARE_address) public onlyByOwnerGovernanceOrController {
         require(_SHARE_address != address(0), "Zero address detected");
 
@@ -199,7 +194,7 @@ contract PIDController is IPIDController, AccessControl, Ownable {
     }
 
     /// @notice set controller (owner) of this contract (needs to be set at deployment)
-    /// @dev TODO - figure out if this is needed in both EUSD.sol and this contract
+    /// @dev TODO - figure out if this is needed in both EUSD.sol and this contract once architecture is established
     function setController(address _controller_address) external onlyByOwnerGovernanceOrController {
         require(_controller_address != address(0), "Zero address detected");
 

@@ -4,6 +4,8 @@ pragma solidity ^0.8.13;
 import "./Setup.t.sol";
 import { EUSD } from "../src/contracts/EUSD.sol";
 import {PriceOracle} from "../src/oracle/PriceOracle.sol";
+import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+
 
 error Unauthorized();
 
@@ -41,8 +43,8 @@ contract PIDControllerTest is Setup {
     /// Ownable events
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     
-    EUSDPool eusdPool1 = new Pool(); // extra EUSD/USDC pool TODO - need actual import from Niv's commits
-    EUSDPool eusdPool2 = new Pool(); // extra EUSD/USDC pool TODO - need actual import from Niv's commits
+    // EUSDPool eusdPool1 = new Pool(); // extra EUSD/USDC pool TODO - need actual import from Niv's commits
+    // EUSDPool eusdPool2 = new Pool(); // extra EUSD/USDC pool TODO - need actual import from Niv's commits
 
     /// setup tests
 
@@ -408,7 +410,7 @@ contract PIDControllerTest is Setup {
 
     // NOTE - to be expanded on with oracles
     function testEUSDPrice() public {
-        assertEq(priceOracle.eusd_eth_price(), pid.EUSD_price());
+        assertEq(priceOracle.getEUSDUSDPrice(), pid.EUSD_price());
     }
 
     // TODO SHARE_price() test
@@ -426,26 +428,30 @@ contract PIDControllerTest is Setup {
 
     // globalCollateralValue() tests
 
-    // // @notice check GCV when only one EUSDPool compared to actual single pool's worth of collateral in protocol
-    // // check that collateralValue is correct as transactions happen within pools (people minting and redeeming more EUSD)\
-    // function testGlobalCollateralValue() public {
-    //     // test vars while waiting for Niv's commit: 
-    //     // usdcPool --> EUSDPool for USDC/EUSD
-    //     // usdcPool.totalCollateral() --> total amount of collateral within a specific pool (in this case USDC) --> measured in the same decimals as the respective collateral, so 1e6 for USDC.
-    //     // getEUSDUSDPrice() * usdcPool.totalCollateral() --> equates to what the total collateral value should be in USD
-    //     // compare the above to the calculated total collateral here in dollar value
-    //     // NOTE - comparing total collateral value in USD to the actual collateral should be an independent test within pool contract too.
-    //     vm.startPrank(user1);
-    //     usdcPool.mint(1000); // TODO - tie into actual pool contract once it is ready - mint EUSD to user1
-             
-    //     assertEq(usdc.balanceOf(usdcPool), usdcPool.totalCollateral()); // TODO - fix with proper getters in pool contract once it's pulled --> this test actually doesn't need to happen here, it should work and be tested in the usdcpool tests
+    // @notice check GCV when only one EUSDPool compared to actual single pool's worth of collateral in protocol
+    // check that collateralValue is correct as transactions happen within pools (people minting and redeeming more EUSD)
+    // test when GCR is 100%
+    function testGlobalCollateralValue() public {
+        // NOTE - comparing total collateral value in USD to the actual collateral should be an independent test within pool contract too.
+        uint256 mintAmount = 100e6;
+        uint256 minOut = 90e18;
+        uint256 expectedOut = mintAmount * (10 ** 12);
+
+        _fundAndApproveUSDC(user1, address(pool_usdc), mintAmount, mintAmount);
         
-    //     // test actual EUSD in USD price
-    //     uint256 totalCollatUSD = (usdcPool.totalCollateral() * getEUSDUSDPrice()) / PRICE_PRECISION ; // 1e6 * 1e6 / 1e6 (priceprecision)
-    //     assertEq(totalCollatUSD, usdcPool.totalCollateralUSD()); // TODO - need a function from pool that returns totalCollateral in USD --> this test actually doesn't need to happen here, it should work and be tested in the usdcpool tests
+        vm.startPrank(user1);
+        pool_usdc.mint1t1EUSD(mintAmount, minOut);
+        assertEq(eusd.balanceOf(user1), expectedOut);
         
-    //     assertEq(totalCollatUSD, pid.globalCollateralValue()); // TODO - this is the only assertion that matters in this test.
-    // }
+        // test actual EUSD in USD price
+        uint256 totalCollatUSD = (usdc.balanceOf(address(pool_usdc)) * priceOracle.getEUSDUSDPrice()) / PRICE_PRECISION ; // 1e6 * 1e6 / 1e6 (priceprecision)
+        
+        assertEq(totalCollatUSD, pid.globalCollateralValue());
+        vm.stopPrank();
+    }
+
+    // single pool but test when GCR is <100% (Fractional)
+
 
     // // @notice check GCV() when only two EUSDPools active (both USDC) compared to actual worth of collateral in protocol after mints and redemptions
     // function testMultiPoolGlobalCollateralValue() public {
@@ -481,76 +487,140 @@ contract PIDControllerTest is Setup {
 
     // refreshCollateralRatio() tests
    
-    // test that collateral ratio changes properly based on EUSD_price_cur
-    // set eusd/usd price in oracle to be higher than price_target + price_band
-    // make sure that refreshCollateralRatio() works --> that it lowers by EUSD_step exactly
-    function testRefreshCollateralRatio() public {
-        vm.startPrank(user1);
-        vm.setEUSDUSDPrice(1e18 + 6000); // $1.006 USD/EUSD
-        uint256 oldCollateralRatio = pid.global_collateral_ratio();
-        vm.expectEmit(false, false, false, true);
-        emit CollateralRatioRefreshed(oldCollateralRatio - pid.EUSD_step());
-        vm.refreshCollateralRatio();
+    function testCannotRefreshPaused() public {
+        vm.startPrank(owner);
+        pid.toggleCollateralRatio();
+        vm.expectRevert("Collateral Ratio has been paused");
+        pid.refreshCollateralRatio();
         vm.stopPrank();
     }
 
-    // set eusd/usd price in oracle to be higher than price_target - price_band
-    // make sure that refreshCollateralRatio() works --> that it increases by EUSD_step exactly
-    function testRefreshCollateralRatio() public {
+   /// expectRevert when trying to call before refresh_cooldown is over from last last_call_time
+    function testCannotRefreshBeforeCooldown() public {
         vm.startPrank(user1);
-        vm.setEUSDUSDPrice(1e18 - 6000); // $1.006 USD/EUSD
+        vm.warp(3601);
+        priceOracle.setEUSDUSDPrice(1e6 + 6000); // $1.006 USD/EUSD
         uint256 oldCollateralRatio = pid.global_collateral_ratio();
         vm.expectEmit(false, false, false, true);
-        emit CollateralRatioRefreshed(oldCollateralRatio + pid.EUSD_step());
-        vm.refreshCollateralRatio();
+        emit CollateralRatioRefreshed(oldCollateralRatio - pid.EUSD_step());
+        pid.refreshCollateralRatio();
+        vm.expectRevert("Must wait for the refresh cooldown since last refresh");
+        pid.refreshCollateralRatio();
+        vm.stopPrank();
+    }
+
+    /// @notice test when global_collateral_ratio <= EUSD_step
+    function testRefreshGlobalCollateralRatioZero() public {
+        vm.startPrank(user1);
+        // uint256 simulatedTime;
+        vm.warp(3601);
+        priceOracle.setEUSDUSDPrice(1e6 + 6000); // $1.006 USD/EUSD
+
+        while(pid.global_collateral_ratio() > pid.EUSD_step()) {
+            uint256 oldCollateralRatio = pid.global_collateral_ratio();
+            vm.expectEmit(false, false, false, true);
+            emit CollateralRatioRefreshed(oldCollateralRatio - pid.EUSD_step());
+            pid.refreshCollateralRatio();
+            vm.warp(block.timestamp + 3601);
+        }
+
+        // now GCR <= EUSD_step
+        vm.expectEmit(false, false, false, true);
+        emit CollateralRatioRefreshed(0);
+        pid.refreshCollateralRatio();
+        vm.stopPrank();
+    }
+
+    /// @notice test that collateral ratio changes properly based on EUSD_price_cur
+    function testMultiRefreshCollateralRatio() public {
+        vm.startPrank(user1);
+        vm.warp(3601);
+        priceOracle.setEUSDUSDPrice(1e6 + 6000); // $1.006 USD/EUSD
+        uint256 oldCollateralRatio1 = pid.global_collateral_ratio();
+        vm.expectEmit(false, false, false, true);
+        emit CollateralRatioRefreshed(oldCollateralRatio1 - pid.EUSD_step());
+        pid.refreshCollateralRatio();
+        assertEq(block.timestamp, pid.last_call_time());
+        console.log("oldCR: %s and current CR: %s", oldCollateralRatio1, pid.global_collateral_ratio());
+
+        uint256 oldCollateralRatio2 = pid.global_collateral_ratio();
+        vm.warp(3601*2);
+        priceOracle.setEUSDUSDPrice(1e6 + 6000); // $1.006 USD/EUSD
+        vm.expectEmit(false, false, false, true);
+        emit CollateralRatioRefreshed(oldCollateralRatio2 - pid.EUSD_step());
+        pid.refreshCollateralRatio();
+        assertEq(block.timestamp, pid.last_call_time());
+        console.log("oldCR: %s and current CR: %s", oldCollateralRatio2, pid.global_collateral_ratio());
+
+        uint256 oldCollateralRatio3 = pid.global_collateral_ratio();
+        vm.warp(3601*3);
+        priceOracle.setEUSDUSDPrice(1e6 - 6000); // $0.994 USD/EUSD
+        vm.expectEmit(false, false, false, true);
+        emit CollateralRatioRefreshed(oldCollateralRatio3 + pid.EUSD_step());
+        pid.refreshCollateralRatio();
+        assertEq(block.timestamp, pid.last_call_time());
+        console.log("oldCR: %s and current CR: %s", oldCollateralRatio3, pid.global_collateral_ratio());
+        vm.stopPrank();
+    }
+
+    /// @notice check high CR is maxed out at 100% CR
+    function testHighCRRefreshCollateralRatio() public {
+        vm.startPrank(user1);
+        vm.warp(3601);
+        priceOracle.setEUSDUSDPrice(1e6 - 6000); // $0.994 USD/EUSD
+        uint256 oldCollateralRatio = pid.global_collateral_ratio();
+        vm.expectEmit(false, false, false, true);
+        emit CollateralRatioRefreshed(oldCollateralRatio);
+        pid.refreshCollateralRatio();
         assertEq(block.timestamp, pid.last_call_time());
         vm.stopPrank();
     }
 
-    // test that collateral ratio changes properly based on EUSD_price_cur
-    function testMultiRefreshCollateralRatio() public {
-        vm.startPrank(user1);
-        vm.setEUSDUSDPrice(1e18 + 6000); // $1.006 USD/EUSD
-        uint256 oldCollateralRatio1 = pid.global_collateral_ratio();
-        vm.expectEmit(false, false, false, true);
-        emit CollateralRatioRefreshed(oldCollateralRatio - pid.EUSD_step());
-        vm.refreshCollateralRatio();
+    /// Helpers
 
-        vm.roll();         // fast forward enough time to call refresh again
-
-        // set eusd/usd price in oracle to be higher than price_target + price_band
-        // make sure that refreshCollateralRatio() works --> that it lowers by EUSD_step exactly again
-        uint256 oldCollateralRatio2 = pid.global_collateral_ratio();
-        vm.expectEmit(false, false, false, true);
-        emit CollateralRatioRefreshed(oldCollateralRatio2 - pid.EUSD_step());
-        vm.refreshCollateralRatio();
-
-        vm.roll(); // fast forward enough time to call refresh again
-
-        vm.setEUSDUSDPrice(1e18 - 6000); // $1.006 USD/EUSD
-        uint256 oldCollateralRatio1 = pid.global_collateral_ratio();
-        vm.expectEmit(false, false, false, true);
-        emit CollateralRatioRefreshed(oldCollateralRatio + pid.EUSD_step());
-        vm.refreshCollateralRatio();  
-        vm.stopPrank();
+    function _getUSDC(address to, uint256 _amount) private {
+        vm.prank(richGuy);
+        usdc.transfer(to, _amount);
     }
 
-    // test that collateral ratio changes properly based on EUSD_price_cur
-    // check that last_call_time changes properly
-    function testCannotRefreshBeforeCooldown() public {
-        // set eusd/usd price in oracle to be higher than price_target + price_band
-        // make sure that refreshCollateralRatio() works --> that it lowers by EUSD_step exactly
-        // expectRevert when trying to call before refresh_cooldown is over from last last_call_time
+    function _approveUSDC(address _owner, address _spender, uint256 _amount) private {
+        vm.prank(_owner);
+        usdc.approve(_spender, _amount);
+    }
 
-        vm.startPrank(user1);
-        vm.setEUSDUSDPrice(1e18 - 6000); // $1.006 USD/EUSD
-        uint256 oldCollateralRatio = pid.global_collateral_ratio();
-        vm.expectEmit(false, false, false, true);
-        emit CollateralRatioRefreshed(oldCollateralRatio + pid.EUSD_step());
-        vm.refreshCollateralRatio();
+    function _fundAndApproveUSDC(address _owner, address _spender, uint256 _amountIn, uint256 _amountOut) private {
+        _getUSDC(_owner, _amountIn);
+        _approveUSDC(_owner, _spender, _amountOut);
+    }
+
+    function _getShare(address _to, uint256 _amount) private {
+        vm.prank(address(pool_usdc));
+        share.mint(_to, _amount);
+    }
+
+    function _approveShare(address _owner, address _spender, uint256 _amount) private {
+        vm.prank(_owner);
+        share.approve(_spender, _amount);
+    }
+
+    function _fundAndApproveShare(address _owner, address _spender, uint256 _amountIn, uint256 _amountOut) private {
+        _getShare(_owner, _amountIn);
+        _approveShare(_owner, _spender, _amountOut);
+    }
+
+// don't think I need this cause I'm not testing the actual precision and accuracy of minting and redeeming - that is pools.
+    function _calculateParts(uint256 _totalEUSDOut) public returns(uint256 collRequired, uint256 shareRequired) {
+        uint256 gcr = pid.global_collateral_ratio();
+        uint256 sharePrice = priceOracle.getShareUSDPrice();
+        uint256 usdcPrice = 1e6;
+
+        uint256 totalDollarValue = _totalEUSDOut;
         
-        vm.expectRevert("Must wait for the refresh cooldown since last refresh");
-        vm.refreshCollateralRatio();
-        vm.stopPrank();
+        uint256 collDollarPortion = (totalDollarValue * gcr) / 1e12;
+        uint256 shareDollarPortion = (totalDollarValue * (1e6 - gcr)) / 1e6; 
+        
+        collRequired = collDollarPortion / (usdcPrice);
+        shareRequired = (shareDollarPortion * 1e18)/(sharePrice); 
     }
+
 }
