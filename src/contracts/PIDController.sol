@@ -7,7 +7,7 @@ import "../interfaces/IEUSD.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 // import "./oracle/ChainlinkETHUSDPriceConsumer.sol";
-import {PriceOracle} from "../oracle/PriceOracle.sol";
+import {DummyOracle} from "../oracle/DummyOracle.sol";
 import "../interfaces/IPIDController.sol";
 import { Pool } from "./Pool.sol";
 import { EUSD } from "./EUSD.sol";
@@ -17,7 +17,7 @@ contract PIDController is IPIDController, AccessControl, Ownable {
     EUSD public eusd;
     address public creator_address;
 
-    PriceOracle public priceOracle; // TODO replace with proper oracle in later tasks
+    DummyOracle public priceOracle; // TODO replace with proper oracle in later tasks
     uint8 public constant decimals = 18;
     address public timelock_address; // Governance timelock address
     address public controller_address; // Controller contract to dynamically adjust system parameters automatically
@@ -61,7 +61,7 @@ contract PIDController is IPIDController, AccessControl, Ownable {
         require(_priceOracle != address(0), "Zero address detected"); 
         require(_creator_address != address(0), "Zero address detected"); 
 
-        priceOracle = PriceOracle(_priceOracle);
+        priceOracle = DummyOracle(_priceOracle);
         eusd = EUSD(_EUSD);
         creator_address = _creator_address;
         timelock_address = _timelock_address;
@@ -72,15 +72,15 @@ contract PIDController is IPIDController, AccessControl, Ownable {
         EUSD_step = 2500; // 6 decimals of precision, equal to 0.25%
         global_collateral_ratio = 1000000; // EUSD system starts off fully collateralized (6 decimals of precision)
         refresh_cooldown = 3600; // Refresh cooldown period is set to 1 hour (3600 seconds) at genesis
-        price_target = 1000000; // Collateral ratio will adjust according to the $1 price target at genesis
-        price_band = 5000; // Collateral ratio will not adjust if between $0.995 and $1.005 at genesis
+        price_target = 10 ** 18; // Collateral ratio will adjust according to the $1 price target at genesis
+        price_band = 5000 * 10 ** 12; // Collateral ratio will not adjust if between $0.995 and $1.005 at genesis
     }
 
     /// VIEW FUNCTIONS
 
     /// @notice gets usd/EUSD price (10e18)
     function EUSD_price() public view returns (uint256) {
-        return priceOracle.getETHEUSDPrice();
+        return priceOracle.getEUSDUSDPrice();
     }
 
     /// @notice gets usd/share price (10e18)

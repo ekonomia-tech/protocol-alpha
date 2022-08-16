@@ -2,7 +2,7 @@
 pragma solidity 0.8.13;
 
 
-contract PriceOracle {
+contract DummyOracle {
 
     uint256 public eth_usd_price;
     uint256 public eth_share_price;

@@ -25,6 +25,34 @@ contract EUSDTest is Setup {
     /// Ownable events
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     
+    /// setup()
+    function setUp() public {
+        vm.startPrank(owner);
+        eusd = new EUSD("Eusd", "EUSD", owner, timelock_address, GENESIS_SUPPLY);
+        share = new Share("Share", "SHARE", owner, timelock_address);
+        share.setEUSDAddress(address(eusd));
+        priceOracle = new DummyOracle();
+
+        pid = new PIDController(address(eusd), owner, timelock_address, address(priceOracle));
+        pid.setMintingFee(9500); // .95% at genesis
+        pid.setRedemptionFee(4500); // .45% at genesis
+        pid.setController(controller);
+
+        eusd.transfer(user1, oneThousand);
+        eusd.transfer(user2, oneThousand);
+        eusd.transfer(user3, oneThousand);
+        eusd.setController(controller);
+
+        usdc = IERC20(USDC_ADDRESS);
+        pool_usdc = new Pool(address(eusd), address(share), address(pid), USDC_ADDRESS, owner, address(priceOracle), POOL_CEILING);
+        pool_usdc2 = new Pool(address(eusd), address(share), address(pid), USDC_ADDRESS, owner, address(priceOracle), POOL_CEILING);
+
+        eusd.addPool(address(pool_usdc));
+        eusd.addPool(address(pool_usdc2));
+
+        vm.stopPrank();
+    }
+
     /// setup tests
 
     function testEUSDConstructor() public {
