@@ -10,10 +10,10 @@ contract PriceOracle {
     uint256 public eusd_eth_price;
 
     constructor() {
-        eth_usd_price = 2000e18;
-        share_eth_price = 200e18;
-        share_usd_price = 10e18;
-        eusd_eth_price = 2000e18;
+        eth_usd_price = 2000 * 10 ** 18;
+        share_eth_price = 200 * 10 ** 18;
+        share_usd_price = 10 ** 18;
+        eusd_eth_price = 2000 * 10 ** 18;
     }
 
     function getETHUSDPrice() public view returns(uint256){
