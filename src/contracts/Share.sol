@@ -9,7 +9,7 @@ import "./EUSD.sol";
 
 contract Share is ERC20Burnable, AccessControl, Ownable {
     
-    uint256 public constant genesis_supply = 100000000e18;
+    uint256 public constant genesis_supply = 100000000*10**18;
 
     address public oracle_address;
     address public timelock_address;

@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import "./Setup.t.sol";
 
-error Unauthorized();
+// error Unauthorized();
 
 contract EUSDTest is Setup {    
     /// EVENTS
@@ -37,50 +37,33 @@ contract EUSDTest is Setup {
     
     /// setup tests
 
-    function testCreatorAddress() public {
+    function testEUSDConstructor() public {
         assertEq(eusd.creator_address(), owner);
-    }
-
-    /// Base functionality tests
-
-    function testBalanceOf() public {
         assertEq(eusd.balanceOf(user1), oneThousand);
-    }
-
-    function testTotalSupply() public {
-        assertEq(eusd.totalSupply(), GENESIS_SUPPLY);
-    }
-
-    function testName() public {
+        assertEq(eusd.balanceOf(user1), oneThousand);
         assertEq(eusd.name(), "Eusd");
-    }
-
-    function testSymbol() public {
         assertEq(eusd.symbol(), "EUSD");
-    }
-
-    function testDecimals() public {
         assertEq(eusd.decimals(), 18);
     }
 
     /// allowance() + approve() tests
 
     // helper
-    function setupAllowance(address _user, address _spender) public {
+    function setupAllowance(address _user, address _spender, uint256 _amount) public {
         vm.expectEmit(true, true, false, true);
-        emit Approval(_user, _spender, fiveHundred / 2);
+        emit Approval(_user, _spender, _amount);
         vm.prank(_user);
-        eusd.approve(_spender, fiveHundred / 2);
+        eusd.approve(_spender, _amount);
     }
 
     function testApproveAndAllowance() public {
         assertEq(eusd.allowance(user1, user2), 0);
-        setupAllowance(user1, user2);
+        setupAllowance(user1, user2, fiveHundred / 2);
         assertEq(eusd.allowance(user1, user2), fiveHundred / 2);
     }
 
     function testIncreaseAllowance() public {
-        setupAllowance(user1, user2);
+        setupAllowance(user1, user2, fiveHundred / 2);
         uint256 allowanceBefore = eusd.allowance(user1, user2);
 
         vm.expectEmit(true, true, false, true);
@@ -93,14 +76,14 @@ contract EUSDTest is Setup {
     }
 
     function testCannotDecreasePastZero() public {
-        setupAllowance(user1, user2);
+        setupAllowance(user1, user2, fiveHundred / 2);
         vm.expectRevert("ERC20: decreased allowance below zero");
         vm.prank(user1);
         eusd.decreaseAllowance(user2, fiveHundred);
     }
 
     function testDecreaseAllowance() public {
-        setupAllowance(user1, user2);
+        setupAllowance(user1, user2, fiveHundred / 2);
         vm.expectEmit(true, true, false, true);
         emit Approval(user1, user2, 0);
         vm.prank(user1);

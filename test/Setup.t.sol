@@ -22,29 +22,27 @@ contract Setup is Test {
     // ChainlinkETHUSDPriceConsumer public eth_usd_pricer;
    
     address public owner = address(0x1337);
-    address public timelock_address = address(42);
-    address public controller = address(56);
+    address public timelock_address = address(100);
+    address public controller = address(101);
     address public user1 = address(1);
     address public user2 = address(2);
     address public user3 = address(3);
-    address public dummyAddress = address(23);
+    address public dummyAddress = address(4);
 
-    uint256 public fiveHundred = 500 * 10**8;
-    uint256 public oneHundred = 100 * 10**8;
-    uint256 public fifty = 50 * 10**8;
-    uint256 public twentyFive = 25 * 10**8;
-    uint256 public twoHundred = 200 * 10**8;
-    uint256 public oneThousand = 1000 * 10**8;
+    uint256 public fiveHundred = 500 * 10 ** 8;
+    uint256 public oneHundred = 100 * 10 ** 8;
+    uint256 public fifty = 50 * 10 ** 8;
+    uint256 public twentyFive = 25 * 10 ** 8;
+    uint256 public twoHundred = 200 * 10 ** 8;
+    uint256 public oneThousand = 1000 * 10 ** 8;
 
-    uint256 public constant GENESIS_SUPPLY = 2000000e18;
+    uint256 public constant GENESIS_SUPPLY = 2000000 * 10 ** 18;
 
     address weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    uint eusdDummyPrice = 1; // TODO - dummy prices for early tests
-    uint shareDummyPrice = 1; // TODO - dummy prices for early tests
 
     function setUp() public {
         vm.startPrank(owner);
-        eusd = new EUSD("Eusd", "EUSD", owner, timelock_address);
+        eusd = new EUSD("Eusd", "EUSD", owner, timelock_address, GENESIS_SUPPLY);
         share = new Share("Share", "SHARE", owner, timelock_address);
         share.setEUSDAddress(address(eusd));
         priceOracle = new PriceOracle();
