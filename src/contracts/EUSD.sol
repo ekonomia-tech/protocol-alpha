@@ -2,10 +2,10 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Script.sol";
-import "openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Burnable.sol";
-import "openzeppelin-contracts/contracts/access/AccessControl.sol";
-import "openzeppelin-contracts/contracts/utils/Context.sol";
-import "openzeppelin-contracts/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/utils/Context.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "../interfaces/IEUSD.sol";
 
 /// @title EUSD
@@ -19,10 +19,9 @@ contract EUSD is IEUSD, ERC20Burnable, AccessControl, Ownable {
     address public creator_address; // This is made the owner, and then it is amongst timelock_address, and controller_address to be able to do unique things throughout the contract.
     address public controller_address;
     address public timelock_address; // Governance timelock address - TODO - figure this out, seems like typical timelock
-    uint256 public constant genesis_supply = 2000000e18; // TODO - assess how much is needed for us, could go with: 2M EUSD (only for testing, genesis supply will be 5k on Mainnet). This is to help with establishing the Uniswap pools, as they need liquidity
     address[] public EUSD_pools_array; // The addresses in this array are added by the oracle and these contracts are able to mint EUSD
     mapping(address => bool) public EUSD_pools; // Mapping is also used for faster verification
-    address public DEFAULT_ADMIN_ADDRESS; // TODO - Need to sort out accessRoles and how we are going to use them.
+    // address public DEFAULT_ADMIN_ADDRESS; // TODO - Need to sort out accessRoles and how we are going to use them.
 
     /// TODO - confirm with Niv that this is how we want to go about it
     modifier onlyPools() {
@@ -47,7 +46,8 @@ contract EUSD is IEUSD, ERC20Burnable, AccessControl, Ownable {
         string memory _name,
         string memory _symbol,
         address _creator_address,
-        address _timelock_address
+        address _timelock_address,
+        uint256 genesis_supply
     ) ERC20(_name, _symbol) {
         require(_timelock_address != address(0), "Zero address detected"); 
         NAME = _name;
@@ -55,7 +55,7 @@ contract EUSD is IEUSD, ERC20Burnable, AccessControl, Ownable {
         creator_address = _creator_address;
         timelock_address = _timelock_address;
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
-        DEFAULT_ADMIN_ADDRESS = _msgSender();
+        // DEFAULT_ADMIN_ADDRESS = _msgSender();
         _mint(creator_address, genesis_supply);
     }
 
