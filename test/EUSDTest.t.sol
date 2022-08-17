@@ -267,13 +267,6 @@ contract EUSDTest is Setup {
     }
 
     /// burn() tests
-    // TODO - need to sort out if we are going to restrict the generic `burn()` and `burnFrom()` functions from ERC20Burnable.sol. Likely are, and if so, what address gets ownership over it? 
-
-    function testCannotBurnNotAuthorized() public {
-        vm.expectRevert("Ownable: caller is not the owner");
-        vm.prank(user1);
-        eusd.burn(twoHundred + 1);
-    }
 
     function testCannotBurnExcessFunds() public {
         uint256 overBurn = GENESIS_SUPPLY + 1;

@@ -80,7 +80,7 @@ contract PIDController is IPIDController, AccessControl, Ownable {
 
     // Returns X EUSD = 1 USD
     function EUSD_price() public view returns (uint256) {
-        return priceOracle.getEUSDETHPrice();
+        return priceOracle.getETHEUSDPrice();
         // return oracle_price(PriceChoice.EUSD);
     }
 

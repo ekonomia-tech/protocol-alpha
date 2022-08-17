@@ -117,23 +117,4 @@ contract EUSD is IEUSD, ERC20Burnable, AccessControl, Ownable {
         emit ControllerSet(_controller_address);
     }
 
-    /// @notice Burns stablecoin as per ERC20Burnable
-    /// @dev TODO: Need to consider who we're restricting generic burn() function from ERC20Burnable to. Likely to be restricted to master controller or something?
-    /// @param amount Amount of stablecoins being burnt
-    function burn(uint256 amount) public override(ERC20Burnable, IEUSD) onlyOwner {
-        super.burn(amount);
-    }
-
-    /// @notice Burns stablecoin of another account
-    /// @dev TODO: Need to consider who we're restricting generic burnFrom() function from ERC20Burnable to. Likely to be restricted to master controller or something?
-    /// @param account Account whose stablecoins are being burnt
-    /// @param amount Amount of stablecoins being burnt
-    function burnFrom(address account, uint256 amount)
-        public
-        override(ERC20Burnable, IEUSD)
-        onlyOwner
-    {
-        super.burnFrom(account, amount);
-    }
-
 }
