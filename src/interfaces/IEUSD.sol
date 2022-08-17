@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.13;
 
-import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IEUSD is IERC20 {
 
@@ -21,7 +21,5 @@ interface IEUSD is IERC20 {
     function addPool(address pool_address) external;
     function removePool(address pool_address) external;
     function setController(address _controller_address) external;
-    function burn(uint256 amount) external;
-    function burnFrom(address account, uint256 amount) external;
 
 }
