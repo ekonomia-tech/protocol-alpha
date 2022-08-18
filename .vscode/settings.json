@@ -1,0 +1,11 @@
+{
+    "emeraldwalk.runonsave": {
+        "commands": [
+            {
+                "match": "\\.sol*",
+                "cmd": "forge fmt"
+            }
+        ]
+    }
+    
+}
