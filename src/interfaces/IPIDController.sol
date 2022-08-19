@@ -21,7 +21,7 @@ interface IPIDController {
     function EUSD_price() external view returns (uint256);
     function SHARE_price()  external view returns (uint256);
     function eth_usd_price() external view returns (uint256);
-    function globalCollateralValue() external view returns (uint256);
+    // function globalCollateralValue() external view returns (uint256);
     function refreshCollateralRatio() external;
     function setRedemptionFee(uint256 red_fee) external;
     function setMintingFee(uint256 min_fee) external;

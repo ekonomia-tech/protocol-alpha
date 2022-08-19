@@ -2,18 +2,20 @@
 pragma solidity 0.8.13;
 
 
-contract PriceOracle {
+contract DummyOracle {
 
     uint256 public eth_usd_price;
     uint256 public eth_share_price;
     uint256 public share_usd_price;
     uint256 public eth_eusd_price;
+    uint256 public eusd_usd_price;
 
     constructor() {
         eth_usd_price = 2000 * 10 ** 18; // 2000 usd/eth
         eth_share_price = 200 * 10 ** 18; // 200 SHARE/eth
         eth_eusd_price = 2000 * 10 ** 18; // 2000 eusd/eth
         share_usd_price = 10 ** 18; // 10 dollar/share
+        eusd_usd_price = 10 ** 18;
     }
 
     function getETHUSDPrice() public view returns(uint256){
@@ -32,6 +34,10 @@ contract PriceOracle {
         return eth_eusd_price;
     }
 
+    function getEUSDUSDPrice() public view returns(uint256) {
+        return eusd_usd_price;
+    }
+
     function setETHUSDPrice(uint256 _price) public {
         eth_usd_price = _price;
     }
@@ -48,4 +54,7 @@ contract PriceOracle {
         eth_eusd_price = _price;
     }
 
+    function setEUSDUSDPrice(uint256 _price) public {
+        eusd_usd_price = _price;
+    }
 }
