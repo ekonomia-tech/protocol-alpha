@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 // import "./oracle/ChainlinkETHUSDPriceConsumer.sol";
 import {DummyOracle} from "../oracle/DummyOracle.sol";
 import "../interfaces/IPIDController.sol";
-import { Pool } from "./Pool.sol";
+// import { Pool } from "./Pool.sol";
 import { EUSD } from "./EUSD.sol";
 
 contract PIDController is IPIDController, AccessControl, Ownable {
@@ -94,18 +94,18 @@ contract PIDController is IPIDController, AccessControl, Ownable {
         return priceOracle.getETHUSDPrice();
     }
 
-    /// @return dollar value of collateral held in all registered/active EUSD pools in 10e18
-    function globalCollateralValue() public view returns (uint256) {
-        uint256 total_collateral_value_d18 = 0; 
-        uint256 poolCount = eusd.getPoolCount();
-        for (uint i = 0; i < poolCount; i++){ 
-            // Exclude null addresses
-            if (eusd.EUSD_pools_array(i) != address(0)){
-                total_collateral_value_d18 = total_collateral_value_d18 + (Pool(eusd.EUSD_pools_array(i)).collatDollarBalance());
-            }
-        }
-        return total_collateral_value_d18;
-    }
+    // /// @return dollar value of collateral held in all registered/active EUSD pools in 10e18
+    // function globalCollateralValue() public view returns (uint256) {
+    //     uint256 total_collateral_value_d18 = 0; 
+    //     uint256 poolCount = eusd.getPoolCount();
+    //     for (uint i = 0; i < poolCount; i++){ 
+    //         // Exclude null addresses
+    //         if (eusd.EUSD_pools_array(i) != address(0)){
+    //             total_collateral_value_d18 = total_collateral_value_d18 + (Pool(eusd.EUSD_pools_array(i)).collatDollarBalance());
+    //         }
+    //     }
+    //     return total_collateral_value_d18;
+    // }
 
     /// PUBLIC FUNCTIONS
 
