@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "openzeppelin-contracts/contracts/utils/math/SafeMath.sol";
-
 contract Helper {
-    using SafeMath for uint256;
     
     uint256 public constant ONE_HUNDRED_d6 = 100e6;
     uint256 public constant ONE_HUNDRED_d18 = 100e18;
