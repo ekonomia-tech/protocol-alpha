@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "./Setup.t.sol";
+import "./BaseSetup.t.sol";
 
 // error Unauthorized();
 
-contract EUSDTest is Setup {    
+contract EUSDTest is BaseSetup {    
     /// EVENTS
     // TODO - there must be a way to use submodules or something to access the events instead of copying them over here.
 
@@ -29,8 +29,7 @@ contract EUSDTest is Setup {
 
     function testEUSDConstructor() public {
         assertEq(eusd.creator_address(), owner);
-        assertEq(eusd.balanceOf(user1), oneThousand);
-        assertEq(eusd.balanceOf(user1), oneThousand);
+        assertEq(eusd.balanceOf(user1), tenThousand_d18);
         assertEq(eusd.name(), "Eusd");
         assertEq(eusd.symbol(), "EUSD");
         assertEq(eusd.decimals(), 18);
@@ -48,36 +47,36 @@ contract EUSDTest is Setup {
 
     function testApproveAndAllowance() public {
         assertEq(eusd.allowance(user1, user2), 0);
-        setupAllowance(user1, user2, fiveHundred / 2);
-        assertEq(eusd.allowance(user1, user2), fiveHundred / 2);
+        setupAllowance(user1, user2, fiveHundred_d18 / 2);
+        assertEq(eusd.allowance(user1, user2), fiveHundred_d18 / 2);
     }
 
     function testIncreaseAllowance() public {
-        setupAllowance(user1, user2, fiveHundred / 2);
+        setupAllowance(user1, user2, fiveHundred_d18 / 2);
         uint256 allowanceBefore = eusd.allowance(user1, user2);
 
         vm.expectEmit(true, true, false, true);
-        emit Approval(user1, user2, fiveHundred);
+        emit Approval(user1, user2, fiveHundred_d18);
         vm.prank(user1);
-        eusd.increaseAllowance(user2, fiveHundred / 2);
+        eusd.increaseAllowance(user2, fiveHundred_d18 / 2);
 
         uint256 allowanceAfter = eusd.allowance(user1, user2);
-        assertEq(allowanceAfter, allowanceBefore + (fiveHundred / 2));
+        assertEq(allowanceAfter, allowanceBefore + (fiveHundred_d18 / 2));
     }
 
     function testCannotDecreasePastZero() public {
-        setupAllowance(user1, user2, fiveHundred / 2);
+        setupAllowance(user1, user2, fiveHundred_d18 / 2);
         vm.expectRevert("ERC20: decreased allowance below zero");
         vm.prank(user1);
-        eusd.decreaseAllowance(user2, fiveHundred);
+        eusd.decreaseAllowance(user2, fiveHundred_d18);
     }
 
     function testDecreaseAllowance() public {
-        setupAllowance(user1, user2, fiveHundred / 2);
+        setupAllowance(user1, user2, fiveHundred_d18 / 2);
         vm.expectEmit(true, true, false, true);
         emit Approval(user1, user2, 0);
         vm.prank(user1);
-        eusd.decreaseAllowance(user2, fiveHundred / 2);
+        eusd.decreaseAllowance(user2, fiveHundred_d18 / 2);
     }
 
     /// mint() tests
@@ -85,7 +84,7 @@ contract EUSDTest is Setup {
     function testCannotMintNonPool() public {
         vm.expectRevert("Only EUSD pools can call this function");
         vm.prank(user1);
-        eusd.pool_mint(user1, fiveHundred);
+        eusd.pool_mint(user1, fiveHundred_d18);
     }
 
     function testMint() public {
@@ -94,12 +93,12 @@ contract EUSDTest is Setup {
         assertEq(eusd.EUSD_pools(address(pool_usdc)), true);
 
         vm.expectEmit(true, true, false, true);
-        emit Transfer(address(0), user1, fiveHundred);
+        emit Transfer(address(0), user1, fiveHundred_d18);
         vm.prank(address(pool_usdc));
-        eusd.pool_mint(user1, fiveHundred);
+        eusd.pool_mint(user1, fiveHundred_d18);
 
-        totalSupply = totalSupply + fiveHundred;
-        user1Balance = user1Balance + fiveHundred;
+        totalSupply = totalSupply + fiveHundred_d18;
+        user1Balance = user1Balance + fiveHundred_d18;
         assertEq(eusd.totalSupply(), totalSupply);
         assertEq(eusd.balanceOf(user1), user1Balance);
     }
@@ -108,18 +107,18 @@ contract EUSDTest is Setup {
 
     function testCannotInsufficientAllowance() public {
         vm.expectEmit(true, true, false, true);
-        emit Approval(user1, user2, twoHundred);
+        emit Approval(user1, user2, twoHundred_d18);
         vm.prank(user1);
-        eusd.approve(user2, twoHundred);
+        eusd.approve(user2, twoHundred_d18);
 
         vm.expectRevert("ERC20: insufficient allowance");
         vm.prank(user2);
-        eusd.transferFrom(user1, user2, twoHundred + fiveHundred);
+        eusd.transferFrom(user1, user2, twoHundred_d18 + fiveHundred_d18);
     }
 
     function testCannotInsufficientFunds() public {
         uint256 user1Balance = eusd.balanceOf(user1);
-        uint256 overTransfer = twoHundred + user1Balance;
+        uint256 overTransfer = twoHundred_d18 + user1Balance;
 
         vm.expectEmit(true, true, false, true);
         emit Approval(user1, user2, overTransfer);
@@ -137,37 +136,37 @@ contract EUSDTest is Setup {
         uint256 ownerBalance = eusd.balanceOf(owner);
 
         vm.expectEmit(true, true, false, true);
-        emit Approval(user1, user2, twoHundred);
+        emit Approval(user1, user2, twoHundred_d18);
         vm.prank(user1);
-        eusd.approve(user2, twoHundred);
-        assertEq(eusd.allowance(user1, user2), twoHundred);
+        eusd.approve(user2, twoHundred_d18);
+        assertEq(eusd.allowance(user1, user2), twoHundred_d18);
 
         vm.expectEmit(true, true, false, true);
         emit Approval(user1, user2, 0);
-        emit Transfer(user1, user2, twoHundred);
+        emit Transfer(user1, user2, twoHundred_d18);
         vm.prank(user2);
-        eusd.transferFrom(user1, user2, twoHundred);
+        eusd.transferFrom(user1, user2, twoHundred_d18);
 
-        user1Balance = user1Balance - twoHundred;
-        user2Balance = user2Balance + twoHundred;
+        user1Balance = user1Balance - twoHundred_d18;
+        user2Balance = user2Balance + twoHundred_d18;
         assertEq(eusd.balanceOf(user1), user1Balance);
         assertEq(eusd.balanceOf(user2), user2Balance);
 
         vm.expectEmit(true, true, false, true);
-        emit Approval(user2, user1, twoHundred);
+        emit Approval(user2, user1, twoHundred_d18);
         vm.prank(user2);
-        eusd.approve(user1, twoHundred);
+        eusd.approve(user1, twoHundred_d18);
 
-        assertEq(eusd.allowance(user2, user1), twoHundred);
+        assertEq(eusd.allowance(user2, user1), twoHundred_d18);
 
         vm.expectEmit(true, true, false, true);
         emit Approval(user2, user1, 0);
-        emit Transfer(user2, owner, twoHundred);
+        emit Transfer(user2, owner, twoHundred_d18);
         vm.prank(user1);
-        eusd.transferFrom(user2, owner, twoHundred);
+        eusd.transferFrom(user2, owner, twoHundred_d18);
 
-        ownerBalance = ownerBalance + twoHundred;
-        user2Balance = user2Balance - twoHundred;
+        ownerBalance = ownerBalance + twoHundred_d18;
+        user2Balance = user2Balance - twoHundred_d18;
 
         assertEq(eusd.allowance(user2, user1), 0);
         assertEq(eusd.balanceOf(owner), ownerBalance);
@@ -179,7 +178,7 @@ contract EUSDTest is Setup {
 
     function testCannotTransferExcessFunds() public {
         uint256 user1Balance = eusd.balanceOf(user1);
-        uint256 overTransfer = twoHundred + user1Balance;
+        uint256 overTransfer = twoHundred_d18 + user1Balance;
 
         vm.expectEmit(true, true, false, true);
         emit Approval(user1, user2, overTransfer);
@@ -196,12 +195,12 @@ contract EUSDTest is Setup {
         uint256 user2Balance = eusd.balanceOf(user2);
 
         vm.expectEmit(true, true, false, true);
-        emit Transfer(user2, user1, twoHundred);
+        emit Transfer(user2, user1, twoHundred_d18);
         vm.prank(user2);
-        eusd.transfer(user1, twoHundred);
+        eusd.transfer(user1, twoHundred_d18);
 
-        user1Balance = user1Balance + twoHundred;
-        user2Balance = user2Balance - twoHundred;
+        user1Balance = user1Balance + twoHundred_d18;
+        user2Balance = user2Balance - twoHundred_d18;
 
         assertEq(eusd.balanceOf(user1), user1Balance);
         assertEq(eusd.balanceOf(user2), user2Balance);
@@ -211,18 +210,18 @@ contract EUSDTest is Setup {
 
     function testCannotBurnFromLowAllowance() public {
         vm.expectEmit(true, true, false, true);
-        emit Approval(user2, owner, twoHundred);
+        emit Approval(user2, owner, twoHundred_d18);
         vm.prank(user2);
-        eusd.approve(owner, twoHundred);
+        eusd.approve(owner, twoHundred_d18);
 
         vm.expectRevert("ERC20: insufficient allowance");
         vm.prank(owner);
-        eusd.burnFrom(user2, twoHundred + 1);
+        eusd.burnFrom(user2, twoHundred_d18 + 1);
     }
 
     function testCannotBurnFromExcessFunds() public {
         uint256 user1Balance = eusd.balanceOf(user1);
-        uint256 overBurn = twoHundred + user1Balance;
+        uint256 overBurn = twoHundred_d18 + user1Balance;
 
         vm.expectEmit(true, true, false, true);
         emit Approval(user1, owner, overBurn);
@@ -238,18 +237,18 @@ contract EUSDTest is Setup {
         uint256 user1Balance = eusd.balanceOf(user1);
 
         vm.expectEmit(true, true, false, true);
-        emit Approval(user1, owner, twoHundred);
+        emit Approval(user1, owner, twoHundred_d18);
         vm.prank(user1);
-        eusd.approve(owner, twoHundred);
+        eusd.approve(owner, twoHundred_d18);
 
-        assertEq(eusd.allowance(user1, owner), twoHundred);
+        assertEq(eusd.allowance(user1, owner), twoHundred_d18);
 
         vm.expectEmit(true, true, false, true);
         emit Approval(user1, owner, 0);
-        emit Transfer(user1, address(0), twoHundred);
+        emit Transfer(user1, address(0), twoHundred_d18);
         vm.prank(owner);
-        eusd.burnFrom(user1, twoHundred);
-        user1Balance = user1Balance - twoHundred;
+        eusd.burnFrom(user1, twoHundred_d18);
+        user1Balance = user1Balance - twoHundred_d18;
 
         assertEq(eusd.balanceOf(user1), user1Balance);
     }
@@ -257,7 +256,7 @@ contract EUSDTest is Setup {
     /// burn() tests
 
     function testCannotBurnExcessFunds() public {
-        uint256 overBurn = GENESIS_SUPPLY_EUSD + 1;
+        uint256 overBurn = GENESIS_SUPPLY_d18 + 1;
 
         vm.expectRevert("ERC20: burn amount exceeds balance");
         vm.prank(owner);
@@ -269,12 +268,12 @@ contract EUSDTest is Setup {
         uint256 totalSupply = eusd.totalSupply();
 
         vm.expectEmit(true, true, false, true);
-        emit Transfer(owner, address(0), twoHundred);
+        emit Transfer(owner, address(0), twoHundred_d18);
         vm.prank(owner);
-        eusd.burn(twoHundred);
+        eusd.burn(twoHundred_d18);
 
-        ownerBalance = ownerBalance - twoHundred;
-        assertEq(eusd.totalSupply(), totalSupply - twoHundred);
+        ownerBalance = ownerBalance - twoHundred_d18;
+        assertEq(eusd.totalSupply(), totalSupply - twoHundred_d18);
         assertEq(eusd.balanceOf(owner), ownerBalance);
     }
 
@@ -283,24 +282,24 @@ contract EUSDTest is Setup {
     function testCannotPoolBurn() public {
         vm.expectRevert("Only EUSD pools can call this function");
         vm.prank(user1);
-        eusd.pool_burn_from(user1, oneHundred);
+        eusd.pool_burn_from(user1, oneHundred_d18);
     }
 
     function testPoolBurn() public {
         vm.prank(user1);
-        eusd.approve(address(pool_usdc), oneHundred);
+        eusd.approve(address(pool_usdc), oneHundred_d18);
         vm.startPrank(address(pool_usdc));
 
         vm.expectEmit(true, true, false, true);
-        emit EUSDBurned(user1, address(pool_usdc), oneHundred);
-        eusd.pool_burn_from(user1, oneHundred);  
+        emit EUSDBurned(user1, address(pool_usdc), oneHundred_d18);
+        eusd.pool_burn_from(user1, oneHundred_d18);  
         vm.stopPrank();      
     }
 
     function testCannotPoolBurnExcessAllowance() public {
         vm.prank(user1);
-        eusd.approve(address(pool_usdc), oneHundred);
-        uint256 overburn = oneHundred + 1;
+        eusd.approve(address(pool_usdc), oneHundred_d18);
+        uint256 overburn = oneHundred_d18 + 1;
         vm.startPrank(address(pool_usdc));
         vm.expectRevert("ERC20: insufficient allowance");
         eusd.pool_burn_from(user1, overburn);  
@@ -323,15 +322,15 @@ contract EUSDTest is Setup {
     function testCannotPoolMint() public {
         vm.startPrank(user1);
         vm.expectRevert("Only EUSD pools can call this function");
-        eusd.pool_mint(user1, oneHundred);  
+        eusd.pool_mint(user1, oneHundred_d18);  
         vm.stopPrank();    
     }    
     
     function testPoolMint() public {
         vm.startPrank(address(pool_usdc));
         vm.expectEmit(true, true, false, true);
-        emit EUSDMinted(address(pool_usdc), user1, oneHundred);
-        eusd.pool_mint(user1, oneHundred);  
+        emit EUSDMinted(address(pool_usdc), user1, oneHundred_d18);
+        eusd.pool_mint(user1, oneHundred_d18);  
         vm.stopPrank();    
     }
 
@@ -469,7 +468,7 @@ contract EUSDTest is Setup {
         emit ControllerSet(user1);
         eusd.setController(user1);
 
-        assertEq(initialController != eusd.controller_address(), true); // workaround for assertNotEq() for now until I try importing this submodule I picked up from the foundry TG: https://github.com/paulrberg/prb-test
+        assertEq(initialController != eusd.controller_address(), true);
         assertEq(eusd.controller_address(), user1);
         vm.stopPrank();
     }
