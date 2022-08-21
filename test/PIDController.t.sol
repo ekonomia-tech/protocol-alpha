@@ -205,8 +205,8 @@ contract PIDControllerTest is Setup {
         assertEq(pid.EUSD_step(), 2500);
         assertEq(pid.global_collateral_ratio(), 1000000);
         assertEq(pid.refresh_cooldown(), 3600);
-        assertEq(pid.price_target(), 10 ** 18);
-        assertEq(pid.price_band(), 5000 * 10 ** 12);
+        assertEq(pid.price_target(), 10 ** 6);
+        assertEq(pid.price_band(), 5000);
         assertEq(pid.last_call_time(), 0);
     }
 

@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+// Forked from Frax
+// https://github.com/FraxFinance/frax-solidity/blob/7cbe89981ffa5d3cd0eeaf62dd1489c3276de0e4/src/hardhat/contracts/Frax/Pools/FraxPoolLibrary.sol
 pragma solidity 0.8.13;
 
-import "openzeppelin-contracts/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 library PoolLibrary {
     using SafeMath for uint256;
@@ -32,9 +34,9 @@ library PoolLibrary {
         return (collateral_amount_d18.mul(col_price)).div(1e6);
     }
 
-    function calcMintAlgorithmicEUSD(uint256 share_price_usd, uint256 share_amount_d18) public pure returns (uint256) {
-        return share_amount_d18.mul(share_price_usd).div(1e6);
-    }
+    // function calcMintAlgorithmicEUSD(uint256 share_price_usd, uint256 share_amount_d18) public pure returns (uint256) {
+    //     return share_amount_d18.mul(share_price_usd).div(1e6);
+    // }
 
     // Must be internal because of the struct
     function calcMintFractionalEUSD(MintFF_Params memory params) internal pure returns (uint256, uint256) {
