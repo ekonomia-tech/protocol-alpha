@@ -41,58 +41,71 @@ contract PIDControllerTest is Setup {
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
+    /// custom setup
+    
+    // function setup() public {
+    //     vm.prank(user1);
+    //     eusd.approve(address(pool_usdc), oneThousand);
+    //     eusd.approve(address(pool_usdc2), oneThousand);
+    //     vm.prank(user2);
+    //     eusd.approve(address(pool_usdc), oneThousand);
+    //     eusd.approve(address(pool_usdc2), oneThousand);
+    //     vm.prank(user3);
+    //     eusd.approve(address(pool_usdc), oneThousand);
+    //     eusd.approve(address(pool_usdc2), oneThousand);
+    // }
+
     /// Main PIDController Functional Tests
 
     /// globalCollateralValue() tests
 
-    // /// @notice check GCV when only one EUSDPool compared to actual single pool's worth of collateral in protocol
-    // function testFullGlobalCollateralValue() public {
-    //     uint256 expectedOut = oneHundredUSDC * (10 ** 12);
-    //     uint256 userInitialEUSD = eusd.balanceOf(user1);
-    //     approvePools();
-    //     vm.startPrank(user1);
-    //     pool_usdc.mint1t1EUSD(oneHundredUSDC, minEUSDOut);
-    //     assertEq(eusd.balanceOf(user1), expectedOut + userInitialEUSD);
-    //     // test actual EUSD in USD price
-    //     uint256 totalCollatUSD = (usdc.balanceOf(address(pool_usdc)) * priceOracle.getEUSDUSDPrice()) / PRICE_PRECISION; 
-        
-    //     assertEq(totalCollatUSD, pid.globalCollateralValue());
-    //     vm.stopPrank();
-    // }
+    /// @notice check GCV when only one EUSDPool compared to actual single pool's worth of collateral in protocol
+    function testFullGlobalCollateralValue() public {
+        uint256 expectedOut = oneHundredUSDC * (10 ** 12);
+        uint256 userInitialEUSD = eusd.balanceOf(owner);
+        approvePools();
+        vm.startPrank(owner);
+        pool_usdc.mint1t1EUSD(oneHundredUSDC, minEUSDOut);
+        assertEq(eusd.balanceOf(owner), expectedOut + userInitialEUSD);
+        // test actual EUSD in USD price
+        uint256 totalCollatUSD = (usdc.balanceOf(address(pool_usdc)) * priceOracle.getEUSDUSDPrice()) / PRICE_PRECISION; 
+        assertEq(totalCollatUSD * missing_decimals, pid.globalCollateralValue());
+        vm.stopPrank();
+    }
 
-    // /// @notice check GCV when only one EUSDPool when GCR is <100% (Fractional)
-    // function testFractionalGlobalCollateralValue() public {
-    //     setPoolsAndDummyPrice(user1, poolMintAmount * 2, poolMintAmount * 2, overPeg);
+    /// @notice check GCV when only one EUSDPool when GCR is <100% (Fractional)
+    function testFractionalGlobalCollateralValue() public {
+        setPoolsAndDummyPrice(user1, poolMintAmount * 2, poolMintAmount * 2, overPeg);
        
-    //     vm.startPrank(user1);
-    //     pool_usdc.mintFractionalEUSD(poolMintAmount, shareBurnAmount, minEUSDOut);        
-    //     uint256 totalCollatUSD = (usdc.balanceOf(address(pool_usdc)) * 10 ** 18) / PRICE_PRECISION;
-    //     assertEq(totalCollatUSD, pid.globalCollateralValue());
-    // }
+        vm.startPrank(user1);
+        pool_usdc.mintFractionalEUSD(poolMintAmount, shareBurnAmount, minEUSDOut);        
+        uint256 totalCollatUSD = usdc.balanceOf(address(pool_usdc)) * missing_decimals;
+        assertEq(totalCollatUSD, pid.globalCollateralValue());
+    }
 
-    // /// @notice check GCV test with two pools with GCR < 100% (both USDC)
-    // function testFractionalGCVMultiPools() public {
-    //     setPoolsAndDummyPrice(user1, poolMintAmount*2, poolMintAmount*2, overPeg);
-    //     vm.startPrank(user1);
-    //     pool_usdc.mintFractionalEUSD(poolMintAmount, shareBurnAmount, minEUSDOut); 
-    //     pool_usdc2.mintFractionalEUSD(poolMintAmount, shareBurnAmount, minEUSDOut);
+    /// @notice check GCV test with two pools with GCR < 100% (both USDC)
+    function testFractionalGCVMultiPools() public {
+        setPoolsAndDummyPrice(user1, poolMintAmount*2, poolMintAmount*2, overPeg);
+        vm.startPrank(user1);
+        pool_usdc.mintFractionalEUSD(poolMintAmount, shareBurnAmount, minEUSDOut); 
+        pool_usdc2.mintFractionalEUSD(poolMintAmount, shareBurnAmount, minEUSDOut);
 
-    //     uint256 totalCollatUSD1 = ((usdc.balanceOf(address(pool_usdc))) * 1e18) / PRICE_PRECISION; 
-    //     uint256 totalCollatUSD2a = ((usdc.balanceOf(address(pool_usdc2))) * 1e18) / PRICE_PRECISION; 
-    //     assertEq(totalCollatUSD1 + totalCollatUSD2a, pid.globalCollateralValue());
+        uint256 totalCollatUSD1 = (usdc.balanceOf(address(pool_usdc))) * missing_decimals; 
+        uint256 totalCollatUSD2a = (usdc.balanceOf(address(pool_usdc2))) * missing_decimals; 
+        assertEq(totalCollatUSD1 + totalCollatUSD2a, pid.globalCollateralValue());
         
-    //     // now test redeem and check global collateral value again
-    //     uint256 eusdIn = 1 * 10 ** 18; // $1
-    //     uint256 expectedShareOut = 0; // simplified to 0
-    //     uint256 usdcOut = 900000; // 90 cents
-    //     eusd.approve(address(pool_usdc2), eusd.balanceOf(user1));
-    //     pool_usdc2.redeemFractionalEUSD(eusdIn, expectedShareOut, usdcOut);
-    //     vm.roll(block.number + 1);
-    //     pool_usdc2.collectRedemption();
-    //     uint256 totalCollatUSD2b = ((usdc.balanceOf(address(pool_usdc2))) * 10 ** 18) / PRICE_PRECISION; 
-    //     assertEq(totalCollatUSD1 + totalCollatUSD2b , pid.globalCollateralValue());
-    //     vm.stopPrank();
-    // }
+        // now test redeem and check global collateral value again
+        uint256 eusdIn = 1 * 10 ** 18; // $1
+        uint256 expectedShareOut = 0; // simplified to 0
+        uint256 usdcOut = 900000; // 90 cents
+        eusd.approve(address(pool_usdc2), eusd.balanceOf(user1));
+        pool_usdc2.redeemFractionalEUSD(eusdIn, expectedShareOut, usdcOut);
+        vm.roll(block.number + 1);
+        pool_usdc2.collectRedemption();
+        uint256 totalCollatUSD2b = ((usdc.balanceOf(address(pool_usdc2))) * 10 ** 18) / PRICE_PRECISION; 
+        assertEq(totalCollatUSD1 + totalCollatUSD2b , pid.globalCollateralValue());
+        vm.stopPrank();
+    }
 
     // TODO in future - check multiple pool's worth of DIFFERENT collateral in protocol (making sure that it is pulling the a number of different collaterals and normalizing all of them)
 
@@ -536,29 +549,32 @@ contract PIDControllerTest is Setup {
 
     /// Helpers
 
-    // function approvePools() public {
-    //     _fundAndApproveUSDC(user1, address(pool_usdc), oneHundredThousandUSDC, oneHundredThousandUSDC);
-    //     _fundAndApproveUSDC(user2, address(pool_usdc), oneHundredThousandUSDC, oneHundredThousandUSDC);
-    //     _fundAndApproveUSDC(user3, address(pool_usdc), oneHundredThousandUSDC, oneHundredThousandUSDC);
-    //     _fundAndApproveUSDC(user1, address(pool_usdc2), oneHundredThousandUSDC, oneHundredThousandUSDC);
-    // }
+    function approvePools() public {
+        _fundAndApproveUSDC(owner, address(pool_usdc), tenThousandUSDC, tenThousandUSDC);
+        _fundAndApproveUSDC(user1, address(pool_usdc), tenThousandUSDC, tenThousandUSDC);
+        _fundAndApproveUSDC(user2, address(pool_usdc), tenThousandUSDC, tenThousandUSDC);
+        _fundAndApproveUSDC(user3, address(pool_usdc), tenThousandUSDC, tenThousandUSDC);
+        _fundAndApproveUSDC(user1, address(pool_usdc2), tenThousandUSDC, tenThousandUSDC);
+        _fundAndApproveUSDC(owner, address(pool_usdc2), tenThousandUSDC, tenThousandUSDC);
 
-    // function setPoolsAndDummyPrice(address _user, uint256 _amountIn, uint256 _amountOut, uint256 _price) public {
-    //     approvePools();
+    }
 
-    //     // _fundAndApproveUSDC(_user, address(pool_usdc), _amountIn, _amountOut);
-    //     vm.warp(pid.refresh_cooldown() + 1);
-    //     priceOracle.setEUSDUSDPrice(_price); // $1.006 USD/EUSD
-    //     pid.refreshCollateralRatio();
-    //     vm.prank(owner);
-    //     share.transfer(_user, oneHundred);
+    function setPoolsAndDummyPrice(address _user, uint256 _amountIn, uint256 _amountOut, uint256 _price) public {
+        approvePools();
 
-    //     vm.startPrank(_user);
-    //     share.approve(address(pool_usdc), share.balanceOf(user1));
-    //     share.approve(address(pool_usdc2), share.balanceOf(_user));
-    //     // usdc.approve(address(pool_usdc2), usdc.balanceOf(_user));
-    //     vm.stopPrank();
-    // }
+        // _fundAndApproveUSDC(_user, address(pool_usdc), _amountIn, _amountOut);
+        vm.warp(pid.refresh_cooldown() + 1);
+        priceOracle.setEUSDUSDPrice(_price); // $1.006 USD/EUSD
+        pid.refreshCollateralRatio();
+        vm.prank(owner);
+        share.transfer(_user, oneHundred);
+
+        vm.startPrank(_user);
+        share.approve(address(pool_usdc), share.balanceOf(user1));
+        share.approve(address(pool_usdc2), share.balanceOf(_user));
+        // usdc.approve(address(pool_usdc2), usdc.balanceOf(_user));
+        vm.stopPrank();
+    }
 
     function _getUSDC(address to, uint256 _amount) private {
         vm.prank(richGuy);

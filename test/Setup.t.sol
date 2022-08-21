@@ -17,7 +17,7 @@ abstract contract Setup is Test {
     PIDController public pid;
     DummyOracle public priceOracle;
     Pool public pool_usdc;
-    // Pool public pool_usdc2;
+    Pool public pool_usdc2;
 
     IERC20 usdc;
    
@@ -34,19 +34,20 @@ abstract contract Setup is Test {
     uint256 public constant twoHundred = 200 * 10 ** 18;
     uint256 public constant fiveHundred = 500 * 10 ** 18;
     uint256 public constant oneThousand = 1000 * 10 ** 18;
-    uint256 public constant oneHundredThousandUSDC = 100000 * 10 ** 6;
+    uint256 public constant tenThousandUSDC = 10000 * 10 ** 6;
     uint256 public constant oneHundredUSDC = 100 * 10 ** 6;
     uint256 public constant overPeg = (10 ** 6) + 6000;
     uint256 public constant underPeg = (10 ** 6)  - (6000);
 
-    // uint256 poolMintAmount = 99750000;
+    uint256 poolMintAmount = 99750000;
     uint256 shareBurnAmount = 25 * 10 ** 16;
-    uint256 minEUSDOut = 90 * 10 ** 18;
+    uint256 minEUSDOut = 80 * 10 ** 18;
 
     uint256 public constant GENESIS_SUPPLY_EUSD = 10000 * 10 ** 18;
     uint256 public constant GENESIS_SUPPLY_USDC = 10000 * 10 ** 6;
 
     uint256 public constant PRICE_PRECISION = 10 ** 6;
+    uint256 public constant missing_decimals = 10 ** 12;
 
     address public constant weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant USDC_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
@@ -77,15 +78,10 @@ abstract contract Setup is Test {
         eusd.transfer(user2, oneThousand);
         eusd.transfer(user3, oneThousand);
 
-        // pool_usdc2 = new Pool(address(eusd), address(share), address(pid), USDC_ADDRESS, owner, address(priceOracle), POOL_CEILING);
-        // eusd.addPool(address(pool_usdc2));
+        pool_usdc2 = new Pool(address(eusd), address(share), address(pid), USDC_ADDRESS, owner, address(priceOracle), POOL_CEILING);
+        eusd.addPool(address(pool_usdc2));
 
         usdc = IERC20(USDC_ADDRESS);
-        // pool_usdc = new Pool(address(eusd), address(share), address(pid), USDC_ADDRESS, owner, address(priceOracle), POOL_CEILING);
-        // pool_usdc2 = new Pool(address(eusd), address(share), address(pid), USDC_ADDRESS, owner, address(priceOracle), POOL_CEILING);
-
-        // eusd.addPool(address(pool_usdc));
-        // eusd.addPool(address(pool_usdc2));
 
         vm.stopPrank();
     }
