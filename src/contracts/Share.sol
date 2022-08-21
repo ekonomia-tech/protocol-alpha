@@ -63,6 +63,10 @@ contract Share is ERC20Burnable, AccessControl, Ownable {
         emit EUSDAddressSet(eusd_contract_address);
     }
     
+    function mint(address to, uint256 amount) public onlyPools {
+        super._mint(to, amount);
+    }
+    
     function pool_mint(address m_address, uint256 m_amount) external onlyPools {        
         super._mint(m_address, m_amount);
     }

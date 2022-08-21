@@ -52,7 +52,7 @@ abstract contract Setup is Test {
 
     constructor() {
         vm.startPrank(owner);
-        eusd = new EUSD("Eusd", "EUSD", owner, timelock_address, GENESIS_SUPPLY);
+        eusd = new EUSD("Eusd", "EUSD", owner, timelock_address);
         share = new Share("Share", "SHARE", owner, timelock_address);
         share.setEUSDAddress(address(eusd));
         priceOracle = new DummyOracle();
@@ -61,6 +61,8 @@ abstract contract Setup is Test {
         pid.setMintingFee(9500); // .95% at genesis
         pid.setRedemptionFee(4500); // .45% at genesis
         pid.setController(controller);
+
+        eusd.pool_mint(owner, GENESIS_SUPPLY);
 
         eusd.transfer(user1, oneThousand);
         eusd.transfer(user2, oneThousand);

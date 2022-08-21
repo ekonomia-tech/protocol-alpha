@@ -48,8 +48,7 @@ contract EUSD is IEUSD, ERC20Burnable, AccessControl, Ownable {
         string memory _name,
         string memory _symbol,
         address _creator_address,
-        address _timelock_address,
-        uint256 genesis_supply
+        address _timelock_address
     ) ERC20(_name, _symbol) {
         require(_timelock_address != address(0), "Zero address detected"); 
         NAME = _name;

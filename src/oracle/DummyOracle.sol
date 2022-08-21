@@ -12,10 +12,10 @@ contract DummyOracle {
     uint256 public usdc_usd_price;
 
     constructor() {
-        eth_usd_price = 2000 * 10 ** 18; // 2000 usd/eth
+        eth_usd_price = 2000 * 10 ** 6; // 2000 usd/eth
         eth_share_price = 200 * 10 ** 18; // 200 SHARE/eth
         eth_eusd_price = 2000 * 10 ** 18; // 2000 eusd/eth
-        share_usd_price = 10 ** 18; // 10 dollar/share
+        share_usd_price = 10 ** 6; // 10 dollar/share
         eusd_usd_price = 10 ** 6;
         usdc_usd_price = 10 ** 6;
     }

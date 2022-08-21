@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "./EUSD.sol";
 import "./Share.sol";
-import "../oracle/PriceOracle.sol";
+import "../oracle/DummyOracle.sol";
 import {PoolLibrary} from "../libraries/PoolLibrary.sol";
 import {TransferHelper} from "../libraries/TransferHelper.sol";
 import "./PIDController.sol";
@@ -27,7 +27,7 @@ contract Pool is AccessControl, Ownable {
     EUSD private eusd;
     PIDController private pid;
 
-    PriceOracle public priceOracle;
+    DummyOracle public priceOracle;
 
     uint256 public minting_fee;
     uint256 public redemption_fee;
@@ -115,7 +115,7 @@ contract Pool is AccessControl, Ownable {
         pool_ceiling = _pool_ceiling;
         missing_decimals = uint(18).sub(collateral_token.decimals());
 
-        priceOracle = PriceOracle(_price_oracle_address);
+        priceOracle = DummyOracle(_price_oracle_address);
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
         grantRole(MINT_PAUSER, timelock_address);
         grantRole(REDEEM_PAUSER, timelock_address);

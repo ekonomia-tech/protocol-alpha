@@ -6,7 +6,7 @@ import "src/contracts/Share.sol";
 import "src/contracts/Pool.sol";
 import "src/contracts/EUSD.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "src/oracle/PriceOracle.sol";
+import "src/oracle/DummyOracle.sol";
 import "src/contracts/PIDController.sol";
 import "test/Helper.t.sol";
 import {PoolLibrary} from "src/libraries/PoolLibrary.sol";
@@ -17,7 +17,7 @@ contract PoolTest is Test, Helper {
     EUSD public eusd;
     PIDController public pid;
     Pool public pool_usdc;
-    PriceOracle public priceOracle;
+    DummyOracle public priceOracle;
     ERC20 public usdc;
 
     address public owner;
@@ -40,7 +40,7 @@ contract PoolTest is Test, Helper {
     function setUp() public {
         vm.startPrank(msg.sender);
         owner = msg.sender;
-        priceOracle = new PriceOracle();
+        priceOracle = new DummyOracle();
         eusd = new EUSD("EUSD", "EUSD", owner, owner);
         share = new Share("Share", "SHARE",owner, owner);
         pid = new PIDController(address(eusd), owner, owner, address(priceOracle));
