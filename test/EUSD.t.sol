@@ -249,7 +249,6 @@ contract EUSDTest is Setup {
         emit Transfer(user1, address(0), twoHundred);
         vm.prank(owner);
         eusd.burnFrom(user1, twoHundred);
-
         user1Balance = user1Balance - twoHundred;
 
         assertEq(eusd.balanceOf(user1), user1Balance);
@@ -258,7 +257,7 @@ contract EUSDTest is Setup {
     /// burn() tests
 
     function testCannotBurnExcessFunds() public {
-        uint256 overBurn = GENESIS_SUPPLY + 1;
+        uint256 overBurn = GENESIS_SUPPLY_EUSD + 1;
 
         vm.expectRevert("ERC20: burn amount exceeds balance");
         vm.prank(owner);

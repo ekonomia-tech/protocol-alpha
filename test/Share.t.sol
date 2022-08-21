@@ -21,7 +21,7 @@ contract ShareTest is Test {
     function setUp() public {
         vm.prank(msg.sender);
         owner = msg.sender;
-        eusd = new EUSD("EUSD", "EUSD", owner, owner, 2000000 * 10 ** 18);
+        eusd = new EUSD("EUSD", "EUSD", owner, owner);
         share = new Share("Share", "SHARE",owner, owner);
         share.setEUSDAddress(address(eusd));
     }

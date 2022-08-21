@@ -1,5 +1,5 @@
 [profile.default]
-src = 'src/contracts'
+src = 'src'
 out = 'out'
 libs = ['lib']
 remappings = [
