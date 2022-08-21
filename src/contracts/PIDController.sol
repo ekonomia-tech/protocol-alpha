@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 // import "./oracle/ChainlinkETHUSDPriceConsumer.sol";
 import {DummyOracle} from "../oracle/DummyOracle.sol";
 import "../interfaces/IPIDController.sol";
-// import { Pool } from "./Pool.sol";
+import { Pool } from "./Pool.sol";
 import { EUSD } from "./EUSD.sol";
 
 contract PIDController is IPIDController, AccessControl, Ownable {
@@ -74,8 +74,8 @@ contract PIDController is IPIDController, AccessControl, Ownable {
         EUSD_step = 2500; // 6 decimals of precision, equal to 0.25%
         global_collateral_ratio = 1000000; // EUSD system starts off fully collateralized (6 decimals of precision)
         refresh_cooldown = 3600; // Refresh cooldown period is set to 1 hour (3600 seconds) at genesis
-        price_target = 10 ** 18; // Collateral ratio will adjust according to the $1 price target at genesis
-        price_band = 5000 * 10 ** 12; // Collateral ratio will not adjust if between $0.995 and $1.005 at genesis
+        price_target = 10 ** 6; // Collateral ratio will adjust according to the $1 price target at genesis
+        price_band = 5000; // Collateral ratio will not adjust if between $0.995 and $1.005 at genesis
     }
 
     /// VIEW FUNCTIONS
@@ -96,18 +96,18 @@ contract PIDController is IPIDController, AccessControl, Ownable {
         return priceOracle.getETHUSDPrice();
     }
 
-    // /// @return dollar value of collateral held in all registered/active EUSD pools in 10e18
-    // function globalCollateralValue() public view returns (uint256) {
-    //     uint256 total_collateral_value_d18 = 0; 
-    //     uint256 poolCount = eusd.getPoolCount();
-    //     for (uint i = 0; i < poolCount; i++){ 
-    //         // Exclude null addresses
-    //         if (eusd.EUSD_pools_array(i) != address(0)){
-    //             total_collateral_value_d18 = total_collateral_value_d18 + (Pool(eusd.EUSD_pools_array(i)).collatDollarBalance());
-    //         }
-    //     }
-    //     return total_collateral_value_d18;
-    // }
+    /// @return dollar value of collateral held in all registered/active EUSD pools in 10e18
+    function globalCollateralValue() public view returns (uint256) {
+        uint256 total_collateral_value_d18 = 0; 
+        uint256 poolCount = eusd.getPoolCount();
+        for (uint i = 0; i < poolCount; i++){ 
+            // Exclude null addresses
+            if (eusd.EUSD_pools_array(i) != address(0)){
+                total_collateral_value_d18 = total_collateral_value_d18 + (Pool(eusd.EUSD_pools_array(i)).collatDollarBalance());
+            }
+        }
+        return total_collateral_value_d18;
+    }
 
     /// PUBLIC FUNCTIONS
 
