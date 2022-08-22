@@ -10,3 +10,4 @@ Core changes:
 NOTES:
 
 - N/A
+# Remember running `forge fmt` before commiting the PR

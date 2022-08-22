@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.13;
 
-
 contract DummyOracle {
-
     uint256 public eth_usd_price;
     uint256 public eth_share_price;
     uint256 public share_usd_price;
@@ -20,27 +18,27 @@ contract DummyOracle {
         usdc_usd_price = 10 ** 6;
     }
 
-    function getETHUSDPrice() public view returns(uint256){
+    function getETHUSDPrice() public view returns (uint256) {
         return eth_usd_price;
     }
 
-    function getETHSHAREPrice() public view returns(uint256) {
+    function getETHSHAREPrice() public view returns (uint256) {
         return eth_share_price;
     }
 
-    function getShareUSDPrice() public view returns(uint256) {
+    function getShareUSDPrice() public view returns (uint256) {
         return share_usd_price;
     }
- 
-    function getETHEUSDPrice() public view returns(uint256) {
+
+    function getETHEUSDPrice() public view returns (uint256) {
         return eth_eusd_price;
     }
 
-    function getEUSDUSDPrice() public view returns(uint256) {
+    function getEUSDUSDPrice() public view returns (uint256) {
         return eusd_usd_price;
     }
 
-    function getUSDCUSDPrice() public view returns(uint256) {
+    function getUSDCUSDPrice() public view returns (uint256) {
         return usdc_usd_price;
     }
 

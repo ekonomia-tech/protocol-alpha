@@ -7,14 +7,10 @@ import "../src/contracts/EUSD.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./BaseSetup.t.sol";
 
-
 contract ShareTest is BaseSetup {
-
     event EUSDAddressSet(address newAddress);
 
-    function setUp() public {
-
-    }
+    function setUp() public {}
 
     function testConstructor() public {
         assertEq(share.oracle_address(), address(priceOracle));
@@ -80,7 +76,7 @@ contract ShareTest is BaseSetup {
     function testPoolMint() public {
         uint256 mintAmount = one_d18;
         _addEusdPool(user1);
-       
+
         vm.prank(user1);
         share.pool_mint(user2, mintAmount);
     }
@@ -106,7 +102,7 @@ contract ShareTest is BaseSetup {
         share.approve(user1, burnAmount);
         assertEq(share.allowance(user2, user1), burnAmount);
         vm.stopPrank();
-        
+
         vm.prank(user1);
         share.pool_burn_from(user2, burnAmount);
     }
@@ -125,5 +121,4 @@ contract ShareTest is BaseSetup {
         eusd.addPool(_pool);
         vm.stopPrank();
     }
-
 }
