@@ -2,7 +2,6 @@
 pragma solidity ^0.8.13;
 
 contract Helper {
-    
     uint256 public constant ONE_HUNDRED_d6 = 100e6;
     uint256 public constant ONE_HUNDRED_d18 = 100e18;
     uint256 public constant FIFTY_d6 = 50e6;
