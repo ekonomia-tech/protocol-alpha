@@ -1,0 +1,30 @@
+name: Foundry CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      
+      - name: Run forge install
+        run: forge install
+      
+      - name: Run forge fmt
+        run: forge fmt
+        
+      - name: Run tests
+        env: 
+          PROVIDER_KEY: ${{ secrets.PROVIDER_KEY }}
+        run: forge test --fork-url "$PROVIDER_KEY" -vvv
