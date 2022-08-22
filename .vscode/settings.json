@@ -2,5 +2,13 @@
   "solidity.remappings": [
     "forge-std/=lib/forge-std/src/",
     "@openzeppelin=lib/openzeppelin-contracts/"
-  ]
+  ],
+  "emeraldwalk.runonsave": {
+    "commands": [
+        {
+            "match": "\\.sol$",
+            "cmd": "forge fmt"
+        }
+    ]
+}
 }

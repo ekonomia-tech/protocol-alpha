@@ -10,7 +10,6 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./EUSD.sol";
 
 contract Share is ERC20Burnable, AccessControl, Ownable {
-    
     uint256 public constant genesis_supply = 100000000 * 10 ** 18;
 
     address public oracle_address;
@@ -18,12 +17,18 @@ contract Share is ERC20Burnable, AccessControl, Ownable {
     EUSD public eusd;
 
     modifier onlyPools() {
-        require(eusd.EUSD_pools(msg.sender) == true, "Only eusd pools can mint or burn SHARE");
+        require(
+            eusd.EUSD_pools(msg.sender) == true,
+            "Only eusd pools can mint or burn SHARE"
+        );
         _;
-    } 
-    
+    }
+
     modifier onlyByOwnGov() {
-        require(msg.sender == owner() || msg.sender == timelock_address, "You are not an owner or the governance timelock");
+        require(
+            msg.sender == owner() || msg.sender == timelock_address,
+            "You are not an owner or the governance timelock"
+        );
         _;
     }
 
@@ -31,13 +36,18 @@ contract Share is ERC20Burnable, AccessControl, Ownable {
     event ShareMinted(address indexed from, address indexed to, uint256 amount);
     event EUSDAddressSet(address newAddress);
 
-    constructor (
+    constructor(
         string memory _name,
-        string memory _symbol, 
+        string memory _symbol,
         address _oracle_address,
         address _timelock_address
-    ) ERC20(_name, _symbol) {
-        require((_oracle_address != address(0)) && (_timelock_address != address(0)), "Zero address detected"); 
+    )
+        ERC20(_name, _symbol)
+    {
+        require(
+            (_oracle_address != address(0)) && (_timelock_address != address(0)),
+            "Zero address detected"
+        );
 
         oracle_address = _oracle_address;
         timelock_address = _timelock_address;
@@ -54,24 +64,33 @@ contract Share is ERC20Burnable, AccessControl, Ownable {
         require(new_timelock != address(0), "Timelock address cannot be 0");
         timelock_address = new_timelock;
     }
-    
-    function setEUSDAddress(address eusd_contract_address) external onlyByOwnGov {
+
+    function setEUSDAddress(address eusd_contract_address)
+        external
+        onlyByOwnGov
+    {
         require(eusd_contract_address != address(0), "Zero address detected");
 
         eusd = EUSD(eusd_contract_address);
 
         emit EUSDAddressSet(eusd_contract_address);
     }
-    
+
     function mint(address to, uint256 amount) public onlyPools {
         super._mint(to, amount);
     }
-    
-    function pool_mint(address m_address, uint256 m_amount) external onlyPools {        
+
+    function pool_mint(address m_address, uint256 m_amount)
+        external
+        onlyPools
+    {
         super._mint(m_address, m_amount);
     }
 
-    function pool_burn_from(address b_address, uint256 b_amount) external onlyPools {
+    function pool_burn_from(address b_address, uint256 b_amount)
+        external
+        onlyPools
+    {
         burnFrom(b_address, b_amount);
     }
 }
