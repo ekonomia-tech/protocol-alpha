@@ -5,14 +5,18 @@ import "./BaseSetup.t.sol";
 
 // error Unauthorized();
 
-contract EUSDTest is BaseSetup {    
+contract EUSDTest is BaseSetup {
     /// EVENTS
     // TODO - there must be a way to use submodules or something to access the events instead of copying them over here.
 
     /// IEUSD specific events
 
-    event EUSDBurned(address indexed from, address indexed burnCaller, uint256 amount);
-    event EUSDMinted(address indexed mintCaller, address indexed to, uint256 amount);
+    event EUSDBurned(
+        address indexed from, address indexed burnCaller, uint256 amount
+    );
+    event EUSDMinted(
+        address indexed mintCaller, address indexed to, uint256 amount
+    );
     event PoolAdded(address pool_address);
     event PoolRemoved(address pool_address);
     event ControllerSet(address controller_address);
@@ -20,10 +24,14 @@ contract EUSDTest is BaseSetup {
     /// ERC20Burnable && ERC20 events
 
     event Transfer(address indexed from, address indexed to, uint256 value);
-    event Approval(address indexed owner, address indexed spender, uint256 value);
+    event Approval(
+        address indexed owner, address indexed spender, uint256 value
+    );
 
     /// Ownable events
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event OwnershipTransferred(
+        address indexed previousOwner, address indexed newOwner
+    );
 
     /// setup tests
 
@@ -38,7 +46,9 @@ contract EUSDTest is BaseSetup {
     /// allowance() + approve() tests
 
     // helper
-    function setupAllowance(address _user, address _spender, uint256 _amount) public {
+    function setupAllowance(address _user, address _spender, uint256 _amount)
+        public
+    {
         vm.expectEmit(true, true, false, true);
         emit Approval(_user, _spender, _amount);
         vm.prank(_user);
@@ -292,8 +302,8 @@ contract EUSDTest is BaseSetup {
 
         vm.expectEmit(true, true, false, true);
         emit EUSDBurned(user1, address(pool_usdc), oneHundred_d18);
-        eusd.pool_burn_from(user1, oneHundred_d18);  
-        vm.stopPrank();      
+        eusd.pool_burn_from(user1, oneHundred_d18);
+        vm.stopPrank();
     }
 
     function testCannotPoolBurnExcessAllowance() public {
@@ -302,10 +312,10 @@ contract EUSDTest is BaseSetup {
         uint256 overburn = oneHundred_d18 + 1;
         vm.startPrank(address(pool_usdc));
         vm.expectRevert("ERC20: insufficient allowance");
-        eusd.pool_burn_from(user1, overburn);  
+        eusd.pool_burn_from(user1, overburn);
         vm.stopPrank();
     }
-    
+
     function testCannotPoolBurnExcessBalance() public {
         uint256 userBalance = eusd.balanceOf(user1);
         uint256 excessBurn = userBalance + 1;
@@ -313,25 +323,25 @@ contract EUSDTest is BaseSetup {
         eusd.approve(address(pool_usdc), excessBurn);
         vm.startPrank(address(pool_usdc));
         vm.expectRevert("ERC20: burn amount exceeds balance");
-        eusd.pool_burn_from(user1, excessBurn);  
+        eusd.pool_burn_from(user1, excessBurn);
         vm.stopPrank();
     }
 
     /// pool_mint() tests
- 
+
     function testCannotPoolMint() public {
         vm.startPrank(user1);
         vm.expectRevert("Only EUSD pools can call this function");
-        eusd.pool_mint(user1, oneHundred_d18);  
-        vm.stopPrank();    
-    }    
-    
+        eusd.pool_mint(user1, oneHundred_d18);
+        vm.stopPrank();
+    }
+
     function testPoolMint() public {
         vm.startPrank(address(pool_usdc));
         vm.expectEmit(true, true, false, true);
         emit EUSDMinted(address(pool_usdc), user1, oneHundred_d18);
-        eusd.pool_mint(user1, oneHundred_d18);  
-        vm.stopPrank();    
+        eusd.pool_mint(user1, oneHundred_d18);
+        vm.stopPrank();
     }
 
     /// addPool() tests
@@ -431,7 +441,7 @@ contract EUSDTest is BaseSetup {
         emit PoolRemoved(dummyAddress);
         eusd.removePool(dummyAddress);
         vm.stopPrank();
-        
+
         vm.expectRevert("Not the owner, controller, or the governance timelock");
         vm.prank(user1);
         eusd.removePool(dummyAddress);
@@ -443,7 +453,7 @@ contract EUSDTest is BaseSetup {
         eusd.removePool(address(0));
         vm.stopPrank();
     }
-    
+
     // NOTE - Considering doing the below test too but seems overkill:
     // add pool, remove pool, remove pool again and expect revert
     function testCannotRemoveUnaddedPool() public {

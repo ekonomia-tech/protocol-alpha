@@ -9,13 +9,12 @@ import "../interfaces/IEUSD.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 // import "./oracle/ChainlinkETHUSDPriceConsumer.sol";
-import {DummyOracle} from "../oracle/DummyOracle.sol";
+import { DummyOracle } from "../oracle/DummyOracle.sol";
 import "../interfaces/IPIDController.sol";
 import { Pool } from "./Pool.sol";
 import { EUSD } from "./EUSD.sol";
 
 contract PIDController is IPIDController, AccessControl, Ownable {
-
     EUSD public eusd;
     address public creator_address;
 
@@ -35,13 +34,14 @@ contract PIDController is IPIDController, AccessControl, Ownable {
     uint256 public refresh_cooldown; // Seconds to wait before being able to run refreshCollateralRatio() again
     uint256 public price_target; // The price of EUSD at which the collateral ratio will respond to; this value is only used for the collateral ratio mechanism and not for minting and redeeming which are hardcoded at $1
     uint256 public price_band; // The bound above and below the price target at which the refreshCollateralRatio() will not change the collateral ratio
-    bytes32 public constant COLLATERAL_RATIO_PAUSER = keccak256("COLLATERAL_RATIO_PAUSER");
-    address public DEFAULT_ADMIN_ADDRESS; 
+    bytes32 public constant COLLATERAL_RATIO_PAUSER =
+        keccak256("COLLATERAL_RATIO_PAUSER");
+    address public DEFAULT_ADMIN_ADDRESS;
 
     bool public collateral_ratio_paused = false;
     uint256 public last_call_time; // Last time the refreshCollateralRatio function was called
 
-/// MODIFIERS 
+    /// MODIFIERS
 
     modifier onlyCollateralRatioPauser() {
         require(hasRole(COLLATERAL_RATIO_PAUSER, msg.sender));
@@ -49,19 +49,23 @@ contract PIDController is IPIDController, AccessControl, Ownable {
     }
 
     modifier onlyByOwnerGovernanceOrController() {
-        require(msg.sender == owner() || msg.sender == timelock_address || msg.sender == controller_address, "Not the owner, controller, or the governance timelock");
+        require(
+            msg.sender == owner() || msg.sender == timelock_address
+                || msg.sender == controller_address,
+            "Not the owner, controller, or the governance timelock"
+        );
         _;
     }
 
-    constructor (
+    constructor(
         address _EUSD,
         address _creator_address,
         address _timelock_address,
         address _priceOracle
     ) {
-        require(_timelock_address != address(0), "Zero address detected"); 
-        require(_priceOracle != address(0), "Zero address detected"); 
-        require(_creator_address != address(0), "Zero address detected"); 
+        require(_timelock_address != address(0), "Zero address detected");
+        require(_priceOracle != address(0), "Zero address detected");
+        require(_creator_address != address(0), "Zero address detected");
 
         priceOracle = DummyOracle(_priceOracle);
         eusd = EUSD(_EUSD);
@@ -87,7 +91,7 @@ contract PIDController is IPIDController, AccessControl, Ownable {
 
     /// @notice gets usd/share price (10e18)
     // Returns X SHARE = 1 USD
-    function SHARE_price()  public view returns (uint256) {
+    function SHARE_price() public view returns (uint256) {
         return priceOracle.getShareUSDPrice();
     }
 
@@ -98,12 +102,13 @@ contract PIDController is IPIDController, AccessControl, Ownable {
 
     /// @return dollar value of collateral held in all registered/active EUSD pools in 10e18
     function globalCollateralValue() public view returns (uint256) {
-        uint256 total_collateral_value_d18 = 0; 
+        uint256 total_collateral_value_d18 = 0;
         uint256 poolCount = eusd.getPoolCount();
-        for (uint i = 0; i < poolCount; i++){ 
+        for (uint256 i = 0; i < poolCount; i++) {
             // Exclude null addresses
-            if (eusd.EUSD_pools_array(i) != address(0)){
-                total_collateral_value_d18 = total_collateral_value_d18 + (Pool(eusd.EUSD_pools_array(i)).collatDollarBalance());
+            if (eusd.EUSD_pools_array(i) != address(0)) {
+                total_collateral_value_d18 = total_collateral_value_d18
+                    + (Pool(eusd.EUSD_pools_array(i)).collatDollarBalance());
             }
         }
         return total_collateral_value_d18;
@@ -114,20 +119,28 @@ contract PIDController is IPIDController, AccessControl, Ownable {
     /// @notice adjusts global collateral ratio as a function of market price vs price_target
     /// @dev There needs to be a time interval that this can be called. Otherwise it can be called multiple times per expansion.
     function refreshCollateralRatio() public {
-        require(collateral_ratio_paused == false, "Collateral Ratio has been paused");
+        require(
+            collateral_ratio_paused == false, "Collateral Ratio has been paused"
+        );
         uint256 EUSD_price_cur = EUSD_price();
-        require(block.timestamp - last_call_time >= refresh_cooldown, "Must wait for the refresh cooldown since last refresh");
+        require(
+            block.timestamp - last_call_time >= refresh_cooldown,
+            "Must wait for the refresh cooldown since last refresh"
+        );
 
-        // Step increments are 0.25% (upon genesis, changable by setEUSDStep()) 
-        
-        if (EUSD_price_cur > price_target + (price_band)) { //decrease collateral ratio
-            if(global_collateral_ratio <= EUSD_step){ //if within a step of 0, go to 0
+        // Step increments are 0.25% (upon genesis, changable by setEUSDStep())
+
+        if (EUSD_price_cur > price_target + (price_band)) {
+            //decrease collateral ratio
+            if (global_collateral_ratio <= EUSD_step) {
+                //if within a step of 0, go to 0
                 global_collateral_ratio = 0;
             } else {
                 global_collateral_ratio = global_collateral_ratio - (EUSD_step);
             }
-        } else if (EUSD_price_cur < price_target - (price_band)) { //increase collateral ratio
-            if(global_collateral_ratio + (EUSD_step) >= 1000000){
+        } else if (EUSD_price_cur < price_target - (price_band)) {
+            //increase collateral ratio
+            if (global_collateral_ratio + (EUSD_step) >= 1000000) {
                 global_collateral_ratio = 1000000; // cap collateral ratio at 1.000000
             } else {
                 global_collateral_ratio = global_collateral_ratio + (EUSD_step);
@@ -141,8 +154,11 @@ contract PIDController is IPIDController, AccessControl, Ownable {
 
     /// RESTRICTED FUNCTIONS
 
-    /// @notice set fee (decimals - 1e6) charged per redemption of EUSD (in SHARE) wrt redeem status of fractional token (1t1, fractional, algo) 
-    function setRedemptionFee(uint256 red_fee) public onlyByOwnerGovernanceOrController {
+    /// @notice set fee (decimals - 1e6) charged per redemption of EUSD (in SHARE) wrt redeem status of fractional token (1t1, fractional, algo)
+    function setRedemptionFee(uint256 red_fee)
+        public
+        onlyByOwnerGovernanceOrController
+    {
         redemption_fee = red_fee;
 
         emit RedemptionFeeSet(red_fee);
@@ -150,35 +166,50 @@ contract PIDController is IPIDController, AccessControl, Ownable {
 
     /// @notice set fee (decimals - 1e6) charged per minting of EUSD (in SHARE)
     /// TODO - confirm what ERC20 fee is in - coordinate with Niv
-    function setMintingFee(uint256 min_fee) public onlyByOwnerGovernanceOrController {
+    function setMintingFee(uint256 min_fee)
+        public
+        onlyByOwnerGovernanceOrController
+    {
         minting_fee = min_fee;
 
         emit MintingFeeSet(min_fee);
-    }  
+    }
 
     /// @notice set CR 'step' to take when adjusting CR (2500 at genesis)
-    function setEUSDStep(uint256 _new_step) public onlyByOwnerGovernanceOrController {
+    function setEUSDStep(uint256 _new_step)
+        public
+        onlyByOwnerGovernanceOrController
+    {
         EUSD_step = _new_step;
 
         emit EUSDStepSet(_new_step);
-    }  
+    }
 
-     /// @notice set price_target (1000000 at genesis)
-    function setPriceTarget (uint256 _new_price_target) public onlyByOwnerGovernanceOrController {
+    /// @notice set price_target (1000000 at genesis)
+    function setPriceTarget(uint256 _new_price_target)
+        public
+        onlyByOwnerGovernanceOrController
+    {
         price_target = _new_price_target;
 
         emit PriceTargetSet(_new_price_target);
     }
 
     /// @notice set time rqd btw CR adjustments (3600 (1hr) at genesis)
-    function setRefreshCooldown(uint256 _new_cooldown) public onlyByOwnerGovernanceOrController {
-    	refresh_cooldown = _new_cooldown;
+    function setRefreshCooldown(uint256 _new_cooldown)
+        public
+        onlyByOwnerGovernanceOrController
+    {
+        refresh_cooldown = _new_cooldown;
 
         emit RefreshCooldownSet(_new_cooldown);
     }
 
     /// @notice setSHAREAddress (needs to be set at deployment)
-    function setSHAREAddress(address _SHARE_address) public onlyByOwnerGovernanceOrController {
+    function setSHAREAddress(address _SHARE_address)
+        public
+        onlyByOwnerGovernanceOrController
+    {
         require(_SHARE_address != address(0), "Zero address detected");
 
         SHARE_address = _SHARE_address;
@@ -187,7 +218,10 @@ contract PIDController is IPIDController, AccessControl, Ownable {
     }
 
     /// @notice set Timelock address (needs to be set at deployment)
-    function setTimelock(address new_timelock) external onlyByOwnerGovernanceOrController {
+    function setTimelock(address new_timelock)
+        external
+        onlyByOwnerGovernanceOrController
+    {
         require(new_timelock != address(0), "Zero address detected");
 
         timelock_address = new_timelock;
@@ -197,7 +231,10 @@ contract PIDController is IPIDController, AccessControl, Ownable {
 
     /// @notice set controller (owner) of this contract (needs to be set at deployment)
     /// @dev TODO - figure out if this is needed in both EUSD.sol and this contract once architecture is established
-    function setController(address _controller_address) external onlyByOwnerGovernanceOrController {
+    function setController(address _controller_address)
+        external
+        onlyByOwnerGovernanceOrController
+    {
         require(_controller_address != address(0), "Zero address detected");
 
         controller_address = _controller_address;
@@ -206,7 +243,10 @@ contract PIDController is IPIDController, AccessControl, Ownable {
     }
 
     /// @notice sets price band that is acceptable before CR adjustment rqd (5000 at genesis)
-     function setPriceBand(uint256 _price_band) external onlyByOwnerGovernanceOrController {
+    function setPriceBand(uint256 _price_band)
+        external
+        onlyByOwnerGovernanceOrController
+    {
         price_band = _price_band;
 
         emit PriceBandSet(_price_band);
