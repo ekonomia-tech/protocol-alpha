@@ -2,6 +2,8 @@
 
 ./scripts/curve/deploy.sh;
 
+set -eo pipefail
+
 source ./scripts/curve/vars.sh;
 source ./scripts/curve/addresses.sh;
 
@@ -68,7 +70,7 @@ then
     exit 0;
 fi;
 
-cast send $frax_bp_address "approve(address,uint256)(bool)" $fraxbp_eusd_address $owner_frax_bp_balance --from $owner_address >> /dev/null 2>&1;
+cast send $frax_bp_lp_address "approve(address,uint256)(bool)" $fraxbp_eusd_address $owner_frax_bp_balance --from $owner_address >> /dev/null 2>&1;
 
 ## Deploy funds into FRAXBP-EUSD pool
-cast send $fraxbp_eusd_address "add_liquidity(uint256[2],uint256)(uint256)" "[$owner_frax_bp_balance,$owner_eusd_balance]" 0 --from $owner_address;
+cast send $fraxbp_eusd_address "add_liquidity(uint256[2],uint256)(uint256)" "[$owner_frax_bp_balance,$owner_eusd_balance]" 0 --from $owner_address >> /dev/null 2>&1;
