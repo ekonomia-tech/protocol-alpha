@@ -1,15 +1,46 @@
 #!/bin/sh
 set -e;
 
-## TODO - Add verification for address deployments;
-
 source ./scripts/curve/vars.sh;
+source .env;
 
+rm -rf ./scripts/curve/logs/last_run.log;
+
+function kill_anvil() {
+    pids=$(lsof -t -i:8545);
+    for pid in $pids
+    do
+        kill -9 $pid
+    done
+}
+
+function log() {
+    echo "----" >> ./scripts/curve/logs/last_run.log;
+    echo "$1" >> ./scripts/curve/logs/last_run.log;
+    echo "----" >> ./scripts/curve/logs/last_run.log;
+}
+
+echo "";
+echo "Spinning up anvil (~10s)...";
+
+kill_anvil
+
+anvil --fork-url $PROVIDER_KEY > /dev/null 2>&1 &
+
+sleep 10
+
+echo "Anvil initialized successfully";
+echo "";
 echo "----------------------------------";
 echo "Initiating contracts deployment...";
 echo "----------------------------------";
 
+
+
+## --------------------------
 ## Deploy Price Oracle
+## --------------------------
+
 dummy_oracle_address=$(forge create \
     --rpc-url $RPC_URL \
     --private-key $owner_pk "$dummy_oracle_contract:DummyOracle" \
@@ -24,7 +55,12 @@ else
     exit 0;
 fi;
 
+
+
+## --------------------------
 ## Deploy EUSD contract
+## --------------------------
+
 eusd_address=$(forge create \
     --rpc-url $RPC_URL \
     --private-key $owner_pk "$eusd_contract:EUSD" \
@@ -41,7 +77,11 @@ else
 fi;
 
 
+
+## --------------------------
 ## Deploy PIDController contract
+## --------------------------
+
 pidcontroller_address=$(forge create \
     --rpc-url $RPC_URL \
     --private-key $owner_pk "$pidcontroller_contract:PIDController" \
@@ -57,7 +97,12 @@ else
     exit 0;
 fi;
 
+
+
+## --------------------------
 ## Deploy Share contract
+## --------------------------
+
 share_address=$(forge create \
     --rpc-url $RPC_URL \
     --private-key $owner_pk "$share_contract:Share" \
@@ -78,7 +123,11 @@ echo "-----------------------";
 echo "Set contract variables:"
 echo "-----------------------";
 
+
+
+## --------------------------
 ## PIDController - set minting fee
+## --------------------------
 cast send $pidcontroller_address "setMintingFee(uint256)" $minting_fee --from $owner_address >> /dev/null 2>&1;
 if [ $(cast call $pidcontroller_address "minting_fee()(uint256)") == $minting_fee ]
 then
@@ -89,7 +138,11 @@ else
 fi;
 
 
+
+## --------------------------
 ## PIDController - set redemption fee
+## --------------------------
+
 cast send $pidcontroller_address "setRedemptionFee(uint256)" $redemption_fee --from $owner_address >> /dev/null 2>&1;
 if [ $(cast call $pidcontroller_address "redemption_fee()(uint256)") == $redemption_fee ]
 then
@@ -99,23 +152,43 @@ else
     exit 0;
 fi;
 
+
+
+## --------------------------
 ## PIDController - Set controller
+## --------------------------
 cast send $pidcontroller_address "setController(address)" $controller_address --from $owner_address >> /dev/null 2>&1;
 echo "-- PIDController - Controller address set -> $controller_address";
 
+
+
+## --------------------------
 ## Share set EUSD Address
+## --------------------------
+
 cast send $share_address "setEUSDAddress(address)" $eusd_address --from $owner_address >> /dev/null 2>&1;
 echo "-- Share - EUSD Address set -> $eusd_address";
 
+
+
+## --------------------------
 ## EUSD Set controller
+## --------------------------
+
 cast send $eusd_address "setController(address)" $controller_address --from $owner_address >> /dev/null 2>&1;
 echo "-- EUSD - Controller address set -> $controller_address";
 
+
+
+## --------------------------
 ## Add owner as a pool to be able to mint EUSD
+## --------------------------
 cast send $eusd_address "addPool(address)" $owner_address --from $owner_address >> /dev/null 2>&1;
 echo "-- EUSD - Owner granted minting/burning privileges";
 
-echo "";
+
+
+
 rm -rf ./scripts/curve/addresses.sh;
 
 echo "dummy_oracle_address=\"$dummy_oracle_address\";" >> ./scripts/curve/addresses.sh;
