@@ -29,7 +29,8 @@ abstract contract BaseSetup is Test {
     IERC20 usdc;
     IERC20 frax;
 
-    address public owner = 0xed320Bf569E5F3c4e9313391708ddBFc58e296bb; // NOTE - vitalik.eth for tests but we may need a different address to supply USDC depending on our tests - vitalik only has 30k USDC
+    address public owner = 0x72A53cDBBcc1b9efa39c834A540550e23463AAcB;
+    // address public owner = 0xed320Bf569E5F3c4e9313391708ddBFc58e296bb; // NOTE - vitalik.eth for tests but we may need a different address to supply USDC depending on our tests - vitalik only has 30k USDC
     address public timelock_address = address(100);
     address public controller = address(101);
     address public user1 = address(1);
@@ -60,12 +61,17 @@ abstract contract BaseSetup is Test {
     uint256 public constant oneThousand_d6 = 1000 * 10 ** 6;
     uint256 public constant tenThousand_d18 = 10000 * 10 ** 18;
     uint256 public constant tenThousand_d6 = 10000 * 10 ** 6;
+    uint256 public constant five_m_d6 = 5000000 * 10 ** 6;
+    uint256 public constant six_m_d6 = 6000000 * 10 ** 6;
+    uint256 public constant six_m_d18 = 6000000 * 10 ** 18;
 
     uint256 public constant overPeg = (10 ** 6) + 6000;
     uint256 public constant underPeg = (10 ** 6) - (6000);
 
     uint256 public constant GENESIS_SUPPLY_d18 = 100000000 * 10 ** 18;
     uint256 public constant GENESIS_SUPPLY_d6 = 100000 * 10 ** 6;
+    uint256 public constant PRICE_THRESHOLD = 100; // 10000 = 100%
+    uint256 public period = 604800; // 1 week in seconds
 
     uint256 public constant PRICE_PRECISION = 10 ** 6;
     uint256 public constant missing_decimals = 10 ** 12;
