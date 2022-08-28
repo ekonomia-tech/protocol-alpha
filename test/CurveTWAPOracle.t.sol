@@ -41,14 +41,13 @@ contract CurveTWAPOracletest is BaseSetup {
 
         usdc.approve(address(fraxBP), five_m_d6); // TODO- approve a lot - 5m USDC
         uint256 allowance = usdc.allowance(owner, address(fraxBP));
-        console.log("fraxBP allowance for usdc: %s", allowance);
 
         // TODO - FIX THIS ERROR WITH ARRAY INPUT PARAMS
         uint256[] memory metaLiquidity = new uint256[](2);
         metaLiquidity = [0, five_m_d6];
         fraxBP.add_liquidity(metaLiquidity,0);
         
-        // check that the balances have changed for user's FraxBP LP tokens
+        // TODO - remove check && console once ensuring check shows balances have changed for user's FraxBP LP tokens
         uint256 callerFraxBPBalance = FraxBPLP.balanceOf(owner);
         console.log("callerFraxBPBalance: %s", callerFraxBPBalance);
 
@@ -72,16 +71,71 @@ contract CurveTWAPOracletest is BaseSetup {
     /// Main CurveTWAPOracle Functional Tests
 
     /// constructor() tests
-    
-    /// @notice check GCV when only one EUSDPool compared to actual single pool's worth of collateral in protocol
-    function testFullGlobalCollateralValue() public {
+    function testCurveTWAPOracleConstructor() public {
+        assertEq(address(curveTWAPOracle.curvePool()), address(curvePool));
+        assertEq(curveTWAPOracle.period(),604800);
+        assertEq(curveTWAPOracle.priceUpdateThreshold(), 100);
+        assertEq(initOracle, false);
+        assertEq(curveTWAPOracle.pidController(), address(pid));
+        assertEq(tokens[0], eusdFraxBPMetapool.coins[0]);
+        assertEq(tokens[1], eusdFraxBPMetapool.coins[1]);
+        assertEq(tokens[0],fraxBPAddress);
+        assertEq(tokens[1], address(eusd));
     }
 
     /// getTWAP() tests
     
+    function testCannotGetTWAP() public {
+        // test for requirement of balances != 0
+    }
+
+    function testInitialTWAP() public {
+        // manual calc of what TWAP && blockTimestampLast should be with current balances after the first getTWAP() and no other txs that affect the metapool balances. 
+        // check that event is emitted (TWAPInitialized)
+    }
+
+    function testTWAPAddLiquidity() public {
+        // manual calc of what TWAP && blockTimestampLast should be with current balances
+        // compare against manual calc to see that TWAP is updating after someone updates the balance using add_liquidity()
+        // check emitted TWAPUpdated event
+    }
+
+    function testTWAPRemoveLiquidity() public {
+        // manual calc of what TWAP && blockTimestampLast should be with current balances
+        // compare against manual calc to see that TWAP is updating after someone updates the balance using remove_liquidity()
+        // check emitted TWAPUpdated event
+
+    }
+
+    function testTWAPAfterSwap() public {
+        // manual calc of what TWAP && blockTimestampLast should be with current balances
+        // compare against manual calc to see that TWAP is updating after someone updates the balance using DEX and swapping out tokens
+        // check emitted TWAPUpdated event
+    }
+
     /// consult() tests
 
+    function testCannotConsult() public {
+        // test require reversion
+    }
+
+    function testConsultToken0() public {
+        // test consult() with respective token
+    }
+
+    function testConsultToken1() public {
+        // test consult() with respective token
+    }
+
     /// setPriceUpdateThreshold() tests
+
+    function testCannotSetPriceThreshold() public {
+        // require reversion test
+    }
+
+    function testSetPriceUpdateThreshold() public {
+        // set and check that newly set threshold is assigned
+    }
 
     /// Helpers
 }

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.13;
 
+/// @notice these are generic functions seen within stableswap vyper contracts deployed in other metapool contracts such as this one: https://etherscan.io/address/0x497CE58F34605B9944E6b15EcafE6b001206fd25#code
 interface ICurve {
 
     function coins(uint256) external view returns (address);

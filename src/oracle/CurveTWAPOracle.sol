@@ -8,29 +8,26 @@
 pragma solidity ^0.8.13;
 
 import "../interfaces/ICurve.sol";
-// import "@curve/pool-templates/meta/SwapTemplateMeta.vy";
 
 /// @title CurveTWAPOracle
 /// @notice Generic TWAP Oracle for v1 Curve Metapools that exposes getter for TWAP
 /// @author Ekonomia: https://github.com/Ekonomia
-/// @dev NOTE - Curve contracts are written in vyper, so there may be some compatibility aspects that I need to look into for solidity to vyper. In theory it should be alright... the solidity files will be deployed to mainnet, and this can be tested with local mainnet fork too.
-/// @dev CurveTWAPOracle relies on IPriceHelper
 /// NOTE - Later versions of this oracle can look into getting more precision through the use of uint112 and UQ112.112 format as per uniswap's implementation for price oracles. Gas efficiencies can be considered too of course.
 /// NOTE - This could be easily replaced by new curve pool contracts that are implementing exposed oracle functionality as per talks with Fiddy (CURVE)
 contract CurveTWAPOracle is IStableSwap {
-    address pidControllerAddress;
+    address pidController;
     ICurve curvePool;
     bool initOracle;
     int128 public constant N_COINS = 2;
     uint public period;
 
-    uint256[N_COINS] firstBalances;
-    uint256[N_COINS] priceCumulativeLast;
+    uint256[N_COINS] public firstBalances;
+    uint256[N_COINS] public priceCumulativeLast;
     uint256 public blockTimestampLast;
-    address[N_COINS] tokens;
+    address[N_COINS] public tokens;
     uint256[N_COINS] public balances; 
-    uint256[N_COINS] twap; // TODO - MAYBE for underlying assets, we'll have to figure out how to get their prices accordingly too. This would just supply the price of FraxBP to EUSD
-
+    uint256[N_COINS] public twap; // TODO - MAYBE for underlying assets, we'll have to figure out how to get their prices accordingly too. This would just supply the price of FraxBP to EUSD
+    uint256 public priceUpdateThreshold;
     // unsure vars
     uint256 public constant PRECISION = 10 ** 18;
 
@@ -48,7 +45,7 @@ contract CurveTWAPOracle is IStableSwap {
     
     /// TODO - not sure if this will be used, I would think that we need restriction to some degree for price updates but perhaps not.
     modifier onlyPID() {
-        require(msg.sender == pidControllerAddress, "Only PIDController allowed to call this function");
+        require(msg.sender == pidController, "Only PIDController allowed to call this function");
         _;
     }
 
@@ -58,16 +55,19 @@ contract CurveTWAPOracle is IStableSwap {
     /// @param _priceUpdateThreshold The initial value of the suggested price update threshold. Expressed in basis points, 10000 BP corresponding to 100%
     /// @param _curvePool address of metapool used for oracle
     /// @param _period timespan for regular TWAP updates
-    /// TODO - assign tokens within constructor from curve metapool
+    /// @param _pidController address of pid used throughout protocol
     constructor(
         uint256 _priceUpdateThreshold,
         address _curvePool,
-        uint _period
+        uint _period,
+        address _pidController
     ) {
         _setPriceUpdateThreshold(_priceUpdateThreshold);
         curvePool = ICurve(_curvePool);
         period = _period;
         require(curvePool.balances(0) != 0, curvePool.balances(1) != 0, "Constructor: no reserves in metapool");
+        pidController = _pidController;
+        tokens = curvePool.coins; // confirm that token0 == FRAXBP LPT, token1 == EUSD
     }
 
     /// FUNCTIONS
@@ -133,7 +133,6 @@ contract CurveTWAPOracle is IStableSwap {
     /// INTERNAL FUNCTIONS
 
     /// @notice sets priceUpdateThreshold used to control against volatility
-    /// @dev TODO - assess if this needs to be in price oracle
     function _setPriceUpdateThreshold(uint256 _priceUpdateThreshold) internal {
         require(_priceUpdateThreshold <= 10000);
         priceUpdateThreshold = _priceUpdateThreshold;
