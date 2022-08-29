@@ -61,7 +61,11 @@ abstract contract BaseSetup is Test {
     uint256 public constant oneThousand_d6 = 1000 * 10 ** 6;
     uint256 public constant tenThousand_d18 = 10000 * 10 ** 18;
     uint256 public constant tenThousand_d6 = 10000 * 10 ** 6;
+
+    uint256 public constant one_m_d6 = 1000000 * 10 ** 6;
+    uint256 public constant one_m_d18 = 1000000 * 10 ** 18;
     uint256 public constant five_m_d6 = 5000000 * 10 ** 6;
+    uint256 public constant five_m_d18 = 5000000 * 10 ** 18;
     uint256 public constant six_m_d6 = 6000000 * 10 ** 6;
     uint256 public constant six_m_d18 = 6000000 * 10 ** 18;
 
@@ -170,6 +174,7 @@ abstract contract BaseSetup is Test {
         _approveTON(_owner, _spender, _amountOut);
     }
 
+    /// @notice funds owner with USDC, approves fraxBP to pull owner USDC, funds owner with FRAX from fraxRichGuy, approves fraxBP to pull owner FRAX, owner adds liquidity to fraxBP, owner deploys metapool FraxBP/PHO, owner adds liquidity to FraxBP/PHO. Owner has all the LP tokens to start for FraxBP/PHO
     function _deployFraxBPPHOPool() internal returns (address) {
         vm.prank(address(teller));
         pho.mint(owner, tenThousand_d18);
@@ -211,6 +216,48 @@ abstract contract BaseSetup is Test {
         fraxBPPhoMetapool.add_liquidity(metaLiquidity, 0);
 
         vm.stopPrank();
+
+        return fraxBPPhoMetapoolAddress;
+    }
+
+    /// @notice funds owner with USDC, approves fraxBP to pull owner USDC, funds owner with FRAX from fraxRichGuy, approves fraxBP to pull owner FRAX, owner adds liquidity to fraxBP, owner deploys metapool FraxBP/PHO, owner adds liquidity to FraxBP/PHO. Owner has all the LP tokens to start for FraxBP/PHO
+    function _deployFraxBPPHOPoolOneMillion() internal returns (address) {
+        IERC20 frax = IERC20(fraxAddress);
+        IERC20 fraxBPLP = IERC20(fraxBPLPToken);
+        ICurvePool fraxBP = ICurvePool(fraxBPAddress);
+        ICurveFactory curveFactory = ICurveFactory(metaPoolFactoryAddress);
+
+        _fundAndApproveUSDC(owner, address(fraxBP), one_m_d6, one_m_d6);
+
+        uint256[2] memory fraxBPmetaLiquidity;
+        fraxBPmetaLiquidity[0] = one_m_d18; // frax
+        fraxBPmetaLiquidity[1] = one_m_d6; // usdc
+        uint256 minLPOut = one_m_d18;
+
+        vm.startPrank(fraxRichGuy);
+        frax.transfer(owner, one_m_d18 * 5);
+        vm.stopPrank();
+
+        vm.startPrank(owner);
+
+        usdc.approve(address(fraxBP), one_m_d6);
+        frax.approve(address(fraxBP), one_m_d18);
+
+        fraxBP.add_liquidity(fraxBPmetaLiquidity, 0);
+
+        address fraxBPPhoMetapoolAddress = curveFactory.deploy_metapool(
+            address(fraxBP), "FRAXBP/PHO", "FRAXBPPHO", address(pho), 200, 4000000, 0
+        );
+
+        ICurvePool fraxBPPhoMetapool = ICurvePool(fraxBPPhoMetapoolAddress);
+        pho.approve(address(fraxBPPhoMetapool), one_m_d18);
+        fraxBPLP.approve(address(fraxBPPhoMetapool), one_m_d18);
+
+        uint256[2] memory metaLiquidity;
+        metaLiquidity[0] = one_m_d18;
+        metaLiquidity[1] = one_m_d18;
+
+        fraxBPPhoMetapool.add_liquidity(metaLiquidity, 0);
 
         return fraxBPPhoMetapoolAddress;
     }

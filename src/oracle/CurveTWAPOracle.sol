@@ -1,120 +1,100 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Inpired by LIDO, UNISWAP, CURVE, and BEANSTALK
 // <INSERT GITHUB URLS HERE>
-// curve_factory_address="0xB9fC157394Af804a3578134A6585C0dc9cc990d4";
-// frax_bp_address="0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2";
-// frax_bp_lp_address="0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC";
 
 pragma solidity ^0.8.13;
 
-import "../interfaces/ICurve.sol";
+import "../interfaces/IPHO.sol";
+import "@openzeppelin/contracts/utils/Context.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "../interfaces/oracle/IPHOPriceFeed.sol";
+import "../interfaces/curve/ICurvePool.sol";
+import "../interfaces/curve/ICurveFactory.sol";
 
 /// @title CurveTWAPOracle
 /// @notice Generic TWAP Oracle for v1 Curve Metapools that exposes getter for TWAP
 /// @author Ekonomia: https://github.com/Ekonomia
 /// NOTE - Later versions of this oracle can look into getting more precision through the use of uint112 and UQ112.112 format as per uniswap's implementation for price oracles. Gas efficiencies can be considered too of course.
 /// NOTE - This could be easily replaced by new curve pool contracts that are implementing exposed oracle functionality as per talks with Fiddy (CURVE)
-contract CurveTWAPOracle is IStableSwap {
-    address pidController;
-    ICurve curvePool;
-    bool initOracle;
+contract CurveTWAPOracle is IPHOPriceFeed, Ownable {
+    IPHO public pho;
+    ICurvePool public dexPool;
+    ICurveFactory public curveFactory;
+    
     int128 public constant N_COINS = 2;
-    uint public period;
-
+    uint public period; // timespan for regular TWAP updates
+    bool public initOracle;
+   
     uint256[N_COINS] public firstBalances;
     uint256[N_COINS] public priceCumulativeLast;
     uint256 public blockTimestampLast;
     address[N_COINS] public tokens;
     uint256[N_COINS] public balances; 
-    uint256[N_COINS] public twap; // TODO - MAYBE for underlying assets, we'll have to figure out how to get their prices accordingly too. This would just supply the price of FraxBP to EUSD
-    uint256 public priceUpdateThreshold;
-    // unsure vars
-    uint256 public constant PRECISION = 10 ** 18;
+    uint256[N_COINS] public twap; // index 0 == PHO, index 1 == FraxBP based off of PriceController.sol
+    uint256 public priceUpdateThreshold; // The initial value of the suggested price update threshold. Expressed in basis points, 10000 BP corresponding to 100%
 
-    /// EVENTS
-
-    event PriceUpdateThresholdChanged(uint256 priceUpdateThreshold);
-    
-    /// @notice getTWAP called successfully for first time where return vars are initial prices
-    event TWAPInitialized(uint256[N_COINS] indexed twap, uint256 indexed blockTimestampLast);
-    
-    /// @notice getTWAP called and TWAP updated
-    event TWAPUpdated(uint256[N_COINS] indexed twap, uint256 indexed blockTimestampLast);
-
-    /// MODIFIERS
-    
-    /// TODO - not sure if this will be used, I would think that we need restriction to some degree for price updates but perhaps not.
-    modifier onlyPID() {
-        require(msg.sender == pidController, "Only PIDController allowed to call this function");
-        _;
-    }
-
-    /// CONSTRUCTOR
-
-    /// @dev TODO: likely to make this contract ownable or use AccessRoles, && need to figure out if priceUpdateThreshold will be used to control against volatile price feeds from DEX pair oracle
-    /// @param _priceUpdateThreshold The initial value of the suggested price update threshold. Expressed in basis points, 10000 BP corresponding to 100%
-    /// @param _curvePool address of metapool used for oracle
-    /// @param _period timespan for regular TWAP updates
-    /// @param _pidController address of pid used throughout protocol
     constructor(
         uint256 _priceUpdateThreshold,
-        address _curvePool,
         uint _period,
-        address _pidController
+        address _pho_address,
+        address _dex_pool_address,
+        address _curve_factory
     ) {
+        require(_pho_address != address(0), "CurveTWAPOracle: zero address detected");
+        require(_dex_pool_address != address(0), "CurveTWAPOracle: zero address detected");
+        require(_curve_factory != address(0), "CurveTWAPOracle: zero address detected");
+        require(_period != 0, "CurveTWAPOracle: period cannot be zero");
+        pho = IPHO(_pho_address);
+        setDexPool(_dex_pool_address);
+        curveFactory = ICurveFactory(_curve_factory);
         _setPriceUpdateThreshold(_priceUpdateThreshold);
-        curvePool = ICurve(_curvePool);
         period = _period;
-        require(curvePool.balances(0) != 0, curvePool.balances(1) != 0, "Constructor: no reserves in metapool");
-        pidController = _pidController;
-        tokens = curvePool.coins; // confirm that token0 == FRAXBP LPT, token1 == EUSD
+        tokens = dexPool.coins;
     }
 
-    /// FUNCTIONS
-
     /// @notice queries metapool for new balances && calculates twap
-    /// @return twap updated once per `period`
-    /// @dev I think this can be externally called, but is going to be called directly by our own contracts that rely on an updated price (PIDController.sol - `refreshCollateralRatio()`)
-    function getTWAP() external returns (uint256[2] twap) {
-
-        require(curvePool.balances(0) != 0 && curvePool.balances(1) != 0, "getTWAP(): metapool balance(s) cannot be 0");
+    /// @return twap of PHO in as ($FRAXBP / $1 PHO) updated once per `period`
+    /// @dev this can be externally called, but is going to be called directly by our own contracts that rely on an updated price (PriceController.sol)
+    /// NOTE - twap is wrt to underlying assets within dexpool, which are stable, so price is assumed accurate as PHO/USD
+    /// TODO - May need to switch the return so it is just a unit256 for the PHO price, not the array. TBD based on PriceController, etc.
+    function getPHOUSDPrice() external override returns (uint256[2] calldata) {
+        require(dexPool.balances(0) != 0 && dexPool.balances(1) != 0, "getPHOUSDPrice(): metapool balance(s) cannot be 0");
         // check if at initialization stage
         if(initOracle != true) {
-            firstBalances[0] = curvePool.balances(0) * (block.timestamp);
-            firstBalances[1] = curvePool.balances(1) * block.timestamp;
-            uint256 token0Price = curvePool.balances(1) / curvePool.balances(0);
-            uint256 token1Price = curvePool.balances(0) / curvePool.balances(1);
-
-            twap = [token0Price, token1Price];
+            uint256 token0Price = dexPool.balances(1) / dexPool.balances(0);
+            uint256 token1Price = dexPool.balances(0) / dexPool.balances(1);
             blockTimestampLast = block.timestamp;
-
+            firstTimestamp = blockTimestampLast;
+            firstBalances[0] = token0Price * blockTimestampLast;
+            firstBalances[1] = token1Price * blockTimestampLast;
+            twap = [token0Price, token1Price];
             priceCumulativeLast = [firstBalances[0], firstBalances[1]];
             initOracle = true;
-
-            emit TWAPInitialized(twap, blockTimestampLast);
+            emit PriceFeedInitialized(twap, blockTimestampLast);
             return twap;
         }
-
-        uint256 totalTimeElapsed = block.timestamp - firstTimestamp; // time since initial TWAP balances in seconds
         uint256 periodTimeElapsed = block.timestamp - blockTimestampLast;
-        require(timeElapsed >= period, "getTWAP(): period not elapsed");
-
-        priceCumulativeLast[0] = priceCumulativeLast[0] + (curvePool.balances(0) * periodTimeElapsed);
-        priceCumulativeLast[1] = priceCumulativeLast[1] + (curvePool.balances(1) * periodTimeElapsed);
-
+        require(periodTimeElapsed >= period, "getPHOUSDPrice): period not elapsed");
+        uint256 totalTimeElapsed = block.timestamp - firstTimestamp; // time since initial TWAP balances in seconds
+        priceCumulativeLast[0] = priceCumulativeLast[0] + ((dexPool.balances(1) / dexPool.balances(0)) * periodTimeElapsed);
+        priceCumulativeLast[1] = priceCumulativeLast[1] + ((dexPool.balances(0) / dexPool.balances(1)) * periodTimeElapsed);
+        
         for(int i = 0; i < N_COINS; i++ ) {
             twap[i] =(priceCumulativeLast[i] - firstBalances[i]) / totalTimeElapsed;
         }
 
         blockTimestampLast = block.timestamp;
-        emit TWAPUpdated(twap, blockTimestampLast);
+        emit PriceUpdated(twap, blockTimestampLast);
+        return twap;
     }    
 
     
-    /// @notice calculates price of inputToken with current twap
-    /// NOTE this will always return 0 before update has been called successfully for the first time
-    /// @dev NOTE - pulled from uniswap oracleSimple, but this is used in FRAX.sol, or at least the function signature to get the price of token
-    function consult(address token, uint amountIn) external view returns (uint amountOut) {
+    /// @notice calculates price of inputToken with current TWAP
+    /// @param token input ERC20 address
+    /// @param amountIn total value being priced
+    /// @return amountOut price of inputToken based on current TWAP
+    /// NOTE this will always return 0 before getPHOUSDPrice() has been called successfully for the first time
+    function consult(address token, uint amountIn) external override view returns (uint256) {
         require(initOracle = true, "consult(): CurveTWAPOracle not initialized");
         if (token == tokens[0]) {
             amountOut = twap[0] * (amountIn);
@@ -122,6 +102,8 @@ contract CurveTWAPOracle is IStableSwap {
             require(token == tokens[1], "consult(): invalid token");
             amountOut = twap[1] * (amountIn);
         }
+        return amountOut;
+
     }
 
     /// @notice Sets the suggested price update threshold.
@@ -130,12 +112,35 @@ contract CurveTWAPOracle is IStableSwap {
         _setPriceUpdateThreshold(_priceUpdateThreshold);
     }
 
-    /// INTERNAL FUNCTIONS
+    /// @notice set the dex pool address that this contract interacts with
+    function setDexPool(address newDexPool) external onlyByOwnerGovernanceOrController {
+        require(newDexPool != address(0), "CurveTWAPOracle: zero address detected");
+        require(
+            curveFactory.is_meta(newDexPool),
+            "CurveTWAPOracle: address does not point to a metapool"
+        );
+
+        address[8] memory underlyingCoins = curveFactory.get_underlying_coins(newDexPool);
+        bool isPhoPresent = false;
+        for (uint256 i = 0; i < underlyingCoins.length; i++) {
+            if (underlyingCoins[i] == address(pho)) {
+                isPhoPresent = true;
+                break;
+            }
+        }
+        require(isPhoPresent, "CurveTWAPOracle: $PHO is not present in the metapool");
+
+        dexPool = ICurvePool(newDexPool);
+        emit DexPoolUpdated(newDexPool);
+    }
 
     /// @notice sets priceUpdateThreshold used to control against volatility
     function _setPriceUpdateThreshold(uint256 _priceUpdateThreshold) internal {
-        require(_priceUpdateThreshold <= 10000);
+        require(_priceUpdateThreshold <= 10000, "_setPriceUpdateThreshold(): priceUpdateThreshold !> 10000");
         priceUpdateThreshold = _priceUpdateThreshold;
         emit PriceUpdateThresholdChanged(_priceUpdateThreshold);
     }
+
+    
+    
 }
