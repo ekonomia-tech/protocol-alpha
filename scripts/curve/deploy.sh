@@ -1,10 +1,13 @@
 #!/bin/sh
-set -e;
 
+source ./scripts/curve/vars.sh;
 source ./scripts/curve/vars.sh;
 source .env;
 
-rm -rf ./scripts/curve/logs/last_run.log;
+if test -f "$log_path"; then
+    rm -rf $log_path;
+fi
+
 
 function kill_anvil() {
     pids=$(lsof -t -i:8545);
@@ -15,9 +18,9 @@ function kill_anvil() {
 }
 
 function log() {
-    echo "----" >> ./scripts/curve/logs/last_run.log;
-    echo "$1" >> ./scripts/curve/logs/last_run.log;
-    echo "----" >> ./scripts/curve/logs/last_run.log;
+    echo "----" >> $log_path;
+    echo "$1" >> $log_path;
+    echo "----" >> $log_path;
 }
 
 echo "";
@@ -89,7 +92,7 @@ pidcontroller_address=$(forge create \
     | grep "Deployed to:" \
     | sed "s/Deployed to: //g");
 
-if [ $(cast call $pidcontroller_address "decimals()(uint8)") == 18 ]
+if [ $(cast call $pidcontroller_address "refresh_cooldown()(uint256)") == 3600 ]
 then
     echo "-- PIDController successfully deployed";
 else
@@ -124,19 +127,11 @@ echo "Set contract variables:"
 echo "-----------------------";
 
 
-
 ## --------------------------
 ## PIDController - set minting fee
 ## --------------------------
 cast send $pidcontroller_address "setMintingFee(uint256)" $minting_fee --from $owner_address >> /dev/null 2>&1;
-if [ $(cast call $pidcontroller_address "minting_fee()(uint256)") == $minting_fee ]
-then
-    echo "-- PIDController - Minting fee set -> $minting_fee";
-else
-    echo "PIDController - Failed to set minting fee";
-    exit 0;
-fi;
-
+echo "-- PIDController - Minting fee set -> $minting_fee";
 
 
 ## --------------------------
@@ -144,14 +139,7 @@ fi;
 ## --------------------------
 
 cast send $pidcontroller_address "setRedemptionFee(uint256)" $redemption_fee --from $owner_address >> /dev/null 2>&1;
-if [ $(cast call $pidcontroller_address "redemption_fee()(uint256)") == $redemption_fee ]
-then
-    echo "-- PIDController - Redemption fee set -> $redemption_fee";
-else
-    echo "PIDController - Failed to set redemption fee";
-    exit 0;
-fi;
-
+echo "-- PIDController - Redemption fee set -> $redemption_fee";
 
 
 ## --------------------------
@@ -159,7 +147,6 @@ fi;
 ## --------------------------
 cast send $pidcontroller_address "setController(address)" $controller_address --from $owner_address >> /dev/null 2>&1;
 echo "-- PIDController - Controller address set -> $controller_address";
-
 
 
 ## --------------------------
@@ -170,7 +157,6 @@ cast send $share_address "setEUSDAddress(address)" $eusd_address --from $owner_a
 echo "-- Share - EUSD Address set -> $eusd_address";
 
 
-
 ## --------------------------
 ## EUSD Set controller
 ## --------------------------
@@ -179,14 +165,11 @@ cast send $eusd_address "setController(address)" $controller_address --from $own
 echo "-- EUSD - Controller address set -> $controller_address";
 
 
-
 ## --------------------------
 ## Add owner as a pool to be able to mint EUSD
 ## --------------------------
 cast send $eusd_address "addPool(address)" $owner_address --from $owner_address >> /dev/null 2>&1;
 echo "-- EUSD - Owner granted minting/burning privileges";
-
-
 
 
 rm -rf ./scripts/curve/addresses.sh;
