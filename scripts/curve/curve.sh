@@ -2,17 +2,16 @@
 
 ./scripts/curve/deploy.sh;
 
-set -eo pipefail
+set -eo pipefail;
 
 source ./scripts/curve/vars.sh;
 source ./scripts/curve/addresses.sh;
 
 function log() {
-    echo "----" >> ./scripts/curve/logs/last_run.log;
-    echo "$1" >> ./scripts/curve/logs/last_run.log;
-    echo "----" >> ./scripts/curve/logs/last_run.log;
+    echo "----" >> $log_path;
+    echo "$1" >> $log_path;
+    echo "----" >> $log_path;
 }
-
 
 echo "";
 echo "----------------------------------";
@@ -26,7 +25,7 @@ echo "----------------------------------";
 log "Fund owner address with USDC";
 
 cast rpc anvil_impersonateAccount $USDC_holder_address >> /dev/null 2>&1;
-cast send $USDC_address "transfer(address,uint256)" $owner_address $fifty_m_d6 --from $USDC_holder_address >> ./scripts/curve/logs/last_run.log;
+cast send $USDC_address "transfer(address,uint256)" $owner_address $fifty_m_d6 --from $USDC_holder_address >> $log_path;
 
 owner_usdc_balance=$(cast call $USDC_address "balanceOf(address)(uint256)" $owner_address);
 if [ $owner_usdc_balance == $fifty_m_d6 ]
@@ -45,14 +44,14 @@ fi;
 
 log "fund FraxBP pool";
 
-cast send $USDC_address "approve(address,uint256)(bool)" $frax_bp_address $ten_m_d6 --from $owner_address >> ./scripts/curve/logs/last_run.log;
+cast send $USDC_address "approve(address,uint256)(bool)" $frax_bp_address $ten_m_d6 --from $owner_address >> $log_path;
 if [ $(cast call $USDC_address "allowance(address,address)(uint256)" $owner_address $frax_bp_address) != $ten_m_d6 ]
 then 
     echo "USDC Funds approval failed for FraxBP";
     exit 0;
 fi;
 
-cast send $frax_bp_address "add_liquidity(uint256[2],uint256)(uint256)" "[0,$ten_m_d6]" 0 --from $owner_address >> ./scripts/curve/logs/last_run.log;
+cast send $frax_bp_address "add_liquidity(uint256[2],uint256)(uint256)" "[0,$ten_m_d6]" 0 --from $owner_address >> $log_path;
 owner_frax_bp_balance=$(cast call $frax_bp_lp_address "balanceOf(address)(uint256)" $owner_address);
 
 echo "-- Owner FraxBP balance -> $owner_frax_bp_balance";
@@ -65,7 +64,7 @@ echo "-- Owner FraxBP balance -> $owner_frax_bp_balance";
 
 log "Deploy FRAXBP-EUSD pool";
 
-cast send $curve_factory_address "deploy_metapool(address,string,string,address,uint256,uint256)(address)" $frax_bp_address "FRAXBP-EUSD" "FRAXBPEUSD" $eusd_address 10 4000000 295330021868150247895544788229857886848430702695 --from $owner_address >> ./scripts/curve/logs/last_run.log;
+cast send $curve_factory_address "deploy_metapool(address,string,string,address,uint256,uint256)(address)" $frax_bp_address "FRAXBP-EUSD" "FRAXBPEUSD" $eusd_address 10 4000000 295330021868150247895544788229857886848430702695 --from $owner_address >> $log_path;
 
 pool_count=$(cast call $curve_factory_address "pool_count()(uint256)");
 fraxbp_eusd_address=$(cast call $curve_factory_address "pool_list(uint256)(address)" $(($pool_count-1)));
@@ -86,7 +85,7 @@ fi;
 
 log "Mint EUSD to owner"
 
-cast send $USDC_address "approve(address,uint256)(bool)" $fraxbp_eusd_address $ten_m_d6 --from $owner_address >> ./scripts/curve/logs/last_run.log;
+cast send $USDC_address "approve(address,uint256)(bool)" $fraxbp_eusd_address $ten_m_d6 --from $owner_address >> $log_path;
 
 if [ $(cast call $USDC_address "allowance(address,address)(uint256)" $owner_address $fraxbp_eusd_address) != $ten_m_d6 ]
 then 
@@ -94,7 +93,7 @@ then
     exit 0;
 fi;
 
-cast send $eusd_address "pool_mint(address,uint256)" $owner_address $owner_frax_bp_balance --from $owner_address >> ./scripts/curve/logs/last_run.log;
+cast send $eusd_address "pool_mint(address,uint256)" $owner_address $owner_frax_bp_balance --from $owner_address >> $log_path;
 owner_eusd_balance=$(cast call $eusd_address "balanceOf(address)(uint256)" $owner_address);
 
 echo "-- Owner EUSD Balance -> $owner_eusd_balance";
@@ -107,7 +106,7 @@ echo "-- Owner EUSD Balance -> $owner_eusd_balance";
 
 log "Approve EUSD to FraxBP-EUSD pool"
 
-cast send $eusd_address "approve(address,uint256)(bool)" $fraxbp_eusd_address $owner_eusd_balance --from $owner_address >> ./scripts/curve/logs/last_run.log;
+cast send $eusd_address "approve(address,uint256)(bool)" $fraxbp_eusd_address $owner_eusd_balance --from $owner_address >> $log_path;
 
 if [ $(cast call $eusd_address "allowance(address,address)(uint256)" $owner_address $fraxbp_eusd_address) != $owner_eusd_balance ]
 then 
@@ -122,7 +121,7 @@ fi;
 
 log "Approve FraxBP_EUSD pull on FraxBp LP";
 
-cast send $frax_bp_lp_address "approve(address,uint256)(bool)" $fraxbp_eusd_address $owner_frax_bp_balance --from $owner_address >> ./scripts/curve/logs/last_run.log;
+cast send $frax_bp_lp_address "approve(address,uint256)(bool)" $fraxbp_eusd_address $owner_frax_bp_balance --from $owner_address >> $log_path;
 
 if [ $(cast call $frax_bp_lp_address "allowance(address,address)(uint256)" $owner_address $fraxbp_eusd_address) != $owner_frax_bp_balance ]
 then 
@@ -136,7 +135,7 @@ fi;
 
 log "Deploy funds into FRAXBP-EUSD pool";
 
-cast send $fraxbp_eusd_address "add_liquidity(uint256[2],uint256)(uint256)" "[$owner_frax_bp_balance,$owner_eusd_balance]" 0 --from $owner_address >> ./scripts/curve/logs/last_run.log;
+cast send $fraxbp_eusd_address "add_liquidity(uint256[2],uint256)(uint256)" "[$owner_frax_bp_balance,$owner_eusd_balance]" 0 --from $owner_address >> $log_path;
 
 owner_fraxbp_eusd_balance=$(cast call $fraxbp_eusd_address "balanceOf(address)(uint256)" $owner_address);
 

@@ -22,6 +22,7 @@ usdc_usd_price=1000000;
 ## constants
 ten_m_d6=10000000000000;
 fifty_m_d6=50000000000000;
+log_path='./scripts/curve/logs/last_run.log';
 
 ## accounts
 owner_address="0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266";
