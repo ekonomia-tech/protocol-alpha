@@ -28,7 +28,7 @@ echo "Spinning up anvil (~10s)...";
 
 kill_anvil
 
-anvil --fork-url $PROVIDER_KEY > /dev/null 2>&1 &
+anvil --fork-url $RPC_URL > /dev/null 2>&1 &
 
 sleep 10
 
@@ -45,7 +45,7 @@ echo "----------------------------------";
 ## --------------------------
 
 dummy_oracle_address=$(forge create \
-    --rpc-url $RPC_URL \
+    --rpc-url $ANVIL_LOCAL_URL \
     --private-key $owner_pk "$dummy_oracle_contract:DummyOracle" \
     | grep "Deployed to:" \
     | sed "s/Deployed to: //g");
@@ -65,7 +65,7 @@ fi;
 ## --------------------------
 
 eusd_address=$(forge create \
-    --rpc-url $RPC_URL \
+    --rpc-url $ANVIL_LOCAL_URL \
     --private-key $owner_pk "$eusd_contract:EUSD" \
     --constructor-args "Eusd" "EUSD" $owner_address $timelock_address \
     | grep "Deployed to:" \
@@ -86,7 +86,7 @@ fi;
 ## --------------------------
 
 pidcontroller_address=$(forge create \
-    --rpc-url $RPC_URL \
+    --rpc-url $ANVIL_LOCAL_URL \
     --private-key $owner_pk "$pidcontroller_contract:PIDController" \
     --constructor-args $eusd_address $owner_address $timelock_address $dummy_oracle_address \
     | grep "Deployed to:" \
@@ -107,7 +107,7 @@ fi;
 ## --------------------------
 
 share_address=$(forge create \
-    --rpc-url $RPC_URL \
+    --rpc-url $ANVIL_LOCAL_URL \
     --private-key $owner_pk "$share_contract:Share" \
     --constructor-args "Share" "SHARE" $dummy_oracle_address $timelock_address \
     | grep "Deployed to:" \
