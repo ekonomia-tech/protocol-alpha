@@ -59,84 +59,84 @@ echo "-- Owner FraxBP balance -> $owner_frax_bp_balance";
 
 
 ## --------------------------
-## Deploy FRAXBP-EUSD pool
+## Deploy FRAXBP-PHO pool
 ## --------------------------
 
-log "Deploy FRAXBP-EUSD pool";
+log "Deploy FRAXBP-PHO pool";
 
-cast send $curve_factory_address "deploy_metapool(address,string,string,address,uint256,uint256)(address)" $frax_bp_address "FRAXBP-EUSD" "FRAXBPEUSD" $eusd_address 10 4000000 295330021868150247895544788229857886848430702695 --from $owner_address >> $log_path;
+cast send $curve_factory_address "deploy_metapool(address,string,string,address,uint256,uint256)(address)" $frax_bp_address "FRAXBP-PHO" "FRAXBPPHO" $pho_address 10 4000000 295330021868150247895544788229857886848430702695 --from $owner_address >> $log_path;
 
 pool_count=$(cast call $curve_factory_address "pool_count()(uint256)");
-fraxbp_eusd_address=$(cast call $curve_factory_address "pool_list(uint256)(address)" $(($pool_count-1)));
+fraxbp_pho_address=$(cast call $curve_factory_address "pool_list(uint256)(address)" $(($pool_count-1)));
 
-if [[ $(cast call $fraxbp_eusd_address "name()(string)") == *"FRAXBP-EUSD"* ]]
+if [[ $(cast call $fraxbp_pho_address "name()(string)") == *"FRAXBP-PHO"* ]]
 then 
-    echo "-- FRAXBP-EUSD metapool successfully deployed";
+    echo "-- FRAXBP-PHO metapool successfully deployed";
 else
-    echo "Failed to deploy FRAXBP-EUSD metapool";
+    echo "Failed to deploy FRAXBP-PHO metapool";
     exit 0;
 fi;
 
 
 
 ## --------------------------
-## Mint EUSD to owner
+## Mint PHO to owner
 ## --------------------------
 
-log "Mint EUSD to owner"
+log "Mint PHO to owner"
 
-cast send $USDC_address "approve(address,uint256)(bool)" $fraxbp_eusd_address $ten_m_d6 --from $owner_address >> $log_path;
+cast send $USDC_address "approve(address,uint256)(bool)" $fraxbp_pho_address $ten_m_d6 --from $owner_address >> $log_path;
 
-if [ $(cast call $USDC_address "allowance(address,address)(uint256)" $owner_address $fraxbp_eusd_address) != $ten_m_d6 ]
+if [ $(cast call $USDC_address "allowance(address,address)(uint256)" $owner_address $fraxbp_pho_address) != $ten_m_d6 ]
 then 
     echo "USDC Funds approval failed for FraxBP";
     exit 0;
 fi;
 
-cast send $eusd_address "pool_mint(address,uint256)" $owner_address $owner_frax_bp_balance --from $owner_address >> $log_path;
-owner_eusd_balance=$(cast call $eusd_address "balanceOf(address)(uint256)" $owner_address);
+cast send $pho_address "pool_mint(address,uint256)" $owner_address $owner_frax_bp_balance --from $owner_address >> $log_path;
+owner_pho_balance=$(cast call $pho_address "balanceOf(address)(uint256)" $owner_address);
 
-echo "-- Owner EUSD Balance -> $owner_eusd_balance";
+echo "-- Owner PHO Balance -> $owner_pho_balance";
 
 
 
 ## --------------------------
-## Approve EUSD to FraxBP-EUSD pool
+## Approve PHO to FraxBP-PHO pool
 ## --------------------------
 
-log "Approve EUSD to FraxBP-EUSD pool"
+log "Approve PHO to FraxBP-PHO pool"
 
-cast send $eusd_address "approve(address,uint256)(bool)" $fraxbp_eusd_address $owner_eusd_balance --from $owner_address >> $log_path;
+cast send $pho_address "approve(address,uint256)(bool)" $fraxbp_pho_address $owner_pho_balance --from $owner_address >> $log_path;
 
-if [ $(cast call $eusd_address "allowance(address,address)(uint256)" $owner_address $fraxbp_eusd_address) != $owner_eusd_balance ]
+if [ $(cast call $pho_address "allowance(address,address)(uint256)" $owner_address $fraxbp_pho_address) != $owner_pho_balance ]
 then 
-    echo "EUSD Funds approval failed for FRAXBP-EUSD pool";
+    echo "PHO Funds approval failed for FRAXBP-PHO pool";
     exit 0;
 fi;
 
 
 ## --------------------------
-## Approve FraxBP_EUSD pull on FraxBp LP
+## Approve FraxBP_PHO pull on FraxBp LP
 ## --------------------------
 
-log "Approve FraxBP_EUSD pull on FraxBp LP";
+log "Approve FraxBP_PHO pull on FraxBp LP";
 
-cast send $frax_bp_lp_address "approve(address,uint256)(bool)" $fraxbp_eusd_address $owner_frax_bp_balance --from $owner_address >> $log_path;
+cast send $frax_bp_lp_address "approve(address,uint256)(bool)" $fraxbp_pho_address $owner_frax_bp_balance --from $owner_address >> $log_path;
 
-if [ $(cast call $frax_bp_lp_address "allowance(address,address)(uint256)" $owner_address $fraxbp_eusd_address) != $owner_frax_bp_balance ]
+if [ $(cast call $frax_bp_lp_address "allowance(address,address)(uint256)" $owner_address $fraxbp_pho_address) != $owner_frax_bp_balance ]
 then 
-    echo "FraxBP LP Funds approval failed for FRAXBP-EUSD pool";
+    echo "FraxBP LP Funds approval failed for FRAXBP-PHO pool";
     exit 0;
 fi;
 
 ## --------------------------
-## Deploy funds into FRAXBP-EUSD pool
+## Deploy funds into FRAXBP-PHO pool
 ## --------------------------
 
-log "Deploy funds into FRAXBP-EUSD pool";
+log "Deploy funds into FRAXBP-PHO pool";
 
-cast send $fraxbp_eusd_address "add_liquidity(uint256[2],uint256)(uint256)" "[$owner_frax_bp_balance,$owner_eusd_balance]" 0 --from $owner_address >> $log_path;
+cast send $fraxbp_pho_address "add_liquidity(uint256[2],uint256)(uint256)" "[$owner_frax_bp_balance,$owner_pho_balance]" 0 --from $owner_address >> $log_path;
 
-owner_fraxbp_eusd_balance=$(cast call $fraxbp_eusd_address "balanceOf(address)(uint256)" $owner_address);
+owner_fraxbp_pho_balance=$(cast call $fraxbp_pho_address "balanceOf(address)(uint256)" $owner_address);
 
-echo "-- FraxBP-EUSD owner balance -> $owner_fraxbp_eusd_balance";
+echo "-- FraxBP-PHO owner balance -> $owner_fraxbp_pho_balance";

@@ -7,8 +7,8 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "./EUSD.sol";
-import "./Share.sol";
+import "./PHO.sol";
+import "./TON.sol";
 import "../oracle/DummyOracle.sol";
 import {PoolLibrary} from "../libraries/PoolLibrary.sol";
 import {TransferHelper} from "../libraries/TransferHelper.sol";
@@ -20,11 +20,11 @@ contract Pool is AccessControl, Ownable {
     ERC20 private collateral_token;
     address private collateral_address;
 
-    address private eusd_contract_address;
-    address private share_contract_address;
+    address private pho_contract_address;
+    address private ton_contract_address;
     address private timelock_address;
-    Share private share;
-    EUSD private eusd;
+    TON private ton;
+    PHO private pho;
     PIDController private pid;
 
     DummyOracle public priceOracle;
@@ -34,10 +34,10 @@ contract Pool is AccessControl, Ownable {
     uint256 public buyback_fee;
     uint256 public recollat_fee;
 
-    mapping(address => uint256) public redeemShareBalances;
+    mapping(address => uint256) public redeemTONBalances;
     mapping(address => uint256) public redeemCollateralBalances;
     uint256 public unclaimedPoolCollateral;
-    uint256 public unclaimedPoolShare;
+    uint256 public unclaimedPoolTON;
     mapping(address => uint256) public lastRedeemed;
 
     // Constants for various precisions
@@ -54,7 +54,7 @@ contract Pool is AccessControl, Ownable {
     // Stores price of the collateral, if price is paused
     uint256 public pausedPrice = 0;
 
-    // Bonus rate on Share minted during recollateralizeEUSD(); 6 decimals of precision, set to 0.75% on genesis
+    // Bonus rate on TON minted during recollateralizePHO(); 6 decimals of precision, set to 0.75% on genesis
     uint256 public bonus_rate = 7500;
 
     // Number of blocks to wait before being able to collectRedemption()
@@ -90,8 +90,8 @@ contract Pool is AccessControl, Ownable {
     }
 
     constructor(
-        address _eusd_contract_address,
-        address _share_contract_address,
+        address _pho_contract_address,
+        address _ton_contract_address,
         address _pid_controller_address,
         address _collateral_address,
         address _timelock_address,
@@ -101,15 +101,15 @@ contract Pool is AccessControl, Ownable {
         public
     {
         require(
-            (_eusd_contract_address != address(0)) && (_share_contract_address != address(0))
+            (_pho_contract_address != address(0)) && (_ton_contract_address != address(0))
                 && (_collateral_address != address(0)) && (_timelock_address != address(0)),
             "Zero address detected"
         );
-        eusd = EUSD(_eusd_contract_address);
-        share = Share(_share_contract_address);
+        pho = PHO(_pho_contract_address);
+        ton = TON(_ton_contract_address);
         pid = PIDController(_pid_controller_address);
-        eusd_contract_address = _eusd_contract_address;
-        share_contract_address = _share_contract_address;
+        pho_contract_address = _pho_contract_address;
+        ton_contract_address = _ton_contract_address;
         collateral_address = _collateral_address;
         timelock_address = _timelock_address;
         collateral_token = ERC20(_collateral_address);
@@ -148,7 +148,7 @@ contract Pool is AccessControl, Ownable {
 
     // Returns the value of excess collateral held in this  pool, compared to what is needed to maintain the global collateral ratio
     function availableExcessCollatDV() public view returns (uint256) {
-        uint256 total_supply = eusd.totalSupply();
+        uint256 total_supply = pho.totalSupply();
         uint256 global_collateral_ratio = pid.global_collateral_ratio();
         uint256 global_collat_value = pid.globalCollateralValue();
 
@@ -157,7 +157,7 @@ contract Pool is AccessControl, Ownable {
             global_collateral_ratio = COLLATERAL_RATIO_PRECISION;
         }
 
-        // Calculates collateral needed to back each 1 eusd with $1 of collateral at current collat ratio
+        // Calculates collateral needed to back each 1 pho with $1 of collateral at current collat ratio
         uint256 required_collat_dollar_value_d18 =
             (total_supply.mul(global_collateral_ratio)).div(COLLATERAL_RATIO_PRECISION);
 
@@ -182,7 +182,7 @@ contract Pool is AccessControl, Ownable {
     }
 
     // We separate out the 1t1, fractional and algorithmic minting functions for gas efficiency
-    function mint1t1EUSD(uint256 collateral_amount, uint256 EUSD_out_min) external notMintPaused {
+    function mint1t1PHO(uint256 collateral_amount, uint256 PHO_out_min) external notMintPaused {
         uint256 collateral_amount_d18 = collateral_amount * (10 ** missing_decimals);
 
         require(
@@ -194,29 +194,29 @@ contract Pool is AccessControl, Ownable {
             "[Pool's Closed]: Ceiling reached"
         );
 
-        (uint256 eusd_amount_d18) =
-            PoolLibrary.calcMint1t1EUSD(getCollateralPrice(), collateral_amount_d18); //1 eusd for each $1 worth of collateral
+        (uint256 pho_amount_d18) =
+            PoolLibrary.calcMint1t1PHO(getCollateralPrice(), collateral_amount_d18); //1 pho for each $1 worth of collateral
 
-        eusd_amount_d18 = (eusd_amount_d18.mul(uint256(1e6).sub(minting_fee))).div(1e6); //remove precision at the end
-        require(EUSD_out_min <= eusd_amount_d18, "Slippage limit reached");
+        pho_amount_d18 = (pho_amount_d18.mul(uint256(1e6).sub(minting_fee))).div(1e6); //remove precision at the end
+        require(PHO_out_min <= pho_amount_d18, "Slippage limit reached");
 
         TransferHelper.safeTransferFrom(
             address(collateral_token), msg.sender, address(this), collateral_amount
         );
-        eusd.pool_mint(msg.sender, eusd_amount_d18);
+        pho.pool_mint(msg.sender, pho_amount_d18);
     }
 
     // Will fail if fully collateralized or fully algorithmic
     // > 0% and < 100% collateral-backed
-    function mintFractionalEUSD(
+    function mintFractionalPHO(
         uint256 collateral_amount,
-        uint256 share_amount,
-        uint256 EUSD_out_min
+        uint256 ton_amount,
+        uint256 PHO_out_min
     )
         external
         notMintPaused
     {
-        uint256 share_price = priceOracle.getShareUSDPrice();
+        uint256 ton_price = priceOracle.getTONUSDPrice();
         uint256 global_collateral_ratio = pid.global_collateral_ratio();
 
         require(
@@ -226,51 +226,51 @@ contract Pool is AccessControl, Ownable {
         require(
             collateral_token.balanceOf(address(this)).sub(unclaimedPoolCollateral).add(collateral_amount)
                 <= pool_ceiling,
-            "Pool ceiling reached, no more eusd can be minted with this collateral"
+            "Pool ceiling reached, no more pho can be minted with this collateral"
         );
 
         uint256 collateral_amount_d18 = collateral_amount * (10 ** missing_decimals);
         PoolLibrary.MintFF_Params memory input_params = PoolLibrary.MintFF_Params(
-            share_price,
+            ton_price,
             getCollateralPrice(),
-            share_amount,
+            ton_amount,
             collateral_amount_d18,
             global_collateral_ratio
         );
 
-        (uint256 mint_amount, uint256 share_needed) =
-            PoolLibrary.calcMintFractionalEUSD(input_params);
+        (uint256 mint_amount, uint256 ton_needed) =
+            PoolLibrary.calcMintFractionalPHO(input_params);
 
         mint_amount = (mint_amount.mul(uint256(1e6).sub(minting_fee))).div(1e6);
-        require(EUSD_out_min <= mint_amount, "Slippage limit reached");
-        require(share_needed <= share_amount, "Not enough Share inputted");
+        require(PHO_out_min <= mint_amount, "Slippage limit reached");
+        require(ton_needed <= ton_amount, "Not enough TON inputted");
 
-        share.pool_burn_from(msg.sender, share_needed);
+        ton.pool_burn_from(msg.sender, ton_needed);
         TransferHelper.safeTransferFrom(
             address(collateral_token), msg.sender, address(this), collateral_amount
         );
-        eusd.pool_mint(msg.sender, mint_amount);
+        pho.pool_mint(msg.sender, mint_amount);
     }
 
     // 0% collateral-backed
-    // function mintAlgorithmicEUSD(uint256 share_amount_d18, uint256 EUSD_out_min) external notMintPaused {
-    //     uint256 share_price = priceOracle.getShareUSDPrice();
+    // function mintAlgorithmicPHO(uint256 ton_amount_d18, uint256 PHO_out_min) external notMintPaused {
+    //     uint256 ton_price = priceOracle.getTONUSDPrice();
     //     require(pid.global_collateral_ratio() == 0, "Collateral ratio must be 0");
 
-    //     (uint256 eusd_amount_d18) = PoolLibrary.calcMintAlgorithmicEUSD(
-    //         share_price, // X share / 1 USD
-    //         share_amount_d18
+    //     (uint256 pho_amount_d18) = PoolLibrary.calcMintAlgorithmicPHO(
+    //         ton_price, // X ton / 1 USD
+    //         ton_amount_d18
     //     );
 
-    //     eusd_amount_d18 = (eusd_amount_d18.mul(uint(1e6).sub(minting_fee))).div(1e6);
-    //     require(EUSD_out_min <= eusd_amount_d18, "Slippage limit reached");
+    //     pho_amount_d18 = (pho_amount_d18.mul(uint(1e6).sub(minting_fee))).div(1e6);
+    //     require(PHO_out_min <= pho_amount_d18, "Slippage limit reached");
 
-    //     share.pool_burn_from(msg.sender, share_amount_d18);
-    //     eusd.pool_mint(msg.sender, eusd_amount_d18);
+    //     ton.pool_burn_from(msg.sender, ton_amount_d18);
+    //     pho.pool_mint(msg.sender, pho_amount_d18);
     // }
 
     // Redeem collateral. 100% collateral-backed
-    function redeem1t1EUSD(uint256 eusd_amount, uint256 COLLATERAL_out_min)
+    function redeem1t1PHO(uint256 pho_amount, uint256 COLLATERAL_out_min)
         external
         notRedeemPaused
     {
@@ -279,9 +279,9 @@ contract Pool is AccessControl, Ownable {
         );
 
         // Need to adjust for decimals of collateral
-        uint256 eusd_amount_precision = eusd_amount.div(10 ** missing_decimals);
+        uint256 pho_amount_precision = pho_amount.div(10 ** missing_decimals);
         (uint256 collateral_needed) =
-            PoolLibrary.calcRedeem1t1EUSD(getCollateralPrice(), eusd_amount_precision);
+            PoolLibrary.calcRedeem1t1PHO(getCollateralPrice(), pho_amount_precision);
 
         collateral_needed = (collateral_needed.mul(uint256(1e6).sub(redemption_fee))).div(1e6);
         require(
@@ -296,20 +296,20 @@ contract Pool is AccessControl, Ownable {
         lastRedeemed[msg.sender] = block.number;
 
         // Move all external functions to the end
-        eusd.pool_burn_from(msg.sender, eusd_amount);
+        pho.pool_burn_from(msg.sender, pho_amount);
     }
 
     // Will fail if fully collateralized or algorithmic
-    // Redeem eusd for collateral and Share. > 0% and < 100% collateral-backed
-    function redeemFractionalEUSD(
-        uint256 eusd_amount,
-        uint256 Share_out_min,
+    // Redeem pho for collateral and TON. > 0% and < 100% collateral-backed
+    function redeemFractionalPHO(
+        uint256 pho_amount,
+        uint256 TON_out_min,
         uint256 COLLATERAL_out_min
     )
         external
         notRedeemPaused
     {
-        uint256 share_price = priceOracle.getShareUSDPrice();
+        uint256 ton_price = priceOracle.getTONUSDPrice();
         uint256 global_collateral_ratio = pid.global_collateral_ratio();
 
         require(
@@ -318,18 +318,18 @@ contract Pool is AccessControl, Ownable {
         );
         uint256 col_price_usd = getCollateralPrice();
 
-        uint256 eusd_amount_post_fee =
-            (eusd_amount.mul(uint256(1e6).sub(redemption_fee))).div(PRICE_PRECISION);
+        uint256 pho_amount_post_fee =
+            (pho_amount.mul(uint256(1e6).sub(redemption_fee))).div(PRICE_PRECISION);
 
-        uint256 share_dollar_value_d18 = eusd_amount_post_fee.sub(
-            eusd_amount_post_fee.mul(global_collateral_ratio).div(PRICE_PRECISION)
+        uint256 ton_dollar_value_d18 = pho_amount_post_fee.sub(
+            pho_amount_post_fee.mul(global_collateral_ratio).div(PRICE_PRECISION)
         );
-        uint256 share_amount = share_dollar_value_d18.mul(PRICE_PRECISION).div(share_price);
+        uint256 ton_amount = ton_dollar_value_d18.mul(PRICE_PRECISION).div(ton_price);
 
         // Need to adjust for decimals of collateral
-        uint256 eusd_amount_precision = eusd_amount_post_fee.div(10 ** missing_decimals);
+        uint256 pho_amount_precision = pho_amount_post_fee.div(10 ** missing_decimals);
         uint256 collateral_dollar_value =
-            eusd_amount_precision.mul(global_collateral_ratio).div(PRICE_PRECISION);
+            pho_amount_precision.mul(global_collateral_ratio).div(PRICE_PRECISION);
         uint256 collateral_amount = collateral_dollar_value.mul(PRICE_PRECISION).div(col_price_usd);
 
         require(
@@ -337,43 +337,43 @@ contract Pool is AccessControl, Ownable {
             "Not enough collateral in pool"
         );
         require(COLLATERAL_out_min <= collateral_amount, "Slippage limit reached [collateral]");
-        require(Share_out_min <= share_amount, "Slippage limit reached [Share]");
+        require(TON_out_min <= ton_amount, "Slippage limit reached [TON]");
 
         redeemCollateralBalances[msg.sender] =
             redeemCollateralBalances[msg.sender].add(collateral_amount);
         unclaimedPoolCollateral = unclaimedPoolCollateral.add(collateral_amount);
 
-        redeemShareBalances[msg.sender] = redeemShareBalances[msg.sender].add(share_amount);
-        unclaimedPoolShare = unclaimedPoolShare.add(share_amount);
+        redeemTONBalances[msg.sender] = redeemTONBalances[msg.sender].add(ton_amount);
+        unclaimedPoolTON = unclaimedPoolTON.add(ton_amount);
 
         lastRedeemed[msg.sender] = block.number;
 
         // Move all external functions to the end
-        eusd.pool_burn_from(msg.sender, eusd_amount);
-        share.pool_mint(address(this), share_amount);
+        pho.pool_burn_from(msg.sender, pho_amount);
+        ton.pool_mint(address(this), ton_amount);
     }
 
-    // Redeem EUSD for Share. 0% collateral-backed
-    // function redeemAlgorithmicEUSD(uint256 EUSD_amount, uint256 Share_out_min) external notRedeemPaused {
-    //     uint256 share_price = priceOracle.getShareUSDPrice();
+    // Redeem PHO for TON. 0% collateral-backed
+    // function redeemAlgorithmicPHO(uint256 PHO_amount, uint256 TON_out_min) external notRedeemPaused {
+    //     uint256 ton_price = priceOracle.getTONUSDPrice();
     //     uint256 global_collateral_ratio = pid.global_collateral_ratio();
 
     //     require(global_collateral_ratio == 0, "Collateral ratio must be 0");
-    //     uint256 share_dollar_value_d18 = EUSD_amount;
+    //     uint256 ton_dollar_value_d18 = PHO_amount;
 
-    //     share_dollar_value_d18 = (share_dollar_value_d18.mul(uint(1e6).sub(redemption_fee))).div(PRICE_PRECISION); //apply fees
+    //     ton_dollar_value_d18 = (ton_dollar_value_d18.mul(uint(1e6).sub(redemption_fee))).div(PRICE_PRECISION); //apply fees
 
-    //     uint256 share_amount = share_dollar_value_d18.mul(PRICE_PRECISION).div(share_price);
+    //     uint256 ton_amount = ton_dollar_value_d18.mul(PRICE_PRECISION).div(ton_price);
 
-    //     redeemShareBalances[msg.sender] = redeemShareBalances[msg.sender].add(share_amount);
-    //     unclaimedPoolShare = unclaimedPoolShare.add(share_amount);
+    //     redeemTONBalances[msg.sender] = redeemTONBalances[msg.sender].add(ton_amount);
+    //     unclaimedPoolTON = unclaimedPoolTON.add(ton_amount);
 
     //     lastRedeemed[msg.sender] = block.number;
 
-    //     require(Share_out_min <= share_amount, "Slippage limit reached");
+    //     require(TON_out_min <= ton_amount, "Slippage limit reached");
     //     // Move all external functions to the end
-    //     eusd.pool_burn_from(msg.sender, EUSD_amount);
-    //     share.pool_mint(address(this), share_amount);
+    //     pho.pool_burn_from(msg.sender, PHO_amount);
+    //     ton.pool_mint(address(this), ton_amount);
     // }
 
     function collectRedemption() external {
@@ -381,18 +381,18 @@ contract Pool is AccessControl, Ownable {
             (lastRedeemed[msg.sender].add(redemption_delay)) <= block.number,
             "Must wait for redemption_delay blocks before collecting redemption"
         );
-        bool sendShare = false;
+        bool sendTON = false;
         bool sendCollateral = false;
-        uint256 ShareAmount = 0;
+        uint256 TONAmount = 0;
         uint256 CollateralAmount = 0;
 
         // Use Checks-Effects-Interactions pattern
-        if (redeemShareBalances[msg.sender] > 0) {
-            ShareAmount = redeemShareBalances[msg.sender];
-            redeemShareBalances[msg.sender] = 0;
-            unclaimedPoolShare = unclaimedPoolShare.sub(ShareAmount);
+        if (redeemTONBalances[msg.sender] > 0) {
+            TONAmount = redeemTONBalances[msg.sender];
+            redeemTONBalances[msg.sender] = 0;
+            unclaimedPoolTON = unclaimedPoolTON.sub(TONAmount);
 
-            sendShare = true;
+            sendTON = true;
         }
 
         if (redeemCollateralBalances[msg.sender] > 0) {
@@ -403,64 +403,64 @@ contract Pool is AccessControl, Ownable {
             sendCollateral = true;
         }
 
-        if (sendShare) {
-            TransferHelper.safeTransfer(address(share), msg.sender, ShareAmount);
+        if (sendTON) {
+            TransferHelper.safeTransfer(address(ton), msg.sender, TONAmount);
         }
         if (sendCollateral) {
             TransferHelper.safeTransfer(address(collateral_token), msg.sender, CollateralAmount);
         }
     }
 
-    // When the protocol is recollateralizing, we need to give a discount of Share to hit the new CR target
-    // Thus, if the target collateral ratio is higher than the actual value of collateral, minters get Share for adding collateral
-    // This function simply rewards anyone that sends collateral to a pool with the same amount of Share + the bonus rate
-    // Anyone can call this function to recollateralize the protocol and take the extra Share value from the bonus rate as an arb opportunity
-    function recollateralizeEUSD(uint256 collateral_amount, uint256 Share_out_min) external {
+    // When the protocol is recollateralizing, we need to give a discount of TON to hit the new CR target
+    // Thus, if the target collateral ratio is higher than the actual value of collateral, minters get TON for adding collateral
+    // This function simply rewards anyone that sends collateral to a pool with the same amount of TON + the bonus rate
+    // Anyone can call this function to recollateralize the protocol and take the extra TON value from the bonus rate as an arb opportunity
+    function recollateralizePHO(uint256 collateral_amount, uint256 TON_out_min) external {
         require(recollateralizePaused == false, "Recollateralize is paused");
         uint256 collateral_amount_d18 = collateral_amount * (10 ** missing_decimals);
-        uint256 share_price = priceOracle.getShareUSDPrice();
-        uint256 eusd_total_supply = eusd.totalSupply();
+        uint256 ton_price = priceOracle.getTONUSDPrice();
+        uint256 pho_total_supply = pho.totalSupply();
         uint256 global_collateral_ratio = pid.global_collateral_ratio();
         uint256 global_collat_value = pid.globalCollateralValue();
 
         (uint256 collateral_units, uint256 amount_to_recollat) = PoolLibrary
-            .calcRecollateralizeEUSDInner(
+            .calcRecollateralizePHOInner(
             collateral_amount_d18,
             getCollateralPrice(),
             global_collat_value,
-            eusd_total_supply,
+            pho_total_supply,
             global_collateral_ratio
         );
 
         uint256 collateral_units_precision = collateral_units.div(10 ** missing_decimals);
 
-        uint256 share_paid_back =
-            amount_to_recollat.mul(uint256(1e6).add(bonus_rate).sub(recollat_fee)).div(share_price);
+        uint256 ton_paid_back =
+            amount_to_recollat.mul(uint256(1e6).add(bonus_rate).sub(recollat_fee)).div(ton_price);
 
-        require(Share_out_min <= share_paid_back, "Slippage limit reached");
+        require(TON_out_min <= ton_paid_back, "Slippage limit reached");
         TransferHelper.safeTransferFrom(
             address(collateral_token), msg.sender, address(this), collateral_units_precision
         );
-        share.pool_mint(msg.sender, share_paid_back);
+        ton.pool_mint(msg.sender, ton_paid_back);
     }
 
-    // Function can be called by an Share holder to have the protocol buy back Share with excess collateral value from a desired collateral pool
+    // Function can be called by an TON holder to have the protocol buy back TON with excess collateral value from a desired collateral pool
     // This can also happen if the collateral ratio > 1
-    function buyBackShare(uint256 Share_amount, uint256 COLLATERAL_out_min) external {
+    function buyBackTON(uint256 TON_amount, uint256 COLLATERAL_out_min) external {
         require(buyBackPaused == false, "Buyback is paused");
-        uint256 share_price = priceOracle.getShareUSDPrice();
+        uint256 ton_price = priceOracle.getTONUSDPrice();
 
-        PoolLibrary.BuybackShare_Params memory input_params = PoolLibrary.BuybackShare_Params(
-            availableExcessCollatDV(), share_price, getCollateralPrice(), Share_amount
+        PoolLibrary.BuybackTON_Params memory input_params = PoolLibrary.BuybackTON_Params(
+            availableExcessCollatDV(), ton_price, getCollateralPrice(), TON_amount
         );
 
         (uint256 collateral_equivalent_d18) =
-            (PoolLibrary.calcBuyBackShare(input_params)).mul(uint256(1e6).sub(buyback_fee)).div(1e6);
+            (PoolLibrary.calcBuyBackTON(input_params)).mul(uint256(1e6).sub(buyback_fee)).div(1e6);
         uint256 collateral_precision = collateral_equivalent_d18.div(10 ** missing_decimals);
 
         require(COLLATERAL_out_min <= collateral_precision, "Slippage limit reached");
-        // Give the sender their desired collateral and burn the Share
-        share.pool_burn_from(msg.sender, Share_amount);
+        // Give the sender their desired collateral and burn the TON
+        ton.pool_burn_from(msg.sender, TON_amount);
         TransferHelper.safeTransfer(address(collateral_token), msg.sender, collateral_precision);
     }
 

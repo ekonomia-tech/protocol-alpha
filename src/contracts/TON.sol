@@ -7,17 +7,17 @@ import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "./EUSD.sol";
+import "./PHO.sol";
 
-contract Share is ERC20Burnable, AccessControl, Ownable {
+contract TON is ERC20Burnable, AccessControl, Ownable {
     uint256 public constant genesis_supply = 100000000 * 10 ** 18;
 
     address public oracle_address;
     address public timelock_address;
-    EUSD public eusd;
+    PHO public pho;
 
     modifier onlyPools() {
-        require(eusd.EUSD_pools(msg.sender) == true, "Only eusd pools can mint or burn SHARE");
+        require(pho.PHO_pools(msg.sender) == true, "Only pho pools can mint or burn TON");
         _;
     }
 
@@ -29,9 +29,9 @@ contract Share is ERC20Burnable, AccessControl, Ownable {
         _;
     }
 
-    event ShareBurned(address indexed from, address indexed to, uint256 amount);
-    event ShareMinted(address indexed from, address indexed to, uint256 amount);
-    event EUSDAddressSet(address newAddress);
+    event TONBurned(address indexed from, address indexed to, uint256 amount);
+    event TONMinted(address indexed from, address indexed to, uint256 amount);
+    event PHOAddressSet(address newAddress);
 
     constructor(
         string memory _name,
@@ -62,12 +62,12 @@ contract Share is ERC20Burnable, AccessControl, Ownable {
         timelock_address = new_timelock;
     }
 
-    function setEUSDAddress(address eusd_contract_address) external onlyByOwnGov {
-        require(eusd_contract_address != address(0), "Zero address detected");
+    function setPHOAddress(address pho_contract_address) external onlyByOwnGov {
+        require(pho_contract_address != address(0), "Zero address detected");
 
-        eusd = EUSD(eusd_contract_address);
+        pho = PHO(pho_contract_address);
 
-        emit EUSDAddressSet(eusd_contract_address);
+        emit PHOAddressSet(pho_contract_address);
     }
 
     function mint(address to, uint256 amount) public onlyPools {

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "./BaseSetup.t.sol";
-import {EUSD} from "../src/contracts/EUSD.sol";
+import {PHO} from "../src/contracts/PHO.sol";
 import {DummyOracle} from "../src/oracle/DummyOracle.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -14,16 +14,16 @@ contract PIDControllerTest is BaseSetup {
     event CollateralRatioRefreshed(uint256 global_collateral_ratio);
     event RedemptionFeeSet(uint256 red_fee);
     event MintingFeeSet(uint256 min_fee);
-    event EUSDStepSet(uint256 new_step);
+    event PHOStepSet(uint256 new_step);
     event PriceTargetSet(uint256 new_price_target);
     event RefreshCooldownSet(uint256 new_cooldown);
-    event SHAREAddressSet(address _SHARE_address);
+    event TONAddressSet(address _TON_address);
     event ETHUSDOracleSet(address eth_usd_consumer_address);
     event TimelockSet(address new_timelock);
     event ControllerSet(address controller_address);
     event PriceBandSet(uint256 price_band);
-    event EUSDETHOracleSet(address EUSD_oracle_addr, address weth_address);
-    event SHAREEthOracleSet(address SHARE_oracle_addr, address weth_address);
+    event PHOETHOracleSet(address PHO_oracle_addr, address weth_address);
+    event TONEthOracleSet(address TON_oracle_addr, address weth_address);
     event CollateralRatioToggled(bool collateral_ratio_paused);
 
     /// IAccessControl events
@@ -39,8 +39,8 @@ contract PIDControllerTest is BaseSetup {
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
     uint256 poolMintAmount = 99750000;
-    uint256 shareBurnAmount = 25 * 10 ** 16;
-    uint256 minEUSDOut = 80 * 10 ** 18;
+    uint256 tonBurnAmount = 25 * 10 ** 16;
+    uint256 minPHOOut = 80 * 10 ** 18;
 
     function setUp() public {
         _fundAndApproveUSDC(user1, address(pool_usdc), tenThousand_d6, tenThousand_d6);
@@ -52,27 +52,27 @@ contract PIDControllerTest is BaseSetup {
 
     /// globalCollateralValue() tests
 
-    /// @notice check GCV when only one EUSDPool compared to actual single pool's worth of collateral in protocol
+    /// @notice check GCV when only one PHOPool compared to actual single pool's worth of collateral in protocol
     function testFullGlobalCollateralValue() public {
         uint256 expectedOut = oneHundred_d6 * (missing_decimals);
-        uint256 userInitialEUSD = eusd.balanceOf(user1);
+        uint256 userInitialPHO = pho.balanceOf(user1);
 
         vm.startPrank(user1);
-        pool_usdc.mint1t1EUSD(oneHundred_d6, minEUSDOut);
-        assertEq(eusd.balanceOf(user1), expectedOut + userInitialEUSD);
-        // test actual EUSD in USD price
+        pool_usdc.mint1t1PHO(oneHundred_d6, minPHOOut);
+        assertEq(pho.balanceOf(user1), expectedOut + userInitialPHO);
+        // test actual PHO in USD price
         uint256 totalCollatUSD =
-            (usdc.balanceOf(address(pool_usdc)) * priceOracle.getEUSDUSDPrice()) / PRICE_PRECISION;
+            (usdc.balanceOf(address(pool_usdc)) * priceOracle.getPHOUSDPrice()) / PRICE_PRECISION;
         assertEq(totalCollatUSD * missing_decimals, pid.globalCollateralValue());
         vm.stopPrank();
     }
 
-    /// @notice check GCV when only one EUSDPool when GCR is <100% (Fractional)
+    /// @notice check GCV when only one PHOPool when GCR is <100% (Fractional)
     function testFractionalGlobalCollateralValue() public {
         setPoolsAndDummyPrice(user1, overPeg);
 
         vm.startPrank(user1);
-        pool_usdc.mintFractionalEUSD(poolMintAmount, shareBurnAmount, minEUSDOut);
+        pool_usdc.mintFractionalPHO(poolMintAmount, tonBurnAmount, minPHOOut);
         uint256 totalCollatUSD = usdc.balanceOf(address(pool_usdc)) * missing_decimals;
         assertEq(totalCollatUSD, pid.globalCollateralValue());
     }
@@ -81,19 +81,19 @@ contract PIDControllerTest is BaseSetup {
     function testFractionalGCVMultiPools() public {
         setPoolsAndDummyPrice(user1, overPeg);
         vm.startPrank(user1);
-        pool_usdc.mintFractionalEUSD(poolMintAmount, shareBurnAmount, minEUSDOut);
-        pool_usdc2.mintFractionalEUSD(poolMintAmount, shareBurnAmount, minEUSDOut);
+        pool_usdc.mintFractionalPHO(poolMintAmount, tonBurnAmount, minPHOOut);
+        pool_usdc2.mintFractionalPHO(poolMintAmount, tonBurnAmount, minPHOOut);
 
         uint256 totalCollatUSD1 = (usdc.balanceOf(address(pool_usdc))) * missing_decimals;
         uint256 totalCollatUSD2a = (usdc.balanceOf(address(pool_usdc2))) * missing_decimals;
         assertEq(totalCollatUSD1 + totalCollatUSD2a, pid.globalCollateralValue());
 
         // now test redeem and check global collateral value again
-        uint256 eusdIn = 1 * one_d18; // $1
-        uint256 expectedShareOut = 0; // simplified to 0
+        uint256 phoIn = 1 * one_d18; // $1
+        uint256 expectedTONOut = 0; // simplified to 0
         uint256 usdcOut = 900000; // 90 cents
-        eusd.approve(address(pool_usdc2), eusd.balanceOf(user1));
-        pool_usdc2.redeemFractionalEUSD(eusdIn, expectedShareOut, usdcOut);
+        pho.approve(address(pool_usdc2), pho.balanceOf(user1));
+        pool_usdc2.redeemFractionalPHO(phoIn, expectedTONOut, usdcOut);
         vm.roll(block.number + 1);
         pool_usdc2.collectRedemption();
         uint256 totalCollatUSD2b =
@@ -118,61 +118,61 @@ contract PIDControllerTest is BaseSetup {
     function testCannotRefreshBeforeCooldown() public {
         vm.startPrank(user1);
         vm.warp(pid.refresh_cooldown() + 1);
-        priceOracle.setEUSDUSDPrice(overPeg); // $1.006 USD/EUSD
+        priceOracle.setPHOUSDPrice(overPeg); // $1.006 USD/PHO
         uint256 oldCollateralRatio = pid.global_collateral_ratio();
         vm.expectEmit(false, false, false, true);
-        emit CollateralRatioRefreshed(oldCollateralRatio - pid.EUSD_step());
+        emit CollateralRatioRefreshed(oldCollateralRatio - pid.PHO_step());
         pid.refreshCollateralRatio();
         vm.expectRevert("Must wait for the refresh cooldown since last refresh");
         pid.refreshCollateralRatio();
         vm.stopPrank();
     }
 
-    /// @notice test when global_collateral_ratio <= EUSD_step
+    /// @notice test when global_collateral_ratio <= PHO_step
     function testRefreshGlobalCollateralRatioZero() public {
         vm.startPrank(user1);
         vm.warp(pid.refresh_cooldown() + 1);
-        priceOracle.setEUSDUSDPrice(overPeg); // $1.006 USD/EUSD
+        priceOracle.setPHOUSDPrice(overPeg); // $1.006 USD/PHO
 
-        while (pid.global_collateral_ratio() > pid.EUSD_step()) {
+        while (pid.global_collateral_ratio() > pid.PHO_step()) {
             uint256 oldCollateralRatio = pid.global_collateral_ratio();
             vm.expectEmit(false, false, false, true);
-            emit CollateralRatioRefreshed(oldCollateralRatio - pid.EUSD_step());
+            emit CollateralRatioRefreshed(oldCollateralRatio - pid.PHO_step());
             pid.refreshCollateralRatio();
             vm.warp(block.timestamp + pid.refresh_cooldown() + 1);
         }
 
-        // now GCR <= EUSD_step
+        // now GCR <= PHO_step
         vm.expectEmit(false, false, false, true);
         emit CollateralRatioRefreshed(0);
         pid.refreshCollateralRatio();
         vm.stopPrank();
     }
 
-    /// @notice test that collateral ratio changes properly based on EUSD_price_cur
+    /// @notice test that collateral ratio changes properly based on PHO_price_cur
     function testMultiRefreshCollateralRatio() public {
         vm.startPrank(user1);
         vm.warp(pid.refresh_cooldown() + 1);
-        priceOracle.setEUSDUSDPrice(overPeg); // $1.006 USD/EUSD
+        priceOracle.setPHOUSDPrice(overPeg); // $1.006 USD/PHO
         uint256 oldCollateralRatio1 = pid.global_collateral_ratio();
         vm.expectEmit(false, false, false, true);
-        emit CollateralRatioRefreshed(oldCollateralRatio1 - pid.EUSD_step());
+        emit CollateralRatioRefreshed(oldCollateralRatio1 - pid.PHO_step());
         pid.refreshCollateralRatio();
         assertEq(block.timestamp, pid.last_call_time());
 
         uint256 oldCollateralRatio2 = pid.global_collateral_ratio();
         vm.warp((pid.refresh_cooldown() + 1) * 2);
-        priceOracle.setEUSDUSDPrice(overPeg); // $1.006 USD/EUSD
+        priceOracle.setPHOUSDPrice(overPeg); // $1.006 USD/PHO
         vm.expectEmit(false, false, false, true);
-        emit CollateralRatioRefreshed(oldCollateralRatio2 - pid.EUSD_step());
+        emit CollateralRatioRefreshed(oldCollateralRatio2 - pid.PHO_step());
         pid.refreshCollateralRatio();
         assertEq(block.timestamp, pid.last_call_time());
 
         uint256 oldCollateralRatio3 = pid.global_collateral_ratio();
         vm.warp((pid.refresh_cooldown() + 1) * 3);
-        priceOracle.setEUSDUSDPrice(underPeg); // $0.994 USD/EUSD
+        priceOracle.setPHOUSDPrice(underPeg); // $0.994 USD/PHO
         vm.expectEmit(false, false, false, true);
-        emit CollateralRatioRefreshed(oldCollateralRatio3 + pid.EUSD_step());
+        emit CollateralRatioRefreshed(oldCollateralRatio3 + pid.PHO_step());
         pid.refreshCollateralRatio();
         assertEq(block.timestamp, pid.last_call_time());
         vm.stopPrank();
@@ -182,7 +182,7 @@ contract PIDControllerTest is BaseSetup {
     function testHighCRRefreshCollateralRatio() public {
         vm.startPrank(user1);
         vm.warp(pid.refresh_cooldown() + 1);
-        priceOracle.setEUSDUSDPrice(underPeg); // $0.994 USD/EUSD
+        priceOracle.setPHOUSDPrice(underPeg); // $0.994 USD/PHO
         uint256 oldCollateralRatio = pid.global_collateral_ratio();
         vm.expectEmit(false, false, false, true);
         emit CollateralRatioRefreshed(oldCollateralRatio);
@@ -200,16 +200,16 @@ contract PIDControllerTest is BaseSetup {
         address priceOracleAddress = address(_priceOracle);
         assertEq(priceOracleAddress, address(priceOracle));
 
-        EUSD _eusd = pid.eusd();
-        address eusdAddress = address(_eusd);
-        assertEq(eusdAddress, address(eusd));
+        PHO _pho = pid.pho();
+        address phoAddress = address(_pho);
+        assertEq(phoAddress, address(pho));
         assertEq(pid.creator_address(), owner);
         assertEq(pid.timelock_address(), timelock_address);
 
         assertEq(pid.hasRole(keccak256("COLLATERAL_RATIO_PAUSER"), owner), true);
         assertEq(pid.hasRole(keccak256("COLLATERAL_RATIO_PAUSER"), timelock_address), true);
 
-        assertEq(pid.EUSD_step(), 2500);
+        assertEq(pid.PHO_step(), 2500);
         assertEq(pid.global_collateral_ratio(), 1000000);
         assertEq(pid.refresh_cooldown(), 3600);
         assertEq(pid.price_target(), one_d6);
@@ -283,35 +283,35 @@ contract PIDControllerTest is BaseSetup {
         vm.stopPrank();
     }
 
-    /// setEUSDStep() tests
+    /// setPHOStep() tests
 
-    function testCannotSetEUSDStep() public {
+    function testCannotSetPHOStep() public {
         vm.expectRevert("Not the owner, controller, or the governance timelock");
         vm.prank(user1);
-        pid.setEUSDStep(5600);
+        pid.setPHOStep(5600);
     }
 
-    function testOwnerSetEUSDStep() public {
+    function testOwnerSetPHOStep() public {
         vm.startPrank(owner);
         vm.expectEmit(false, false, false, true);
-        emit EUSDStepSet(5600);
-        pid.setEUSDStep(5600);
+        emit PHOStepSet(5600);
+        pid.setPHOStep(5600);
         vm.stopPrank();
     }
 
-    function testControllerSetEUSDStep() public {
+    function testControllerSetPHOStep() public {
         vm.startPrank(controller);
         vm.expectEmit(false, false, false, true);
-        emit EUSDStepSet(5600);
-        pid.setEUSDStep(5600);
+        emit PHOStepSet(5600);
+        pid.setPHOStep(5600);
         vm.stopPrank();
     }
 
-    function testTimelockSetEUSDStep() public {
+    function testTimelockSetPHOStep() public {
         vm.startPrank(timelock_address);
         vm.expectEmit(false, false, false, true);
-        emit EUSDStepSet(5600);
-        pid.setEUSDStep(5600);
+        emit PHOStepSet(5600);
+        pid.setPHOStep(5600);
         vm.stopPrank();
     }
 
@@ -379,25 +379,25 @@ contract PIDControllerTest is BaseSetup {
         vm.stopPrank();
     }
 
-    /// setShareAddress() tests
+    /// setTONAddress() tests
 
-    function testCannotSetShareAddress() public {
+    function testCannotSetTONAddress() public {
         vm.expectRevert("Not the owner, controller, or the governance timelock");
         vm.prank(user1);
-        pid.setSHAREAddress(dummyAddress);
+        pid.setTONAddress(dummyAddress);
     }
 
-    function testCannotSetShareAddressZero() public {
+    function testCannotSetTONAddressZero() public {
         vm.expectRevert("Zero address detected");
         vm.prank(owner);
-        pid.setSHAREAddress(address(0));
+        pid.setTONAddress(address(0));
     }
 
-    function testOwnerSetShareAddress() public {
+    function testOwnerSetTONAddress() public {
         vm.startPrank(owner);
         vm.expectEmit(false, false, false, true);
-        emit SHAREAddressSet(dummyAddress);
-        pid.setSHAREAddress(dummyAddress);
+        emit TONAddressSet(dummyAddress);
+        pid.setTONAddress(dummyAddress);
         vm.stopPrank();
     }
 
@@ -523,14 +523,14 @@ contract PIDControllerTest is BaseSetup {
     /// Price getter tests
 
     // NOTE - to be expanded on with oracles
-    function testEUSDPrice() public {
-        assertEq(priceOracle.getEUSDUSDPrice(), pid.EUSD_price());
+    function testPHOPrice() public {
+        assertEq(priceOracle.getPHOUSDPrice(), pid.PHO_price());
     }
 
-    // TODO SHARE_price() test
+    // TODO TON_price() test
     // NOTE - to be expanded on with oracles
-    function testSharePrice() public {
-        assertEq(priceOracle.share_usd_price(), pid.SHARE_price());
+    function testTONPrice() public {
+        assertEq(priceOracle.ton_usd_price(), pid.TON_price());
     }
 
     // TODO eth_usd_price() test
@@ -543,14 +543,14 @@ contract PIDControllerTest is BaseSetup {
 
     function setPoolsAndDummyPrice(address _user, uint256 _price) public {
         vm.warp(pid.refresh_cooldown() + 1);
-        priceOracle.setEUSDUSDPrice(_price); // $1.006 USD/EUSD
+        priceOracle.setPHOUSDPrice(_price); // $1.006 USD/PHO
         pid.refreshCollateralRatio();
         vm.prank(owner);
-        share.transfer(_user, oneHundred_d18);
+        ton.transfer(_user, oneHundred_d18);
 
         vm.startPrank(_user);
-        share.approve(address(pool_usdc), share.balanceOf(user1));
-        share.approve(address(pool_usdc2), share.balanceOf(_user));
+        ton.approve(address(pool_usdc), ton.balanceOf(user1));
+        ton.approve(address(pool_usdc2), ton.balanceOf(_user));
 
         vm.stopPrank();
     }

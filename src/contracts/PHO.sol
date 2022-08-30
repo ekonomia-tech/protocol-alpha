@@ -8,31 +8,31 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "../interfaces/IEUSD.sol";
+import "../interfaces/IPHO.sol";
 
-/// @title EUSD
+/// @title PHO
 /// @notice Fractional stablecoin
 /// @author Ekonomia: https://github.com/Ekonomia
-contract EUSD is IEUSD, ERC20Burnable, AccessControl, Ownable {
+contract PHO is IPHO, ERC20Burnable, AccessControl, Ownable {
     string public SYMBOL;
     string public NAME;
     // uint8 public constant decimals = 18;
     address public creator_address; // This is made the owner, and then it is amongst timelock_address, and controller_address to be able to do unique things throughout the contract.
     address public controller_address;
     address public timelock_address; // Governance timelock address - TODO - figure this out, seems like typical timelock
-    address[] public EUSD_pools_array; // The addresses in this array are added by the oracle and these contracts are able to mint EUSD
-    mapping(address => bool) public EUSD_pools; // Mapping is also used for faster verification
+    address[] public PHO_pools_array; // The addresses in this array are added by the oracle and these contracts are able to mint PHO
+    mapping(address => bool) public PHO_pools; // Mapping is also used for faster verification
 
     // address public DEFAULT_ADMIN_ADDRESS; // TODO - Need to sort out accessRoles and how we are going to use them.
 
     /// TODO - confirm with Niv that this is how we want to go about it
     modifier onlyPools() {
-        require(EUSD_pools[msg.sender] == true, "Only EUSD pools can call this function");
+        require(PHO_pools[msg.sender] == true, "Only PHO pools can call this function");
         _;
     }
 
     /// TODO - confirm with Niv that this is how we want to go about it
-    /// params owner of EUSD contract
+    /// params owner of PHO contract
     /// params time_lock_address stop-gap smart contract to require passed on-chain vote proposals to wait X blocks before implementation. This allows for users who disagree with the new changes to withdraw funds
     modifier onlyByOwnerGovernanceOrController() {
         require(
@@ -69,28 +69,28 @@ contract EUSD is IEUSD, ERC20Burnable, AccessControl, Ownable {
 
     // get pool count
     function getPoolCount() public view returns (uint256) {
-        return EUSD_pools_array.length;
+        return PHO_pools_array.length;
     }
 
     // Used by pools when user redeems
     function pool_burn_from(address b_address, uint256 b_amount) public onlyPools {
         super.burnFrom(b_address, b_amount);
-        emit EUSDBurned(b_address, msg.sender, b_amount);
+        emit PHOBurned(b_address, msg.sender, b_amount);
     }
 
-    // This function is what other EUSD pools will call to mint new EUSD
+    // This function is what other PHO pools will call to mint new PHO
     function pool_mint(address m_address, uint256 m_amount) public onlyPools {
         super._mint(m_address, m_amount);
-        emit EUSDMinted(msg.sender, m_address, m_amount);
+        emit PHOMinted(msg.sender, m_address, m_amount);
     }
 
     // Adds collateral addresses supported, such as tether and busd, must be ERC20
     function addPool(address pool_address) public onlyByOwnerGovernanceOrController {
         require(pool_address != address(0), "Zero address detected");
 
-        require(EUSD_pools[pool_address] == false, "Address already exists");
-        EUSD_pools[pool_address] = true;
-        EUSD_pools_array.push(pool_address);
+        require(PHO_pools[pool_address] == false, "Address already exists");
+        PHO_pools[pool_address] = true;
+        PHO_pools_array.push(pool_address);
 
         emit PoolAdded(pool_address);
     }
@@ -98,15 +98,15 @@ contract EUSD is IEUSD, ERC20Burnable, AccessControl, Ownable {
     // Remove a pool
     function removePool(address pool_address) public onlyByOwnerGovernanceOrController {
         require(pool_address != address(0), "Zero address detected");
-        require(EUSD_pools[pool_address] == true, "Address nonexistant");
+        require(PHO_pools[pool_address] == true, "Address nonexistant");
 
         // Delete from the mapping
-        delete EUSD_pools[pool_address];
+        delete PHO_pools[pool_address];
 
         // 'Delete' from the array by setting the address to 0x0
-        for (uint256 i = 0; i < EUSD_pools_array.length; i++) {
-            if (EUSD_pools_array[i] == pool_address) {
-                EUSD_pools_array[i] = address(0); // This will leave a null in the array and keep the indices the same
+        for (uint256 i = 0; i < PHO_pools_array.length; i++) {
+            if (PHO_pools_array[i] == pool_address) {
+                PHO_pools_array[i] = address(0); // This will leave a null in the array and keep the indices the same
                 break;
             }
         }

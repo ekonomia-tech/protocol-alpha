@@ -1,8 +1,8 @@
 ## Variables
 
 contracts="src/contracts";
-eusd_contract="$contracts/EUSD.sol";
-share_contract="$contracts/Share.sol";
+pho_contract="$contracts/PHO.sol";
+share_contract="$contracts/TON.sol";
 pidcontroller_contract="$contracts/PIDController.sol";
 dummy_oracle_contract="src/oracle/DummyOracle.sol";
 pool_contract="$contracts/Pool.sol";
