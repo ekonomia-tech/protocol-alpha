@@ -61,21 +61,21 @@ fi;
 
 
 ## --------------------------
-## Deploy EUSD contract
+## Deploy PHO contract
 ## --------------------------
 
-eusd_address=$(forge create \
+pho_address=$(forge create \
     --rpc-url $ANVIL_LOCAL_URL \
-    --private-key $owner_pk "$eusd_contract:EUSD" \
-    --constructor-args "Eusd" "EUSD" $owner_address $timelock_address \
+    --private-key $owner_pk "$pho_contract:PHO" \
+    --constructor-args "Pho" "PHO" $owner_address $timelock_address \
     | grep "Deployed to:" \
     | sed "s/Deployed to: //g");
 
-if [ $(cast call $eusd_address "SYMBOL()(string)") == "EUSD" ]
+if [ $(cast call $pho_address "SYMBOL()(string)") == "PHO" ]
 then
-    echo "-- EUSD successfully deployed";
+    echo "-- PHO successfully deployed";
 else
-    echo "Failed to deploy EUSD";
+    echo "Failed to deploy PHO";
     exit 0;
 fi;
 
@@ -88,7 +88,7 @@ fi;
 pidcontroller_address=$(forge create \
     --rpc-url $ANVIL_LOCAL_URL \
     --private-key $owner_pk "$pidcontroller_contract:PIDController" \
-    --constructor-args $eusd_address $owner_address $timelock_address $dummy_oracle_address \
+    --constructor-args $pho_address $owner_address $timelock_address $dummy_oracle_address \
     | grep "Deployed to:" \
     | sed "s/Deployed to: //g");
 
@@ -103,21 +103,21 @@ fi;
 
 
 ## --------------------------
-## Deploy Share contract
+## Deploy TON contract
 ## --------------------------
 
 share_address=$(forge create \
     --rpc-url $ANVIL_LOCAL_URL \
-    --private-key $owner_pk "$share_contract:Share" \
-    --constructor-args "Share" "SHARE" $dummy_oracle_address $timelock_address \
+    --private-key $owner_pk "$share_contract:TON" \
+    --constructor-args "TON" "TON" $dummy_oracle_address $timelock_address \
     | grep "Deployed to:" \
     | sed "s/Deployed to: //g");
 
 if [ $(cast call $share_address "decimals()(uint256)") == 18 ]
 then
-    echo "-- Share successfully deployed";
+    echo "-- TON successfully deployed";
 else
-    echo "Failed to deploy Share";
+    echo "Failed to deploy TON";
     exit 0;
 fi;
 
@@ -150,32 +150,32 @@ echo "-- PIDController - Controller address set -> $controller_address";
 
 
 ## --------------------------
-## Share set EUSD Address
+## TON set PHO Address
 ## --------------------------
 
-cast send $share_address "setEUSDAddress(address)" $eusd_address --from $owner_address >> /dev/null 2>&1;
-echo "-- Share - EUSD Address set -> $eusd_address";
-
-
-## --------------------------
-## EUSD Set controller
-## --------------------------
-
-cast send $eusd_address "setController(address)" $controller_address --from $owner_address >> /dev/null 2>&1;
-echo "-- EUSD - Controller address set -> $controller_address";
+cast send $share_address "setPHOAddress(address)" $pho_address --from $owner_address >> /dev/null 2>&1;
+echo "-- TON - PHO Address set -> $pho_address";
 
 
 ## --------------------------
-## Add owner as a pool to be able to mint EUSD
+## PHO Set controller
 ## --------------------------
-cast send $eusd_address "addPool(address)" $owner_address --from $owner_address >> /dev/null 2>&1;
-echo "-- EUSD - Owner granted minting/burning privileges";
+
+cast send $pho_address "setController(address)" $controller_address --from $owner_address >> /dev/null 2>&1;
+echo "-- PHO - Controller address set -> $controller_address";
+
+
+## --------------------------
+## Add owner as a pool to be able to mint PHO
+## --------------------------
+cast send $pho_address "addPool(address)" $owner_address --from $owner_address >> /dev/null 2>&1;
+echo "-- PHO - Owner granted minting/burning privileges";
 
 
 rm -rf ./scripts/curve/addresses.sh;
 
 echo "dummy_oracle_address=\"$dummy_oracle_address\";" >> ./scripts/curve/addresses.sh;
-echo "eusd_address=\"$eusd_address\";" >> ./scripts/curve/addresses.sh;
+echo "pho_address=\"$pho_address\";" >> ./scripts/curve/addresses.sh;
 echo "pidcontroller_address=\"$pidcontroller_address\";" >> ./scripts/curve/addresses.sh;
 echo "share_address=\"$share_address\";" >> ./scripts/curve/addresses.sh;
 

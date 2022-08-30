@@ -21,16 +21,16 @@ library PoolLibrary {
         uint256 col_ratio;
     }
 
-    struct BuybackShare_Params {
+    struct BuybackTON_Params {
         uint256 excess_collateral_dollar_value_d18;
         uint256 share_price_usd;
         uint256 col_price_usd;
-        uint256 Share_amount;
+        uint256 TON_amount;
     }
 
     // ================ Functions ================
 
-    function calcMint1t1EUSD(uint256 col_price, uint256 collateral_amount_d18)
+    function calcMint1t1PHO(uint256 col_price, uint256 collateral_amount_d18)
         public
         pure
         returns (uint256)
@@ -38,24 +38,24 @@ library PoolLibrary {
         return (collateral_amount_d18.mul(col_price)).div(1e6);
     }
 
-    // function calcMintAlgorithmicEUSD(uint256 share_price_usd, uint256 share_amount_d18) public pure returns (uint256) {
+    // function calcMintAlgorithmicPHO(uint256 share_price_usd, uint256 share_amount_d18) public pure returns (uint256) {
     //     return share_amount_d18.mul(share_price_usd).div(1e6);
     // }
 
     // Must be internal because of the struct
-    function calcMintFractionalEUSD(MintFF_Params memory params)
+    function calcMintFractionalPHO(MintFF_Params memory params)
         internal
         pure
         returns (uint256, uint256)
     {
         // Since solidity truncates division, every division operation must be the last operation in the equation to ensure minimum error
-        // The contract must check the proper ratio was sent to mint EUSD. We do this by seeing the minimum mintable EUSD based on each amount
+        // The contract must check the proper ratio was sent to mint PHO. We do this by seeing the minimum mintable PHO based on each amount
         uint256 share_dollar_value_d18;
         uint256 c_dollar_value_d18;
 
         // Scoping for stack concerns
         {
-            // USD amounts of the collateral and the Share
+            // USD amounts of the collateral and the TON
             share_dollar_value_d18 = params.share_amount.mul(params.share_price_usd).div(1e6);
             c_dollar_value_d18 = params.collateral_amount.mul(params.col_price_usd).div(1e6);
         }
@@ -68,27 +68,27 @@ library PoolLibrary {
         return (c_dollar_value_d18.add(calculated_share_dollar_value_d18), calculated_share_needed);
     }
 
-    function calcRedeem1t1EUSD(uint256 col_price_usd, uint256 EUSD_amount)
+    function calcRedeem1t1PHO(uint256 col_price_usd, uint256 PHO_amount)
         public
         pure
         returns (uint256)
     {
-        return EUSD_amount.mul(1e6).div(col_price_usd);
+        return PHO_amount.mul(1e6).div(col_price_usd);
     }
 
     // Must be internal because of the struct
-    function calcBuyBackShare(BuybackShare_Params memory params) internal pure returns (uint256) {
-        // If the total collateral value is higher than the amount required at the current collateral ratio then buy back up to the possible Share with the desired collateral
+    function calcBuyBackTON(BuybackTON_Params memory params) internal pure returns (uint256) {
+        // If the total collateral value is higher than the amount required at the current collateral ratio then buy back up to the possible TON with the desired collateral
         require(params.excess_collateral_dollar_value_d18 > 0, "No excess collateral to buy back!");
 
         // Make sure not to take more than is available
-        uint256 share_dollar_value_d18 = params.Share_amount.mul(params.share_price_usd).div(1e6);
+        uint256 share_dollar_value_d18 = params.TON_amount.mul(params.share_price_usd).div(1e6);
         require(
             share_dollar_value_d18 <= params.excess_collateral_dollar_value_d18,
             "You are trying to buy back more than the excess!"
         );
 
-        // Get the equivalent amount of collateral based on the market value of Share provided
+        // Get the equivalent amount of collateral based on the market value of TON provided
         uint256 collateral_equivalent_d18 =
             share_dollar_value_d18.mul(1e6).div(params.col_price_usd);
         //collateral_equivalent_d18 = collateral_equivalent_d18.sub((collateral_equivalent_d18.mul(params.buyback_fee)).div(1e6));
@@ -112,11 +112,11 @@ library PoolLibrary {
             // return(recollateralization_left);
     }
 
-    function calcRecollateralizeEUSDInner(
+    function calcRecollateralizePHOInner(
         uint256 collateral_amount,
         uint256 col_price,
         uint256 global_collat_value,
-        uint256 eusd_total_supply,
+        uint256 pho_total_supply,
         uint256 global_collateral_ratio
     )
         public
@@ -124,10 +124,10 @@ library PoolLibrary {
         returns (uint256, uint256)
     {
         uint256 collat_value_attempted = collateral_amount.mul(col_price).div(1e6);
-        uint256 effective_collateral_ratio = global_collat_value.mul(1e6).div(eusd_total_supply); //returns it in 1e6
+        uint256 effective_collateral_ratio = global_collat_value.mul(1e6).div(pho_total_supply); //returns it in 1e6
         uint256 recollat_possible = (
-            global_collateral_ratio.mul(eusd_total_supply).sub(
-                eusd_total_supply.mul(effective_collateral_ratio)
+            global_collateral_ratio.mul(pho_total_supply).sub(
+                pho_total_supply.mul(effective_collateral_ratio)
             )
         ).div(1e6);
 
