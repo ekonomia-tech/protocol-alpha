@@ -2,9 +2,9 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import {EUSD} from "../src/contracts/EUSD.sol";
+import {PHO} from "../src/contracts/PHO.sol";
 import {PIDController} from "../src/contracts/PIDController.sol";
-import {Share} from "../src/contracts/Share.sol";
+import {TON} from "../src/contracts/TON.sol";
 import {DummyOracle} from "../src/oracle/DummyOracle.sol";
 import {Pool} from "../src/contracts/Pool.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -12,12 +12,12 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 abstract contract BaseSetup is Test {
     struct Balance {
         uint256 usdc;
-        uint256 eusd;
-        uint256 share;
+        uint256 pho;
+        uint256 ton;
     }
 
-    EUSD public eusd;
-    Share public share;
+    PHO public pho;
+    TON public ton;
     PIDController public pid;
     DummyOracle public priceOracle;
     Pool public pool_usdc;
@@ -67,32 +67,32 @@ abstract contract BaseSetup is Test {
     constructor() {
         vm.startPrank(owner);
         priceOracle = new DummyOracle();
-        eusd = new EUSD("Eusd", "EUSD", owner, timelock_address);
-        share = new Share("Share", "SHARE", address(priceOracle), timelock_address);
-        share.setEUSDAddress(address(eusd));
+        pho = new PHO("Pho", "PHO", owner, timelock_address);
+        ton = new TON("TON", "TON", address(priceOracle), timelock_address);
+        ton.setPHOAddress(address(pho));
 
-        pid = new PIDController(address(eusd), owner, timelock_address, address(priceOracle));
+        pid = new PIDController(address(pho), owner, timelock_address, address(priceOracle));
         pid.setMintingFee(9500); // .95% at genesis
         pid.setRedemptionFee(4500); // .45% at genesis
         pid.setController(controller);
-        eusd.setController(controller);
+        pho.setController(controller);
 
         usdc = IERC20(USDC_ADDRESS);
         pool_usdc =
-        new Pool(address(eusd), address(share), address(pid), USDC_ADDRESS, owner, address(priceOracle), POOL_CEILING);
-        eusd.addPool(address(pool_usdc));
+        new Pool(address(pho), address(ton), address(pid), USDC_ADDRESS, owner, address(priceOracle), POOL_CEILING);
+        pho.addPool(address(pool_usdc));
 
-        // new code to accomodate not using constructor to mint unbacked EUSD for tests
+        // new code to accomodate not using constructor to mint unbacked PHO for tests
         usdc.approve(address(pool_usdc), GENESIS_SUPPLY_d6);
-        pool_usdc.mint1t1EUSD(GENESIS_SUPPLY_d6, GENESIS_SUPPLY_d18);
+        pool_usdc.mint1t1PHO(GENESIS_SUPPLY_d6, GENESIS_SUPPLY_d18);
 
-        eusd.transfer(user1, tenThousand_d18);
-        eusd.transfer(user2, tenThousand_d18);
-        eusd.transfer(user3, tenThousand_d18);
+        pho.transfer(user1, tenThousand_d18);
+        pho.transfer(user2, tenThousand_d18);
+        pho.transfer(user3, tenThousand_d18);
 
         pool_usdc2 =
-        new Pool(address(eusd), address(share), address(pid), USDC_ADDRESS, owner, address(priceOracle), POOL_CEILING);
-        eusd.addPool(address(pool_usdc2));
+        new Pool(address(pho), address(ton), address(pid), USDC_ADDRESS, owner, address(priceOracle), POOL_CEILING);
+        pho.addPool(address(pool_usdc2));
 
         usdc = IERC20(USDC_ADDRESS);
 
@@ -103,10 +103,10 @@ abstract contract BaseSetup is Test {
 
     function _getAccountBalance(address _account) internal returns (Balance memory) {
         uint256 usdcBalance = usdc.balanceOf(_account);
-        uint256 eusdBalance = eusd.balanceOf(_account);
-        uint256 shareBalance = share.balanceOf(_account);
+        uint256 phoBalance = pho.balanceOf(_account);
+        uint256 tonBalance = ton.balanceOf(_account);
 
-        return Balance(usdcBalance, eusdBalance, shareBalance);
+        return Balance(usdcBalance, phoBalance, tonBalance);
     }
 
     function _getUSDC(address to, uint256 _amount) internal {
@@ -131,17 +131,17 @@ abstract contract BaseSetup is Test {
         _approveUSDC(_owner, _spender, _amountOut);
     }
 
-    function _getShare(address _to, uint256 _amount) internal {
+    function _getTON(address _to, uint256 _amount) internal {
         vm.prank(address(pool_usdc));
-        share.mint(_to, _amount);
+        ton.mint(_to, _amount);
     }
 
-    function _approveShare(address _owner, address _spender, uint256 _amount) internal {
+    function _approveTON(address _owner, address _spender, uint256 _amount) internal {
         vm.prank(_owner);
-        share.approve(_spender, _amount);
+        ton.approve(_spender, _amount);
     }
 
-    function _fundAndApproveShare(
+    function _fundAndApproveTON(
         address _owner,
         address _spender,
         uint256 _amountIn,
@@ -149,7 +149,7 @@ abstract contract BaseSetup is Test {
     )
         internal
     {
-        _getShare(_owner, _amountIn);
-        _approveShare(_owner, _spender, _amountOut);
+        _getTON(_owner, _amountIn);
+        _approveTON(_owner, _spender, _amountOut);
     }
 }

@@ -3,12 +3,12 @@ pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-interface IEUSD is IERC20 {
-    /// Track EUSD burned
-    event EUSDBurned(address indexed from, address indexed burnCaller, uint256 amount);
+interface IPHO is IERC20 {
+    /// Track PHO burned
+    event PHOBurned(address indexed from, address indexed burnCaller, uint256 amount);
 
-    /// Track EUSD minted
-    event EUSDMinted(address indexed mintCaller, address indexed to, uint256 amount);
+    /// Track PHO minted
+    event PHOMinted(address indexed mintCaller, address indexed to, uint256 amount);
 
     /// Track pools added
     event PoolAdded(address pool_address);
