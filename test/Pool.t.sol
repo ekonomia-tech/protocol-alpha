@@ -629,8 +629,7 @@ contract PoolTest is BaseSetup {
 
         uint256 redeemAmountPostFee =
             _redeemAmount * (PRICE_PRECISION - redemptionFee) / PRICE_PRECISION;
-        uint256 tonDollarValue =
-            redeemAmountPostFee - (redeemAmountPostFee * gcr / PRICE_PRECISION);
+        uint256 tonDollarValue = redeemAmountPostFee - (redeemAmountPostFee * gcr / PRICE_PRECISION);
         tonAmount = tonDollarValue * PRICE_PRECISION / tonPrice;
 
         uint256 redeemAmountPrecision = redeemAmountPostFee / (missing_decimals);

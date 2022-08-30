@@ -208,11 +208,7 @@ contract Pool is AccessControl, Ownable {
 
     // Will fail if fully collateralized or fully algorithmic
     // > 0% and < 100% collateral-backed
-    function mintFractionalPHO(
-        uint256 collateral_amount,
-        uint256 ton_amount,
-        uint256 PHO_out_min
-    )
+    function mintFractionalPHO(uint256 collateral_amount, uint256 ton_amount, uint256 PHO_out_min)
         external
         notMintPaused
     {
@@ -238,8 +234,7 @@ contract Pool is AccessControl, Ownable {
             global_collateral_ratio
         );
 
-        (uint256 mint_amount, uint256 ton_needed) =
-            PoolLibrary.calcMintFractionalPHO(input_params);
+        (uint256 mint_amount, uint256 ton_needed) = PoolLibrary.calcMintFractionalPHO(input_params);
 
         mint_amount = (mint_amount.mul(uint256(1e6).sub(minting_fee))).div(1e6);
         require(PHO_out_min <= mint_amount, "Slippage limit reached");

@@ -37,6 +37,7 @@ contract TokenAuctionTest is DSTest {
     uint256 internal testContractStartingDAIBalance = 5e48;
     uint256 internal testContractStartingTONBalance = 5e48;
     uint256 public constant USDC_DELTA = 10 ** 12; // decimal delta
+
     ERC20Mock internal usdc = new ERC20Mock(
             "Mock USDC",
             "mUSDC",
@@ -264,7 +265,10 @@ contract TokenAuctionTest is DSTest {
         usdcTokenAuction.purchaseTokens(purchaseAmount, purchasePrice / USDC_DELTA);
 
         // Balance check on TON
-        assertEq(ton.balanceOf(address(users[0])), purchaseAmount);
+        assertEq(ton.balanceOf(users[0]), purchaseAmount);
+
+        // Check purchasedAmounts
+        assertEq(usdcTokenAuction.purchasedAmounts(users[0]), purchaseAmount);
     }
 
     // Test for a proper purchase via DAI
@@ -297,7 +301,10 @@ contract TokenAuctionTest is DSTest {
         daiTokenAuction.purchaseTokens(purchaseAmount, purchasePrice);
 
         // Balance check on TON
-        assertEq(ton.balanceOf(address(users[1])), purchaseAmount);
+        assertEq(ton.balanceOf(users[1]), purchaseAmount);
+
+        // Check purchasedAmounts
+        assertEq(daiTokenAuction.purchasedAmounts(users[1]), purchaseAmount);
     }
 
     fallback() external payable {}

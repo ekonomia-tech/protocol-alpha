@@ -98,6 +98,8 @@ contract TokenAuction is Ownable, ReentrancyGuard {
             revert InsufficientPayment();
         }
 
+        purchasedAmounts[msg.sender] += numTokens;
+
         // user sends principal tokens
         principalToken.safeTransferFrom(msg.sender, address(this), depositAmount);
 
