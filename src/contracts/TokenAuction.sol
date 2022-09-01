@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
+// Inspired by GDA
+// https://github.com/FrankieIsLost/gradual-dutch-auction/blob/master/src/ContinuousGDA.sol
 pragma solidity ^0.8.13;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -35,7 +37,13 @@ contract TokenAuction is Ownable, ReentrancyGuard {
     event AddedToWhiteList(address indexed addr);
     event RemovedFromWhiteList(address indexed addr);
     event MaxPerBuyerModified(uint256 maxPerBuyer);
-    event PurchasedTokens(address indexed buyer, uint256 numTokens, uint256 depositAmount);
+    event PurchasedTokens(
+        address indexed buyer,
+        address indexed principalToken,
+        address indexed payoutToken,
+        uint256 numTokens,
+        uint256 depositAmount
+    );
 
     /// Constructor
     constructor(
@@ -78,7 +86,7 @@ contract TokenAuction is Ownable, ReentrancyGuard {
 
     /// @notice Purchase a specific number of payout tokens
     function purchaseTokens(uint256 numTokens, uint256 depositAmount) external nonReentrant {
-        require(purchasedAmounts[msg.sender] + numTokens < maxPerBuyer, "MaxPerBuyer exceeded");
+        require(purchasedAmounts[msg.sender] + numTokens <= maxPerBuyer, "MaxPerBuyer exceeded");
         require(whitelist[msg.sender], "Must be whitelisted");
 
         // number of seconds of token emissions that are available to be purchased
@@ -109,7 +117,9 @@ contract TokenAuction is Ownable, ReentrancyGuard {
         // update last available auction
         lastAvailableAuctionStartTime += secondsOfEmissionsToPurchase;
 
-        emit PurchasedTokens(msg.sender, numTokens, depositAmount);
+        emit PurchasedTokens(
+            msg.sender, address(principalToken), address(payoutToken), numTokens, depositAmount
+            );
     }
 
     ///@notice Calculate purchase price (in payoutToken terms) using exponential CGDA formula
