@@ -32,7 +32,12 @@ abstract contract BaseSetup is Test {
     address public user2 = address(2);
     address public user3 = address(3);
     address public dummyAddress = address(4);
-    address public richGuy = 0xed320Bf569E5F3c4e9313391708ddBFc58e296bb;
+    address public richGuy = 0x72A53cDBBcc1b9efa39c834A540550e23463AAcB;
+    address public fraxBPLPToken = 0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC;
+    address public fraxBPAddress = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
+    address public metaPoolFactoryAddress = 0xB9fC157394Af804a3578134A6585C0dc9cc990d4;
+    address public fraxRichGuy = 0xd3d176F7e4b43C70a68466949F6C64F06Ce75BB9;
+    address public fraxAddress = 0x853d955aCEf822Db058eb8505911ED77F175b99e;
 
     uint256 public constant one_d18 = 10 ** 18;
     uint256 public constant one_d6 = 10 ** 6;
@@ -50,6 +55,14 @@ abstract contract BaseSetup is Test {
     uint256 public constant oneThousand_d6 = 1000 * 10 ** 6;
     uint256 public constant tenThousand_d18 = 10000 * 10 ** 18;
     uint256 public constant tenThousand_d6 = 10000 * 10 ** 6;
+    uint256 public constant one_m_d6 = 1000000 * 10 ** 6;
+    uint256 public constant one_m_d18 = 1000000 * 10 ** 18;
+    uint256 public constant two_m_d6 = 1000000 * 10 ** 6;
+    uint256 public constant two_m_d18 = 1000000 * 10 ** 18;
+    uint256 public constant five_m_d6 = 5000000 * 10 ** 6;
+    uint256 public constant five_m_d18 = 5000000 * 10 ** 18;
+    uint256 public constant six_m_d6 = 6000000 * 10 ** 6;
+    uint256 public constant six_m_d18 = 6000000 * 10 ** 18;
 
     uint256 public constant overPeg = (10 ** 6) + 6000;
     uint256 public constant underPeg = (10 ** 6) - (6000);
