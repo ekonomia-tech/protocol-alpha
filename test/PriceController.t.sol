@@ -33,38 +33,10 @@ contract PriceControllerTest is BaseSetup {
 
         _fundAndApproveUSDC(owner, address(fraxBP), tenThousand_d6, tenThousand_d6);
 
-        uint256[2] memory fraxBPmetaLiquidity;
-        fraxBPmetaLiquidity[0] = tenThousand_d18; // frax
-        fraxBPmetaLiquidity[1] = tenThousand_d6; // usdc
-        uint256 minLPOut = tenThousand_d18;
-
-        vm.startPrank(fraxRichGuy);
-        frax.transfer(owner, tenThousand_d18 * 5);
-        vm.stopPrank();
-
-        vm.startPrank(owner);
-
-        usdc.approve(address(fraxBP), tenThousand_d6);
-        frax.approve(address(fraxBP), tenThousand_d18);
-
-        fraxBP.add_liquidity(fraxBPmetaLiquidity, 0);
-
-        address fraxBPPhoMetapoolAddress = curveFactory.deploy_metapool(
-            address(fraxBP), "FRAXBP/PHO", "FRAXBPPHO", address(pho), 200, 4000000, 0
-        );
-
-        fraxBPPhoMetapool = ICurve(fraxBPPhoMetapoolAddress);
-        pho.approve(address(fraxBPPhoMetapool), tenThousand_d18);
-        fraxBPLP.approve(address(fraxBPPhoMetapool), tenThousand_d18);
-
-        uint256[2] memory metaLiquidity;
-        metaLiquidity[0] = tenThousand_d18;
-        metaLiquidity[1] = tenThousand_d18;
-
-        fraxBPPhoMetapool.add_liquidity(metaLiquidity, 0);
+        fraxBPPhoMetapool = ICurve(_deployFraxBPPHOPool());
 
         priceController =
-        new PriceController(address(pho), address(priceOracle), fraxBPPhoMetapoolAddress, USDC_ADDRESS, address(curveFactory), owner, 3600, 10 ** 4, 50000);
+        new PriceController(address(pho), address(priceOracle), address(fraxBPPhoMetapool), USDC_ADDRESS, address(curveFactory), owner, 3600, 10 ** 4, 50000,99000);
 
         pho.addPool(address(priceController));
 
@@ -192,11 +164,39 @@ contract PriceControllerTest is BaseSetup {
         priceController.setGapFraction(newGapFractionUnder);
     }
 
+     /// setMaxSlippage
+
+    function testSetMaxSlippage() public {
+        uint256 newMaxSlippage = 99500;
+        vm.expectEmit(true, true, false, false);
+        emit MaxSlippageUpdated(priceController.maxSlippage(), newMaxSlippage);
+        vm.prank(owner);
+        priceController.setMaxSlippage(newMaxSlippage);
+    }
+
+    function testCannotSetMaxSlippageNotAllowed() public {
+        vm.expectRevert("Not the owner or controller");
+        priceController.setMaxSlippage(0);
+    }
+
+    function testCannotSetMaxSlippageValueNotInRange() public {
+        uint256 newMaxSlippageOver = 102000;
+        uint256 newMaxSlippageUnder = 0;
+
+        vm.expectRevert("value can only be between 0 to 100000");
+        vm.prank(owner);
+        priceController.setMaxSlippage(newMaxSlippageOver);
+
+        vm.expectRevert("value can only be between 0 to 100000");
+        vm.prank(owner);
+        priceController.setMaxSlippage(newMaxSlippageUnder);
+    }
+
     /// setDexPool
 
     function testSetDexPool() public {
-        address newDexPool = address(110);
-        vm.expectEmit(true, false, false, false);
+        address newDexPool = address(fraxBPPhoMetapool);
+        vm.expectEmit(true, false, false, true);
         emit DexPoolUpdated(newDexPool);
         vm.prank(owner);
         priceController.setDexPool(newDexPool);
@@ -213,11 +213,23 @@ contract PriceControllerTest is BaseSetup {
         priceController.setDexPool(address(0));
     }
 
+    function testCannotSetDexPoolNotMetaPool() public {
+        vm.expectRevert("address does not point to a metapool");
+        vm.prank(owner);
+        priceController.setDexPool(address(110));
+    }
+
+    function testCannotSetDexPoolPhoNotPreset() public {
+        vm.expectRevert("$PHO is not present in the metapool");
+        vm.prank(owner);
+        priceController.setDexPool(fraxBPLUSD);
+    }
+
     /// setStabilizingToken
 
     function testSetStabilizingToken() public {
-        address newStabilizingToken = address(110);
-        vm.expectEmit(true, false, false, false);
+        address newStabilizingToken = USDC_ADDRESS;
+        vm.expectEmit(true, false, false, true);
         emit StabilizingTokenUpdated(newStabilizingToken);
         vm.prank(owner);
         priceController.setStabilizingToken(newStabilizingToken);
@@ -232,6 +244,12 @@ contract PriceControllerTest is BaseSetup {
         vm.expectRevert("zero address detected");
         vm.prank(owner);
         priceController.setStabilizingToken(address(0));
+    }
+
+    function testCannotSetStabilizingTokenNotInBasePool() public {
+        vm.expectRevert("token is not an underlying in the base pool");
+        vm.prank(owner);
+        priceController.setStabilizingToken(address(101));
     }
 
     /// checkPriceBand
@@ -574,4 +592,5 @@ contract PriceControllerTest is BaseSetup {
     );
     event DexPoolUpdated(address newDexPool);
     event StabilizingTokenUpdated(address stabilizingToken);
+    event MaxSlippageUpdated(uint256 perviousMaxSlippage, uint256 newMaxSlippage);
 }
