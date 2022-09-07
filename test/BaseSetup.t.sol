@@ -12,6 +12,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 abstract contract BaseSetup is Test {
     struct Balance {
         uint256 usdc;
+        uint256 dai;
         uint256 pho;
         uint256 ton;
     }
@@ -24,15 +25,17 @@ abstract contract BaseSetup is Test {
     Pool public pool_usdc2;
 
     IERC20 usdc;
+    IERC20 dai;
 
-    address public owner = 0xed320Bf569E5F3c4e9313391708ddBFc58e296bb; // NOTE - vitalik.eth for tests but we may need a different address to supply USDC depending on our tests - vitalik only has 30k USDC
+    address public owner = 0x55FE002aefF02F77364de339a1292923A15844B8; // NOTE - vitalik.eth for tests but we may need a different address to supply USDC depending on our tests - vitalik only has 30k USDC
     address public timelock_address = address(100);
     address public controller = address(101);
     address public user1 = address(1);
     address public user2 = address(2);
     address public user3 = address(3);
     address public dummyAddress = address(4);
-    address public richGuy = 0xed320Bf569E5F3c4e9313391708ddBFc58e296bb;
+    address public richGuy = 0x55FE002aefF02F77364de339a1292923A15844B8;
+    address public daiWhale = 0xc08a8a9f809107c5A7Be6d90e315e4012c99F39a;
 
     uint256 public constant one_d18 = 10 ** 18;
     uint256 public constant one_d6 = 10 ** 6;
@@ -62,6 +65,7 @@ abstract contract BaseSetup is Test {
 
     address public constant weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant USDC_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address public constant DAI_ADDRESS = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     uint256 public constant POOL_CEILING = (2 ** 256) - 1;
 
     constructor() {
@@ -71,15 +75,28 @@ abstract contract BaseSetup is Test {
         ton = new TON("TON", "TON", address(priceOracle), timelock_address);
         ton.setPHOAddress(address(pho));
 
-        pid = new PIDController(address(pho), owner, timelock_address, address(priceOracle));
+        pid = new PIDController(
+            address(pho),
+            owner,
+            timelock_address,
+            address(priceOracle)
+        );
         pid.setMintingFee(9500); // .95% at genesis
         pid.setRedemptionFee(4500); // .45% at genesis
         pid.setController(controller);
         pho.setController(controller);
 
         usdc = IERC20(USDC_ADDRESS);
-        pool_usdc =
-        new Pool(address(pho), address(ton), address(pid), USDC_ADDRESS, owner, address(priceOracle), POOL_CEILING);
+        dai = IERC20(DAI_ADDRESS);
+        pool_usdc = new Pool(
+            address(pho),
+            address(ton),
+            address(pid),
+            USDC_ADDRESS,
+            owner,
+            address(priceOracle),
+            POOL_CEILING
+        );
         pho.addPool(address(pool_usdc));
 
         // new code to accomodate not using constructor to mint unbacked PHO for tests
@@ -90,8 +107,15 @@ abstract contract BaseSetup is Test {
         pho.transfer(user2, tenThousand_d18);
         pho.transfer(user3, tenThousand_d18);
 
-        pool_usdc2 =
-        new Pool(address(pho), address(ton), address(pid), USDC_ADDRESS, owner, address(priceOracle), POOL_CEILING);
+        pool_usdc2 = new Pool(
+            address(pho),
+            address(ton),
+            address(pid),
+            USDC_ADDRESS,
+            owner,
+            address(priceOracle),
+            POOL_CEILING
+        );
         pho.addPool(address(pool_usdc2));
 
         usdc = IERC20(USDC_ADDRESS);
@@ -103,10 +127,11 @@ abstract contract BaseSetup is Test {
 
     function _getAccountBalance(address _account) internal returns (Balance memory) {
         uint256 usdcBalance = usdc.balanceOf(_account);
+        uint256 daiBalance = dai.balanceOf(_account);
         uint256 phoBalance = pho.balanceOf(_account);
         uint256 tonBalance = ton.balanceOf(_account);
 
-        return Balance(usdcBalance, phoBalance, tonBalance);
+        return Balance(usdcBalance, daiBalance, phoBalance, tonBalance);
     }
 
     function _getUSDC(address to, uint256 _amount) internal {
@@ -129,6 +154,28 @@ abstract contract BaseSetup is Test {
     {
         _getUSDC(_owner, _amountIn);
         _approveUSDC(_owner, _spender, _amountOut);
+    }
+
+    function _getDAI(address to, uint256 _amount) internal {
+        vm.prank(daiWhale);
+        dai.transfer(to, _amount);
+    }
+
+    function _approveDAI(address _owner, address _spender, uint256 _amount) internal {
+        vm.prank(_owner);
+        dai.approve(_spender, _amount);
+    }
+
+    function _fundAndApproveDAI(
+        address _owner,
+        address _spender,
+        uint256 _amountIn,
+        uint256 _amountOut
+    )
+        internal
+    {
+        _getDAI(_owner, _amountIn);
+        _approveDAI(_owner, _spender, _amountOut);
     }
 
     function _getTON(address _to, uint256 _amount) internal {
