@@ -16,6 +16,7 @@ interface IPriceController {
     );
     event DexPoolUpdated(address newDexPool);
     event StabilizingTokenUpdated(address stabilizingToken);
+    event MaxSlippageUpdated(uint256 perviousMaxSlippage, uint256 newMaxSlippage);
 
     function setController(address _controller_address) external;
     function setOracleAddress(address _oracle_address) external;
@@ -24,4 +25,5 @@ interface IPriceController {
     function setGapFraction(uint256 _gap_fraction) external;
     function setDexPool(address _dex_pool_address) external;
     function setStabilizingToken(address _stabilizing_token) external;
+    function setMaxSlippage(uint256 _max_slippage) external;
 }

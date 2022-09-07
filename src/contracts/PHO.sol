@@ -68,7 +68,7 @@ contract PHO is IPHO, ERC20Burnable, AccessControl, Ownable {
 
     /// FUNCTIONS
 
-    // get pool count
+    // get pool countf
     function getPoolCount() public view returns (uint256) {
         return PHO_pools_array.length;
     }

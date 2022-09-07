@@ -8,6 +8,8 @@ import {TON} from "../src/contracts/TON.sol";
 import {DummyOracle} from "../src/oracle/DummyOracle.sol";
 import {Pool} from "../src/contracts/Pool.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "src/interfaces/curve/ICurve.sol";
+import "src/interfaces/curve/ICurveFactory.sol";
 
 abstract contract BaseSetup is Test {
     struct Balance {
@@ -38,6 +40,7 @@ abstract contract BaseSetup is Test {
     address public metaPoolFactoryAddress = 0xB9fC157394Af804a3578134A6585C0dc9cc990d4;
     address public fraxRichGuy = 0xd3d176F7e4b43C70a68466949F6C64F06Ce75BB9;
     address public fraxAddress = 0x853d955aCEf822Db058eb8505911ED77F175b99e;
+    address public fraxBPLUSD = 0x497CE58F34605B9944E6b15EcafE6b001206fd25;
 
     uint256 public constant one_d18 = 10 ** 18;
     uint256 public constant one_d6 = 10 ** 6;
@@ -171,5 +174,46 @@ abstract contract BaseSetup is Test {
     {
         _getTON(_owner, _amountIn);
         _approveTON(_owner, _spender, _amountOut);
+    }
+
+    function _deployFraxBPPHOPool() internal returns (address) {
+        IERC20 frax = IERC20(fraxAddress);
+        IERC20 fraxBPLP = IERC20(fraxBPLPToken);
+        ICurve fraxBP = ICurve(fraxBPAddress);
+        ICurveFactory curveFactory = ICurveFactory(metaPoolFactoryAddress);
+
+        _fundAndApproveUSDC(owner, address(fraxBP), tenThousand_d6, tenThousand_d6);
+
+        uint256[2] memory fraxBPmetaLiquidity;
+        fraxBPmetaLiquidity[0] = tenThousand_d18; // frax
+        fraxBPmetaLiquidity[1] = tenThousand_d6; // usdc
+        uint256 minLPOut = tenThousand_d18;
+
+        vm.startPrank(fraxRichGuy);
+        frax.transfer(owner, tenThousand_d18 * 5);
+        vm.stopPrank();
+
+        vm.startPrank(owner);
+
+        usdc.approve(address(fraxBP), tenThousand_d6);
+        frax.approve(address(fraxBP), tenThousand_d18);
+
+        fraxBP.add_liquidity(fraxBPmetaLiquidity, 0);
+
+        address fraxBPPhoMetapoolAddress = curveFactory.deploy_metapool(
+            address(fraxBP), "FRAXBP/PHO", "FRAXBPPHO", address(pho), 200, 4000000, 0
+        );
+
+        ICurve fraxBPPhoMetapool = ICurve(fraxBPPhoMetapoolAddress);
+        pho.approve(address(fraxBPPhoMetapool), tenThousand_d18);
+        fraxBPLP.approve(address(fraxBPPhoMetapool), tenThousand_d18);
+
+        uint256[2] memory metaLiquidity;
+        metaLiquidity[0] = tenThousand_d18;
+        metaLiquidity[1] = tenThousand_d18;
+
+        fraxBPPhoMetapool.add_liquidity(metaLiquidity, 0);
+        
+        return fraxBPPhoMetapoolAddress;
     }
 }
