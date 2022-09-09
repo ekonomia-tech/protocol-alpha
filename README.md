@@ -30,3 +30,17 @@ To run unit tests against a non-persistent local mainnet fork, first make sure y
 Make sure you are using latest version of foundry, so that it auto-sources `.env`, otherwise run (while in the root directory): `source .env`
 
 CLI command: `forge test`
+
+## VSCode
+
+If you are using Juan Blanco's [solidity](https://marketplace.visualstudio.com/items?itemName=JuanBlanco.solidity) extension on VSCode, you can use this settings:
+
+```ts
+{
+  "solidity.remappings": [
+    "forge-std/=lib/forge-std/src/",
+    "@openzeppelin=lib/openzeppelin-contracts/"
+  ],
+  "solidity.compileUsingRemoteVersion": "v0.8.13+commit.abaa5c0e"
+}
+```

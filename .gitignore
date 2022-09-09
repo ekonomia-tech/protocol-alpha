@@ -6,3 +6,6 @@
 out/
 cache/
 scripts/curve/logs
+
+# Code Editors
+.vscode
