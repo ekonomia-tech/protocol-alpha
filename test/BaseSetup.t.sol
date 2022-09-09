@@ -65,6 +65,13 @@ abstract contract BaseSetup is Test {
     uint256 public constant POOL_CEILING = (2 ** 256) - 1;
 
     constructor() {
+        string memory RPC_URL = vm.envString("RPC_URL");
+        if (bytes(RPC_URL).length == 0) {
+            revert("Please provide RPC_URL in your .env file");
+        }
+        uint256 fork = vm.createFork(RPC_URL);
+        vm.selectFork(fork);
+
         vm.startPrank(owner);
         priceOracle = new DummyOracle();
         pho = new PHO("Pho", "PHO", owner, timelock_address);
