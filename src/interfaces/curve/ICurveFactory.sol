@@ -23,6 +23,5 @@ interface ICurveFactory {
     function get_coins(address _pool) external view returns (address[2] memory);
     function get_underlying_balances(address _pool) external view returns (uint256[8] memory);
     function get_base_pool(address _pool) external view returns (address);
-    function is_meta(address _pool) external view returns(bool);
+    function is_meta(address _pool) external view returns (bool);
 }
-

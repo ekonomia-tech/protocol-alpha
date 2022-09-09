@@ -3,8 +3,8 @@ pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-/// @notice these are generic functions seen within stableswap vyper contracts deployed in other metapool contracts such as this one: https://etherscan.io/address/0x497CE58F34605B9944E6b15EcafE6b001206fd25#code
-interface ICurve is IERC20 {
+/// @notice these are generic functions seen within stable swap vyper contracts deployed in other metapool contracts such as this one: https://etherscan.io/address/0x497CE58F34605B9944E6b15EcafE6b001206fd25#code
+interface ICurvePool is IERC20 {
     function coins(uint256) external view returns (address);
     function get_virtual_price() external view returns (uint256);
     function calc_token_amount(uint256[] calldata, bool deposit) external view returns (uint256);

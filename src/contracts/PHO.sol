@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Inpired by Frax
+// Inspired by Frax
 // https://github.com/FraxFinance/frax-solidity/blob/7cbe89981ffa5d3cd0eeaf62dd1489c3276de0e4/src/hardhat/contracts/Frax/Frax.sol
 pragma solidity ^0.8.13;
 
@@ -68,7 +68,7 @@ contract PHO is IPHO, ERC20Burnable, AccessControl, Ownable {
 
     /// FUNCTIONS
 
-    // get pool countf
+    // get pool count
     function getPoolCount() public view returns (uint256) {
         return PHO_pools_array.length;
     }

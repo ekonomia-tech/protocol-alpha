@@ -404,7 +404,7 @@ contract PHOTest is BaseSetup {
 
     /// removePool() tests
 
-    /// NOTE - test will fail if pool contract not implemented due to array element within question here (pool setup has initialusdc pool setup)
+    /// NOTE - test will fail if pool contract not implemented due to array element within question here (pool setup has initial usdc pool setup)
     function testRemovePool() public {
         vm.startPrank(owner);
         vm.expectEmit(true, false, false, true);
@@ -448,7 +448,7 @@ contract PHOTest is BaseSetup {
     // add pool, remove pool, remove pool again and expect revert
     function testCannotRemoveUnaddedPool() public {
         vm.startPrank(owner);
-        vm.expectRevert("Address nonexistant");
+        vm.expectRevert("Address nonexistent");
         pho.removePool(dummyAddress);
         vm.stopPrank();
     }

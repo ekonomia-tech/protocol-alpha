@@ -8,7 +8,7 @@ import {TON} from "../src/contracts/TON.sol";
 import {DummyOracle} from "../src/oracle/DummyOracle.sol";
 import {Pool} from "../src/contracts/Pool.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "src/interfaces/curve/ICurve.sol";
+import "src/interfaces/curve/ICurvePool.sol";
 import "src/interfaces/curve/ICurveFactory.sol";
 
 abstract contract BaseSetup is Test {
@@ -58,14 +58,6 @@ abstract contract BaseSetup is Test {
     uint256 public constant oneThousand_d6 = 1000 * 10 ** 6;
     uint256 public constant tenThousand_d18 = 10000 * 10 ** 18;
     uint256 public constant tenThousand_d6 = 10000 * 10 ** 6;
-    uint256 public constant one_m_d6 = 1000000 * 10 ** 6;
-    uint256 public constant one_m_d18 = 1000000 * 10 ** 18;
-    uint256 public constant two_m_d6 = 1000000 * 10 ** 6;
-    uint256 public constant two_m_d18 = 1000000 * 10 ** 18;
-    uint256 public constant five_m_d6 = 5000000 * 10 ** 6;
-    uint256 public constant five_m_d18 = 5000000 * 10 ** 18;
-    uint256 public constant six_m_d6 = 6000000 * 10 ** 6;
-    uint256 public constant six_m_d18 = 6000000 * 10 ** 18;
 
     uint256 public constant overPeg = (10 ** 6) + 6000;
     uint256 public constant underPeg = (10 ** 6) - (6000);
@@ -105,7 +97,7 @@ abstract contract BaseSetup is Test {
         new Pool(address(pho), address(ton), address(pid), USDC_ADDRESS, owner, address(priceOracle), POOL_CEILING);
         pho.addPool(address(pool_usdc));
 
-        // new code to accomodate not using constructor to mint unbacked PHO for tests
+        // new code to accommodate not using constructor to mint unbacked PHO for tests
         usdc.approve(address(pool_usdc), GENESIS_SUPPLY_d6);
         pool_usdc.mint1t1PHO(GENESIS_SUPPLY_d6, GENESIS_SUPPLY_d18);
 
@@ -179,7 +171,7 @@ abstract contract BaseSetup is Test {
     function _deployFraxBPPHOPool() internal returns (address) {
         IERC20 frax = IERC20(fraxAddress);
         IERC20 fraxBPLP = IERC20(fraxBPLPToken);
-        ICurve fraxBP = ICurve(fraxBPAddress);
+        ICurvePool fraxBP = ICurvePool(fraxBPAddress);
         ICurveFactory curveFactory = ICurveFactory(metaPoolFactoryAddress);
 
         _fundAndApproveUSDC(owner, address(fraxBP), tenThousand_d6, tenThousand_d6);
@@ -204,7 +196,7 @@ abstract contract BaseSetup is Test {
             address(fraxBP), "FRAXBP/PHO", "FRAXBPPHO", address(pho), 200, 4000000, 0
         );
 
-        ICurve fraxBPPhoMetapool = ICurve(fraxBPPhoMetapoolAddress);
+        ICurvePool fraxBPPhoMetapool = ICurvePool(fraxBPPhoMetapoolAddress);
         pho.approve(address(fraxBPPhoMetapool), tenThousand_d18);
         fraxBPLP.approve(address(fraxBPPhoMetapool), tenThousand_d18);
 
@@ -213,7 +205,7 @@ abstract contract BaseSetup is Test {
         metaLiquidity[1] = tenThousand_d18;
 
         fraxBPPhoMetapool.add_liquidity(metaLiquidity, 0);
-        
+
         return fraxBPPhoMetapoolAddress;
     }
 }
