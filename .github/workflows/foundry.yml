@@ -23,8 +23,8 @@ jobs:
 
       - name: Run tests
         env:
-          PROVIDER_KEY: ${{ secrets.PROVIDER_KEY }}
-        run: RPC_URL="$PROVIDER_KEY" forge test -vvv
+          RPC_URL: ${{ secrets.RPC_URL }}
+        run: forge test -vvv
 
   fmt:
     runs-on: ubuntu-latest
