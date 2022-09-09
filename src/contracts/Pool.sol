@@ -80,12 +80,12 @@ contract Pool is AccessControl, Ownable {
     }
 
     modifier notRedeemPaused() {
-        require(redeemPaused == false, "Redeeming is paused");
+        require(!redeemPaused, "Redeeming is paused");
         _;
     }
 
     modifier notMintPaused() {
-        require(mintPaused == false, "Minting is paused");
+        require(!mintPaused, "Minting is paused");
         _;
     }
 
@@ -126,7 +126,7 @@ contract Pool is AccessControl, Ownable {
     }
 
     function collatDollarBalance() public view returns (uint256) {
-        if (collateralPricePaused == true) {
+        if (collateralPricePaused) {
             return (collateral_token.balanceOf(address(this)).sub(unclaimedPoolCollateral)).mul(
                 10 ** missing_decimals
             ).mul(pausedPrice).div(PRICE_PRECISION);
@@ -415,7 +415,7 @@ contract Pool is AccessControl, Ownable {
     // This function simply rewards anyone that sends collateral to a pool with the same amount of TON + the bonus rate
     // Anyone can call this function to recollateralize the protocol and take the extra TON value from the bonus rate as an arb opportunity
     function recollateralizePHO(uint256 collateral_amount, uint256 TON_out_min) external {
-        require(recollateralizePaused == false, "Recollateralize is paused");
+        require(!recollateralizePaused, "Recollateralize is paused");
         uint256 collateral_amount_d18 = collateral_amount * (10 ** missing_decimals);
         uint256 ton_price = priceOracle.getTONUSDPrice();
         uint256 pho_total_supply = pho.totalSupply();
@@ -446,7 +446,7 @@ contract Pool is AccessControl, Ownable {
     // Function can be called by an TON holder to have the protocol buy back TON with excess collateral value from a desired collateral pool
     // This can also happen if the collateral ratio > 1
     function buyBackTON(uint256 TON_amount, uint256 COLLATERAL_out_min) external {
-        require(buyBackPaused == false, "Buyback is paused");
+        require(!buyBackPaused, "Buyback is paused");
         uint256 ton_price = priceOracle.getTONUSDPrice();
 
         PoolLibrary.BuybackTON_Params memory input_params = PoolLibrary.BuybackTON_Params(
@@ -496,7 +496,7 @@ contract Pool is AccessControl, Ownable {
     function toggleCollateralPrice(uint256 _new_price) external {
         require(hasRole(COLLATERAL_PRICE_PAUSER, msg.sender));
         // If pausing, set paused price; else if unpausing, clear pausedPrice
-        if (collateralPricePaused == false) {
+        if (!collateralPricePaused) {
             pausedPrice = _new_price;
         } else {
             pausedPrice = 0;

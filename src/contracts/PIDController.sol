@@ -118,7 +118,7 @@ contract PIDController is IPIDController, AccessControl, Ownable {
     /// @notice adjusts global collateral ratio as a function of market price vs price_target
     /// @dev There needs to be a time interval that this can be called. Otherwise it can be called multiple times per expansion.
     function refreshCollateralRatio() public {
-        require(collateral_ratio_paused == false, "Collateral Ratio has been paused");
+        require(!collateral_ratio_paused, "Collateral Ratio has been paused");
         uint256 PHO_price_cur = PHO_price();
         require(
             block.timestamp - last_call_time >= refresh_cooldown,

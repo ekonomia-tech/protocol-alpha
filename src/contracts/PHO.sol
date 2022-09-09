@@ -27,7 +27,7 @@ contract PHO is IPHO, ERC20Burnable, AccessControl, Ownable {
 
     /// TODO - confirm with Niv that this is how we want to go about it
     modifier onlyPools() {
-        require(PHO_pools[msg.sender] == true, "Only PHO pools can call this function");
+        require(PHO_pools[msg.sender], "Only PHO pools can call this function");
         _;
     }
 
@@ -89,7 +89,7 @@ contract PHO is IPHO, ERC20Burnable, AccessControl, Ownable {
     function addPool(address pool_address) public onlyByOwnerGovernanceOrController {
         require(pool_address != address(0), "Zero address detected");
 
-        require(PHO_pools[pool_address] == false, "Address already exists");
+        require(!PHO_pools[pool_address], "Address already exists");
         PHO_pools[pool_address] = true;
         PHO_pools_array.push(pool_address);
 
@@ -99,7 +99,7 @@ contract PHO is IPHO, ERC20Burnable, AccessControl, Ownable {
     // Remove a pool
     function removePool(address pool_address) public onlyByOwnerGovernanceOrController {
         require(pool_address != address(0), "Zero address detected");
-        require(PHO_pools[pool_address] == true, "Address nonexistant");
+        require(PHO_pools[pool_address], "Address nonexistant");
 
         // Delete from the mapping
         delete PHO_pools[pool_address];
