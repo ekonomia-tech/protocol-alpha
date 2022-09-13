@@ -189,9 +189,8 @@ contract Pool is AccessControl, Ownable {
             pid.global_collateral_ratio() >= COLLATERAL_RATIO_MAX, "Collateral ratio must be >= 1"
         );
         require(
-            (collateral_token.balanceOf(address(this))).sub(unclaimedPoolCollateral).add(
-                collateral_amount
-            ) <= pool_ceiling,
+            (collateral_token.balanceOf(address(this))).sub(unclaimedPoolCollateral).add(collateral_amount)
+                <= pool_ceiling,
             "[Pool's Closed]: Ceiling reached"
         );
 
@@ -221,9 +220,8 @@ contract Pool is AccessControl, Ownable {
             "Collateral ratio needs to be between .000001 and .999999"
         );
         require(
-            collateral_token.balanceOf(address(this)).sub(unclaimedPoolCollateral).add(
-                collateral_amount
-            ) <= pool_ceiling,
+            collateral_token.balanceOf(address(this)).sub(unclaimedPoolCollateral).add(collateral_amount)
+                <= pool_ceiling,
             "Pool ceiling reached, no more pho can be minted with this collateral"
         );
 
@@ -282,8 +280,7 @@ contract Pool is AccessControl, Ownable {
 
         collateral_needed = (collateral_needed.mul(uint256(1e6).sub(redemption_fee))).div(1e6);
         require(
-            collateral_needed
-                <= collateral_token.balanceOf(address(this)).sub(unclaimedPoolCollateral),
+            collateral_needed <= collateral_token.balanceOf(address(this)).sub(unclaimedPoolCollateral),
             "Not enough collateral in pool"
         );
         require(COLLATERAL_out_min <= collateral_needed, "Slippage limit reached");
@@ -331,8 +328,7 @@ contract Pool is AccessControl, Ownable {
         uint256 collateral_amount = collateral_dollar_value.mul(PRICE_PRECISION).div(col_price_usd);
 
         require(
-            collateral_amount
-                <= collateral_token.balanceOf(address(this)).sub(unclaimedPoolCollateral),
+            collateral_amount <= collateral_token.balanceOf(address(this)).sub(unclaimedPoolCollateral),
             "Not enough collateral in pool"
         );
         require(COLLATERAL_out_min <= collateral_amount, "Slippage limit reached [collateral]");

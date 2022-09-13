@@ -36,8 +36,7 @@ contract PHO is IPHO, ERC20Burnable, AccessControl, Ownable {
     /// params time_lock_address stop-gap smart contract to require passed on-chain vote proposals to wait X blocks before implementation. This allows for users who disagree with the new changes to withdraw funds
     modifier onlyByOwnerGovernanceOrController() {
         require(
-            msg.sender == owner() || msg.sender == timelock_address
-                || msg.sender == controller_address,
+            msg.sender == owner() || msg.sender == timelock_address || msg.sender == controller_address,
             "Not the owner, controller, or the governance timelock"
         );
         _;
@@ -99,7 +98,7 @@ contract PHO is IPHO, ERC20Burnable, AccessControl, Ownable {
     // Remove a pool
     function removePool(address pool_address) public onlyByOwnerGovernanceOrController {
         require(pool_address != address(0), "Zero address detected");
-        require(PHO_pools[pool_address], "Address nonexistant");
+        require(PHO_pools[pool_address], "Address nonexistent");
 
         // Delete from the mapping
         delete PHO_pools[pool_address];
