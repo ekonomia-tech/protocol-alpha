@@ -9,13 +9,13 @@
 - Prefix internal functions with an underscore i.e. `_priceHelper()`
 - Always use uint256 over uint
 - Always explicitly return values (i.e. do not give return vars names) i.e. `function getNewPrice() public view returns (uint256)`
-- Always do comments with /// except for within a function use //
-- Try to fill out natspec with to the best of ability
+- Always do comments with `///` except for within a function use `//`
+- Try to fill out natspec to the best of ability at the start, and with great detail when the code is ready for audit.
   - Official doc: https://docs.soliditylang.org/en/develop/natspec-format.html
   - Do not use `section headers`; ex. `/* ========== PUBLIC FUNCTIONS ========== */`
 - Events should be defined in the interface if applicable otherwise in the contract
   - Default rule to index ID-Related values && addresses, not integers i.e. `address indexed sender`
-- Error messages: descriptive but short (under ~30-40 chars ideally) with format: `contractName(): error message`
+- Error messages: descriptive but short (`length <= 32` chars) with format: `contractName(): error message`
   - Future: reformatting of codebase with error codes for gas efficiencies if deemed appropriate.
 - Always do exponential numbers as `100 * 10 ** 18`, not `100 * 10e18`
 - Always explicitly set names for numbers in functions, rather than passing in `150000` and expecting people to know the context of this number.
