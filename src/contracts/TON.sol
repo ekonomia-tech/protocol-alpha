@@ -17,7 +17,7 @@ contract TON is ERC20Burnable, AccessControl, Ownable {
     PHO public pho;
 
     modifier onlyPools() {
-        require(pho.PHO_pools(msg.sender) == true, "Only pho pools can mint or burn TON");
+        require(pho.PHO_pools(msg.sender), "Only pho pools can mint or burn TON");
         _;
     }
 

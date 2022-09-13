@@ -1,6 +1,0 @@
-{
-  "solidity.remappings": [
-    "forge-std/=lib/forge-std/src/",
-    "@openzeppelin=lib/openzeppelin-contracts/"
-  ]
-}
