@@ -49,7 +49,8 @@ contract PIDController is IPIDController, AccessControl, Ownable {
 
     modifier onlyByOwnerGovernanceOrController() {
         require(
-            msg.sender == owner() || msg.sender == timelock_address || msg.sender == controller_address,
+            msg.sender == owner() || msg.sender == timelock_address
+                || msg.sender == controller_address,
             "Not the owner, controller, or the governance timelock"
         );
         _;
@@ -105,8 +106,8 @@ contract PIDController is IPIDController, AccessControl, Ownable {
         for (uint256 i = 0; i < poolCount; i++) {
             // Exclude null addresses
             if (pho.PHO_pools_array(i) != address(0)) {
-                total_collateral_value_d18 =
-                    total_collateral_value_d18 + (Pool(pho.PHO_pools_array(i)).collatDollarBalance());
+                total_collateral_value_d18 = total_collateral_value_d18
+                    + (Pool(pho.PHO_pools_array(i)).collatDollarBalance());
             }
         }
         return total_collateral_value_d18;

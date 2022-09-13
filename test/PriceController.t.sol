@@ -413,7 +413,9 @@ contract PriceControllerTest is BaseSetup {
         assertApproxEqAbs(phoPoolBalanceBefore, phoPoolBalanceAfter + expectedPho, 10 ** 18);
         assertEq(usdcPriceControllerBalanceBefore, usdcPriceControllerBalanceAfter + usdcToExchange);
         assertApproxEqAbs(
-            phoPriceControllerBalanceBefore, phoPriceControllerBalanceAfter - tokensReceived, 10 ** 18
+            phoPriceControllerBalanceBefore,
+            phoPriceControllerBalanceAfter - tokensReceived,
+            10 ** 18
         );
     }
 
@@ -452,7 +454,9 @@ contract PriceControllerTest is BaseSetup {
         assertApproxEqAbs(phoPoolBalanceBefore, phoPoolBalanceAfter + expectedPho, 10 ** 18);
         assertEq(fraxPriceControllerBalanceBefore, fraxPriceControllerBalanceAfter + fraxToExchange);
         assertApproxEqAbs(
-            phoPriceControllerBalanceBefore, phoPriceControllerBalanceAfter - tokensReceived, 10 ** 18
+            phoPriceControllerBalanceBefore,
+            phoPriceControllerBalanceAfter - tokensReceived,
+            10 ** 18
         );
     }
 
@@ -482,8 +486,9 @@ contract PriceControllerTest is BaseSetup {
     /// stabilize
 
     function testStabilizeOverPegOutBand() public {
-        (int128 phoIndex, int128 fraxBPLPIndex,) =
-            curveFactory.get_coin_indices(address(fraxBPPhoMetapool), address(pho), address(fraxBPLP));
+        (int128 phoIndex, int128 fraxBPLPIndex,) = curveFactory.get_coin_indices(
+            address(fraxBPPhoMetapool), address(pho), address(fraxBPLP)
+        );
 
         uint256 phoTotalSupplyBefore = pho.totalSupply();
         uint256 fraxBPPriceControllerBalanceBefore = fraxBPLP.balanceOf(address(priceController));

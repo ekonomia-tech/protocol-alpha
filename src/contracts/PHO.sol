@@ -36,7 +36,8 @@ contract PHO is IPHO, ERC20Burnable, AccessControl, Ownable {
     /// params time_lock_address stop-gap smart contract to require passed on-chain vote proposals to wait X blocks before implementation. This allows for users who disagree with the new changes to withdraw funds
     modifier onlyByOwnerGovernanceOrController() {
         require(
-            msg.sender == owner() || msg.sender == timelock_address || msg.sender == controller_address,
+            msg.sender == owner() || msg.sender == timelock_address
+                || msg.sender == controller_address,
             "Not the owner, controller, or the governance timelock"
         );
         _;

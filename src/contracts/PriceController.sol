@@ -75,7 +75,8 @@ contract PriceController is IPriceController, Ownable, AccessControl {
         require(_curve_factory != address(0), "Price Controller: zero address detected");
         require(_controller_address != address(0), "Price Controller: zero address detected");
         require(
-            _cooldownPeriod >= 3600, "Price Controller: cooldown period cannot be shorter then 1 hour"
+            _cooldownPeriod >= 3600,
+            "Price Controller: cooldown period cannot be shorter then 1 hour"
         );
         require(
             _priceBand > 0 && _priceBand < FRACTION_PRECISION,
@@ -221,8 +222,9 @@ contract PriceController is IPriceController, Ownable, AccessControl {
             stabilizingToken.approve(address(dexPool), amountIn);
 
             // To get the expected tokens out, we need to get the index of the underlying token we wish to swap
-            (int128 stabilizingTokenIndex, int128 phoIndex,) =
-                curveFactory.get_coin_indices(address(dexPool), address(stabilizingToken), address(pho));
+            (int128 stabilizingTokenIndex, int128 phoIndex,) = curveFactory.get_coin_indices(
+                address(dexPool), address(stabilizingToken), address(pho)
+            );
 
             // getting the expected $PHO from the swap by calling get_dy_underlying with the underlying token
             minOut = dexPool.get_dy_underlying(stabilizingTokenIndex, phoIndex, amountIn)
@@ -292,7 +294,8 @@ contract PriceController is IPriceController, Ownable, AccessControl {
     function setDexPool(address newDexPool) external onlyByOwnerGovernanceOrController {
         require(newDexPool != address(0), "Price Controller: zero address detected");
         require(
-            curveFactory.is_meta(newDexPool), "Price Controller: address does not point to a metapool"
+            curveFactory.is_meta(newDexPool),
+            "Price Controller: address does not point to a metapool"
         );
 
         address[8] memory underlyingCoins = curveFactory.get_underlying_coins(newDexPool);
