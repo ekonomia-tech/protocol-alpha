@@ -38,9 +38,8 @@ contract PriceControllerTest is BaseSetup {
         priceController =
         new PriceController(address(pho), address(teller), address(priceOracle), address(fraxBPPhoMetapool), USDC_ADDRESS, address(curveFactory), owner, 3600, 10 ** 4, 50000,99000);
 
+        vm.prank(owner);
         teller.approveCaller(address(priceController));
-
-        vm.stopPrank();
 
         vm.prank(address(priceController));
         teller.mintPHO(address(priceController), tenThousand_d18);
@@ -69,7 +68,14 @@ contract PriceControllerTest is BaseSetup {
 
     function testCannotSetOracleNotAllowed() public {
         vm.expectRevert("Price Controller: not the owner or controller");
+        vm.prank(user1);
         priceController.setOracleAddress(address(0));
+    }
+
+    function testCannotSetOracleSameAddress() public {
+        vm.expectRevert("Price Controller: same address detected");
+        vm.prank(owner);
+        priceController.setOracleAddress(address(priceOracle));
     }
 
     /// setController
@@ -90,7 +96,14 @@ contract PriceControllerTest is BaseSetup {
 
     function testCannotSetControllerNotAllowed() public {
         vm.expectRevert("Price Controller: not the owner or controller");
+        vm.prank(user1);
         priceController.setController(address(0));
+    }
+
+    function testCannotSetControllerSameAddress() public {
+        vm.expectRevert("Price Controller: same address detected");
+        vm.prank(owner);
+        priceController.setController(owner);
     }
 
     /// setCooldownPeriod
@@ -112,13 +125,21 @@ contract PriceControllerTest is BaseSetup {
 
     function testCannotSetCooldownPeriodNotAllowed() public {
         vm.expectRevert("Price Controller: not the owner or controller");
+        vm.prank(user1);
         priceController.setCooldownPeriod(100);
+    }
+
+    function testCannotSetCooldownPeriodSameValue() public {
+        uint256 currentCooldownPeriod = priceController.cooldownPeriod();
+        vm.expectRevert("Price Controller: same value detected");
+        vm.prank(owner);
+        priceController.setCooldownPeriod(currentCooldownPeriod);
     }
 
     /// setPriceBand
 
     function testSetPriceBand() public {
-        uint256 newPriceBand = 2 * 10 ** 4;
+        uint256 newPriceBand = 3 * 10 ** 4;
         vm.expectEmit(true, true, false, false);
         emit PriceBandUpdated(newPriceBand);
         vm.prank(owner);
@@ -133,7 +154,15 @@ contract PriceControllerTest is BaseSetup {
 
     function testCannotSetPriceBandNotAllowed() public {
         vm.expectRevert("Price Controller: not the owner or controller");
+        vm.prank(user1);
         priceController.setPriceBand(0);
+    }
+
+    function testCannotSetPriceBandSameValue() public {
+        uint256 currentPriceBand = priceController.priceBand();
+        vm.expectRevert("Price Controller: same value detected");
+        vm.prank(owner);
+        priceController.setPriceBand(currentPriceBand);
     }
 
     /// setGapFraction
@@ -148,6 +177,7 @@ contract PriceControllerTest is BaseSetup {
 
     function testCannotSetGapFractionNotAllowed() public {
         vm.expectRevert("Price Controller: not the owner or controller");
+        vm.prank(user1);
         priceController.setGapFraction(0);
     }
 
@@ -164,6 +194,13 @@ contract PriceControllerTest is BaseSetup {
         priceController.setGapFraction(newGapFractionUnder);
     }
 
+    function testCannotSetGapFractionSameValue() public {
+        uint256 currentGapFraction = priceController.gapFraction();
+        vm.expectRevert("Price Controller: same value detected");
+        vm.prank(owner);
+        priceController.setGapFraction(currentGapFraction);
+    }
+
     /// setMaxSlippage
 
     function testSetMaxSlippage() public {
@@ -176,6 +213,7 @@ contract PriceControllerTest is BaseSetup {
 
     function testCannotSetMaxSlippageNotAllowed() public {
         vm.expectRevert("Price Controller: not the owner or controller");
+        vm.prank(user1);
         priceController.setMaxSlippage(0);
     }
 
@@ -192,10 +230,17 @@ contract PriceControllerTest is BaseSetup {
         priceController.setMaxSlippage(newMaxSlippageUnder);
     }
 
+    function testCannotSetMaxSlippageSameValue() public {
+        uint256 currentMaxSlippage = priceController.maxSlippage();
+        vm.expectRevert("Price Controller: same value detected");
+        vm.prank(owner);
+        priceController.setMaxSlippage(currentMaxSlippage);
+    }
+
     /// setDexPool
 
     function testSetDexPool() public {
-        address newDexPool = address(fraxBPPhoMetapool);
+        address newDexPool = _deployFraxBPPHOPool();
         vm.expectEmit(true, false, false, true);
         emit DexPoolUpdated(newDexPool);
         vm.prank(owner);
@@ -204,6 +249,7 @@ contract PriceControllerTest is BaseSetup {
 
     function testCannotSetDexPoolNotAllowed() public {
         vm.expectRevert("Price Controller: not the owner or controller");
+        vm.prank(user1);
         priceController.setDexPool(address(110));
     }
 
@@ -225,10 +271,17 @@ contract PriceControllerTest is BaseSetup {
         priceController.setDexPool(fraxBPLUSD);
     }
 
+    function testCannotSetDexPoolSameAddress() public {
+        ICurvePool currentDexPool = priceController.dexPool();
+        vm.expectRevert("Price Controller: same address detected");
+        vm.prank(owner);
+        priceController.setDexPool(address(currentDexPool));
+    }
+
     /// setStabilizingToken
 
     function testSetStabilizingToken() public {
-        address newStabilizingToken = USDC_ADDRESS;
+        address newStabilizingToken = fraxAddress;
         vm.expectEmit(true, false, false, true);
         emit StabilizingTokenUpdated(newStabilizingToken);
         vm.prank(owner);
@@ -237,6 +290,7 @@ contract PriceControllerTest is BaseSetup {
 
     function testCannotSetStabilizingTokenNotAllowed() public {
         vm.expectRevert("Price Controller: not the owner or controller");
+        vm.prank(user1);
         priceController.setStabilizingToken(address(110));
     }
 
@@ -250,6 +304,12 @@ contract PriceControllerTest is BaseSetup {
         vm.expectRevert("Price Controller: token is not an underlying in the base pool");
         vm.prank(owner);
         priceController.setStabilizingToken(address(101));
+    }
+
+    function testCannotSetStabilizingTokenSameAddress() public {
+        vm.expectRevert("Price Controller: same address detected");
+        vm.prank(owner);
+        priceController.setStabilizingToken(USDC_ADDRESS);
     }
 
     /// checkPriceBand
@@ -353,7 +413,7 @@ contract PriceControllerTest is BaseSetup {
         uint256 phoToExchange = oneThousand_d18;
         uint256 minExpected = fraxBPPhoMetapool.get_dy(0, 1, phoToExchange);
 
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, false, true);
         emit TokensExchanged(
             address(fraxBPPhoMetapool), address(pho), phoToExchange, address(fraxBPLP), minExpected
             );
@@ -377,9 +437,6 @@ contract PriceControllerTest is BaseSetup {
     }
 
     function testExchangeTokensUSDCIn() public {
-        vm.prank(owner);
-        priceController.setStabilizingToken(USDC_ADDRESS);
-
         (int128 usdcIndex, int128 phoIndex,) =
             curveFactory.get_coin_indices(address(fraxBPPhoMetapool), address(usdc), address(pho));
         uint256[8] memory underlyingBalancesBefore =
@@ -395,7 +452,7 @@ contract PriceControllerTest is BaseSetup {
         uint256 expectedPho =
             fraxBPPhoMetapool.get_dy_underlying(usdcIndex, phoIndex, usdcToExchange);
 
-        vm.expectEmit(true, true, true, false);
+        vm.expectEmit(true, true, false, false);
         emit TokensExchanged(
             address(fraxBPPhoMetapool), address(usdc), usdcToExchange, address(pho), expectedPho
             );
@@ -436,9 +493,9 @@ contract PriceControllerTest is BaseSetup {
         uint256 expectedPho =
             fraxBPPhoMetapool.get_dy_underlying(fraxIndex, phoIndex, fraxToExchange);
 
-        vm.expectEmit(true, true, true, false);
+        vm.expectEmit(true, true, false, false);
         emit TokensExchanged(
-            address(fraxBPPhoMetapool), address(usdc), fraxToExchange, address(pho), expectedPho
+            address(fraxBPPhoMetapool), address(frax), fraxToExchange, address(pho), expectedPho
             );
         vm.prank(owner);
         uint256 tokensReceived = priceController.exchangeTokens(false, fraxToExchange);
@@ -468,6 +525,7 @@ contract PriceControllerTest is BaseSetup {
 
     function testCannotExchangeTokensNotAllowed() public {
         vm.expectRevert("Price Controller: not the owner or controller");
+        vm.prank(user1);
         priceController.exchangeTokens(false, 0);
     }
 
@@ -583,19 +641,19 @@ contract PriceControllerTest is BaseSetup {
 
     ///Events
 
-    event ControllerSet(address newControllerAddress);
-    event OracleAddressSet(address newOracleAddress);
+    event ControllerSet(address indexed newControllerAddress);
+    event OracleAddressSet(address indexed newOracleAddress);
     event CooldownPeriodUpdated(uint256 newCooldownPeriod);
     event PriceBandUpdated(uint256 newPriceBand);
     event GapFractionUpdated(uint256 newGapFraction);
     event TokensExchanged(
-        address dexPool,
-        address tokenSent,
+        address indexed dexPool,
+        address indexed tokenSent,
         uint256 amountSent,
         address tokenReceived,
         uint256 amountReceived
     );
-    event DexPoolUpdated(address newDexPool);
-    event StabilizingTokenUpdated(address newStabilizingToken);
+    event DexPoolUpdated(address indexed newDexPool);
+    event StabilizingTokenUpdated(address indexed newStabilizingToken);
     event MaxSlippageUpdated(uint256 newMaxSlippage);
 }

@@ -3,10 +3,10 @@
 pragma solidity ^0.8.13;
 
 interface ITeller {
-    event ControllerSet(address controllerAddress);
-    event TimelockSet(address timelockAddress);
-    event CallerApproved(address caller);
-    event CallerRevoked(address caller);
+    event ControllerSet(address indexed controllerAddress);
+    event TimelockSet(address indexed timelockAddress);
+    event CallerApproved(address indexed caller);
+    event CallerRevoked(address indexed caller);
     event PHOCeilingSet(uint256 ceiling);
 
     function mintPHO(address to, uint256 amount) external;

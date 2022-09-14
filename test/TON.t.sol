@@ -7,11 +7,11 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./BaseSetup.t.sol";
 
 contract TONTest is BaseSetup {
-    event TellerSet(address tellerAddress);
+    event TellerSet(address indexed tellerAddress);
     event TONBurned(address indexed from, uint256 amount);
     event TONMinted(address indexed from, address indexed to, uint256 amount);
-    event TimelockSet(address newTimelockAddress);
-    event ControllerSet(address controllerAddress);
+    event TimelockSet(address indexed newTimelockAddress);
+    event ControllerSet(address indexed controllerAddress);
 
     function setUp() public {
         vm.prank(owner);
@@ -77,6 +77,13 @@ contract TONTest is BaseSetup {
         ton.setController(address(0));
     }
 
+    function testCannotSetControllerSameAddress() public {
+        address currentController = ton.controllerAddress();
+        vm.expectRevert("TON: same address detected");
+        vm.prank(owner);
+        ton.setController(currentController);
+    }
+
     /// setTimelock()
 
     function testSetTimelock() public {
@@ -101,5 +108,12 @@ contract TONTest is BaseSetup {
         vm.expectRevert("TON: Not the owner, controller, or the governance timelock");
         vm.prank(user1);
         ton.setTimelock(address(0));
+    }
+
+    function testCannotSetTimelockSameAddress() public {
+        address currentTimelock = ton.timelockAddress();
+        vm.expectRevert("TON: same address detected");
+        vm.prank(owner);
+        ton.setTimelock(currentTimelock);
     }
 }

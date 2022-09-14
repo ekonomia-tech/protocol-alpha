@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../interfaces/IPHO.sol";
 
-/// @title PHO
+/// @title PHOTON protocol stablecoin
 /// @author Ekonomia: https://github.com/Ekonomia
 
 contract PHO is IPHO, ERC20Burnable, Ownable {
@@ -52,7 +52,7 @@ contract PHO is IPHO, ERC20Burnable, Ownable {
         emit PHOBurned(from, msg.sender, amount);
     }
 
-    /// @notice only accessible by teller
+    /// @notice mint new $PHO tokens
     /// @param to the user to mint $PHO to
     /// @param amount the amount to mint
     function mint(address to, uint256 amount) external onlyTeller {
@@ -60,9 +60,10 @@ contract PHO is IPHO, ERC20Burnable, Ownable {
         emit PHOMinted(msg.sender, to, amount);
     }
 
-    /// @notice set the teller address. this address will be the only one capable of minting and burning
+    /// @notice set the teller address, which will be the only address capable of minting and burning
     function setTeller(address newTeller) external onlyByOwnerGovernanceOrController {
         require(newTeller != address(0), "PHO: zero address detected");
+        require(newTeller != tellerAddress, "PHO: same address detected");
         tellerAddress = newTeller;
         emit ControllerSet(tellerAddress);
     }
@@ -70,6 +71,7 @@ contract PHO is IPHO, ERC20Burnable, Ownable {
     /// @notice set controller (owner) of this contract
     function setController(address newController) external onlyByOwnerGovernanceOrController {
         require(newController != address(0), "PHO: zero address detected");
+        require(newController != controllerAddress, "PHO: same address detected");
         controllerAddress = newController;
         emit ControllerSet(controllerAddress);
     }
@@ -77,6 +79,7 @@ contract PHO is IPHO, ERC20Burnable, Ownable {
     /// @notice set the timelock address to be used in this contract
     function setTimelock(address newTimelock) external onlyByOwnerGovernanceOrController {
         require(newTimelock != address(0), "PHO: zero address detected");
+        require(newTimelock != timelockAddress, "PHO: same address detected");
         timelockAddress = newTimelock;
         emit TimelockSet(timelockAddress);
     }

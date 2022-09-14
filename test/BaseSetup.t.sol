@@ -162,9 +162,8 @@ abstract contract BaseSetup is Test {
         fraxBPmetaLiquidity[1] = tenThousand_d6; // usdc
         uint256 minLPOut = tenThousand_d18;
 
-        vm.startPrank(fraxRichGuy);
+        vm.prank(fraxRichGuy);
         frax.transfer(owner, tenThousand_d18 * 5);
-        vm.stopPrank();
 
         vm.startPrank(owner);
 
@@ -186,6 +185,8 @@ abstract contract BaseSetup is Test {
         metaLiquidity[1] = tenThousand_d18;
 
         fraxBPPhoMetapool.add_liquidity(metaLiquidity, 0);
+
+        vm.stopPrank();
 
         return fraxBPPhoMetapoolAddress;
     }

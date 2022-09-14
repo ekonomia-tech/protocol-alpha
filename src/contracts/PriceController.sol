@@ -251,6 +251,7 @@ contract PriceController is IPriceController, Ownable, AccessControl {
         onlyByOwnerGovernanceOrController
     {
         require(newOracleAddress != address(0), "Price Controller: zero address detected");
+        require(newOracleAddress != address(priceOracle), "Price Controller: same address detected");
         priceOracle = DummyOracle(newOracleAddress);
         emit OracleAddressSet(address(priceOracle));
     }
@@ -261,6 +262,9 @@ contract PriceController is IPriceController, Ownable, AccessControl {
         onlyByOwnerGovernanceOrController
     {
         require(newControllerAddress != address(0), "Price Controller: zero address detected");
+        require(
+            newControllerAddress != controllerAddress, "Price Controller: same address detected"
+        );
         controllerAddress = newControllerAddress;
         emit ControllerSet(newControllerAddress);
     }
@@ -274,6 +278,7 @@ contract PriceController is IPriceController, Ownable, AccessControl {
             newCooldownPeriod >= 3600,
             "Price Controller: cooldown period cannot be shorter then 1 hour"
         );
+        require(newCooldownPeriod != cooldownPeriod, "Price Controller: same value detected");
         cooldownPeriod = newCooldownPeriod;
         emit CooldownPeriodUpdated(cooldownPeriod);
     }
@@ -281,6 +286,7 @@ contract PriceController is IPriceController, Ownable, AccessControl {
     /// @notice set the price band in which stabilize will not perform any actions
     function setPriceBand(uint256 newPriceBand) external onlyByOwnerGovernanceOrController {
         require(newPriceBand > 0, "Price Controller: price band cannot be 0");
+        require(newPriceBand != priceBand, "Price Controller: same value detected");
         priceBand = newPriceBand;
         emit PriceBandUpdated(priceBand);
     }
@@ -291,6 +297,7 @@ contract PriceController is IPriceController, Ownable, AccessControl {
             newGapFraction > 0 && newGapFraction < FRACTION_PRECISION,
             "Price Controller: value can only be between 0 to 100000"
         );
+        require(newGapFraction != gapFraction, "Price Controller: same value detected");
         gapFraction = newGapFraction;
         emit GapFractionUpdated(gapFraction);
     }
@@ -302,6 +309,7 @@ contract PriceController is IPriceController, Ownable, AccessControl {
             curveFactory.is_meta(newDexPool),
             "Price Controller: address does not point to a metapool"
         );
+        require(newDexPool != address(dexPool), "Price Controller: same address detected");
 
         address[8] memory underlyingCoins = curveFactory.get_underlying_coins(newDexPool);
         bool isPhoPresent = false;
@@ -323,6 +331,10 @@ contract PriceController is IPriceController, Ownable, AccessControl {
         onlyByOwnerGovernanceOrController
     {
         require(newStabilizingToken != address(0), "Price Controller: zero address detected");
+        require(
+            newStabilizingToken != address(stabilizingToken),
+            "Price Controller: same address detected"
+        );
         address[8] memory underlyingCoins = curveFactory.get_underlying_coins(address(dexPool));
         bool isTokenUnderlying = false;
         for (uint256 i = 0; i < underlyingCoins.length; i++) {
@@ -344,6 +356,7 @@ contract PriceController is IPriceController, Ownable, AccessControl {
             newMaxSlippage > 0 && newMaxSlippage < FRACTION_PRECISION,
             "Price Controller: value can only be between 0 to 100000"
         );
+        require(newMaxSlippage != maxSlippage, "Price Controller: same value detected");
         maxSlippage = newMaxSlippage;
         emit MaxSlippageUpdated(maxSlippage);
     }
