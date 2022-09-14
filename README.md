@@ -56,3 +56,7 @@ https://hardhat.org/hardhat-runner/docs/guides/deploying
 ```
 npx hardhat run --network <your-network> scripts/hardhat/deploy.js
 ```
+
+### Vyper
+
+Inspiration for the hardhat-vyper setup: https://github.com/de33/hardhat-vyper-starter

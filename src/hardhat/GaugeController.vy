@@ -121,7 +121,7 @@ global_emission_rate: public(uint256)  # inflation rate
 def __init__(_token: address, _voting_escrow: address):
     """
     @notice Contract constructor
-    @param _token `ERC-20 FXS` contract address
+    @param _token `ERC-20 TON` contract address
     @param _voting_escrow `VotingEscrow` contract address
     """
     assert _token != ZERO_ADDRESS
@@ -605,8 +605,8 @@ def get_weights_sum_per_type(type_id: int128) -> uint256:
 @external
 def change_global_emission_rate(new_rate: uint256):
     """
-    @notice Change FXS emission rate
-    @param new_rate new emission rate (FXS per second)
+    @notice Change TON emission rate
+    @param new_rate new emission rate (TON per second)
     """
     assert msg.sender == self.admin
     self.global_emission_rate = new_rate

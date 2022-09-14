@@ -10,5 +10,6 @@ scripts/curve/logs
 # Code Editors
 .vscode
 
-# npm
-node_modules/*
+# hardhat/npm
+node_modules/
+artifacts/
