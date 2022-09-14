@@ -36,14 +36,14 @@ contract PriceControllerTest is BaseSetup {
         fraxBPPhoMetapool = ICurvePool(_deployFraxBPPHOPool());
 
         priceController =
-        new PriceController(address(pho), address(priceOracle), address(fraxBPPhoMetapool), USDC_ADDRESS, address(curveFactory), owner, 3600, 10 ** 4, 50000,99000);
+        new PriceController(address(pho), address(teller), address(priceOracle), address(fraxBPPhoMetapool), USDC_ADDRESS, address(curveFactory), owner, 3600, 10 ** 4, 50000,99000);
 
-        pho.addPool(address(priceController));
+        teller.approveCaller(address(priceController));
 
         vm.stopPrank();
 
         vm.prank(address(priceController));
-        pho.pool_mint(address(priceController), tenThousand_d18);
+        teller.mintPHO(address(priceController), tenThousand_d18);
         _fundAndApproveUSDC(
             address(priceController), address(fraxBPPhoMetapool), tenThousand_d6, tenThousand_d6
         );
@@ -51,7 +51,7 @@ contract PriceControllerTest is BaseSetup {
         frax.transfer(address(priceController), tenThousand_d18);
     }
 
-    /// setOracleAddress
+    // /// setOracleAddress
 
     function testSetOracleAddress() public {
         address newAddress = address(110);
@@ -583,7 +583,7 @@ contract PriceControllerTest is BaseSetup {
 
     ///Events
 
-    event ControllerSet(address newConrollerAddress);
+    event ControllerSet(address newControllerAddress);
     event OracleAddressSet(address newOracleAddress);
     event CooldownPeriodUpdated(uint256 newCooldownPeriod);
     event PriceBandUpdated(uint256 newPriceBand);
