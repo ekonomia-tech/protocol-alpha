@@ -9,3 +9,6 @@ scripts/curve/logs
 
 # Code Editors
 .vscode
+
+# npm
+node_modules/*
