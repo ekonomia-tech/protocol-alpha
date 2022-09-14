@@ -7,10 +7,10 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./BaseSetup.t.sol";
 
 contract TellerTest is BaseSetup {
-    event ControllerSet(address controllerAddress);
-    event TimelockSet(address timelockAddress);
-    event CallerApproved(address caller);
-    event CallerRevoked(address caller);
+    event ControllerSet(address indexed controllerAddress);
+    event TimelockSet(address indexed timelockAddress);
+    event CallerApproved(address indexed caller);
+    event CallerRevoked(address indexed caller);
     event PHOCeilingSet(uint256 ceiling);
 
     function setUp() public {
@@ -65,7 +65,7 @@ contract TellerTest is BaseSetup {
         emit CallerApproved(address(103));
         vm.prank(owner);
         teller.approveCaller(address(103));
-        assertTrue(teller.approved(address(103)));
+        assertTrue(teller.approvedCallers(address(103)));
     }
 
     function testCannotApproveCallerNotAllowed() public {
@@ -79,6 +79,12 @@ contract TellerTest is BaseSetup {
         teller.approveCaller(address(0));
     }
 
+    function testCannotApproveCallerAlreadyApproved() public {
+        vm.expectRevert("Teller: caller is already approved");
+        vm.prank(owner);
+        teller.approveCaller(owner);
+    }
+
     /// revokeCaller()
 
     function testRevokeCaller() public {
@@ -86,7 +92,7 @@ contract TellerTest is BaseSetup {
         emit CallerRevoked(owner);
         vm.prank(owner);
         teller.revokeCaller(owner);
-        assertFalse(teller.approved(owner));
+        assertFalse(teller.approvedCallers(owner));
     }
 
     function testCannotRevokeCallerNotAllowed() public {
@@ -98,6 +104,12 @@ contract TellerTest is BaseSetup {
         vm.expectRevert("Teller: zero address detected");
         vm.prank(owner);
         teller.revokeCaller(address(0));
+    }
+
+    function testCannotRevokeCallerNotApproved() public {
+        vm.expectRevert("Teller: caller is not approved");
+        vm.prank(owner);
+        teller.revokeCaller(user1);
     }
 
     /// setPHOCeiling()
@@ -116,10 +128,17 @@ contract TellerTest is BaseSetup {
         teller.setPHOCeiling(tenThousand_d18);
     }
 
-    function testCannotSetPHOCeilingTo0() public {
+    function testCannotSetPhoCeilingToZero() public {
         vm.expectRevert("Teller: new ceiling cannot be 0");
         vm.prank(owner);
         teller.setPHOCeiling(0);
+    }
+
+    function testCannotSetPHOCeilingSameValue() public {
+        uint256 currentCeiling = teller.phoCeiling();
+        vm.expectRevert("Teller: same ceiling value detected");
+        vm.prank(owner);
+        teller.setPHOCeiling(currentCeiling);
     }
 
     /// setController()
@@ -137,15 +156,22 @@ contract TellerTest is BaseSetup {
     }
 
     function testCannotSetControllerAddressZero() public {
-        vm.expectRevert("PHO: zero address detected");
+        vm.expectRevert("Teller: zero address detected");
         vm.prank(owner);
-        pho.setController(address(0));
+        teller.setController(address(0));
     }
 
     function testCannotSetControllerNotAllowed() public {
-        vm.expectRevert("PHO: Not the owner, controller, or the governance timelock");
+        vm.expectRevert("Teller: Not the owner, controller, or the governance timelock");
         vm.prank(user1);
-        pho.setController(address(0));
+        teller.setController(address(0));
+    }
+
+    function testCannotSetControllerSameAddress() public {
+        address currentController = teller.controllerAddress();
+        vm.expectRevert("Teller: same address detected");
+        vm.prank(owner);
+        teller.setController(currentController);
     }
 
     /// setTimelock()
@@ -155,27 +181,34 @@ contract TellerTest is BaseSetup {
         address initialTimelock = pho.controllerAddress();
         vm.expectEmit(false, false, false, true);
         emit TimelockSet(user1);
-        pho.setTimelock(user1);
+        teller.setTimelock(user1);
 
-        assertTrue(initialTimelock != pho.timelockAddress());
-        assertEq(pho.timelockAddress(), user1);
+        assertTrue(initialTimelock != teller.timelockAddress());
+        assertEq(teller.timelockAddress(), user1);
         vm.stopPrank();
     }
 
     function testCannotSetTimelockAddressZero() public {
-        vm.expectRevert("PHO: zero address detected");
+        vm.expectRevert("Teller: zero address detected");
         vm.prank(owner);
-        pho.setTimelock(address(0));
+        teller.setTimelock(address(0));
     }
 
     function testCannotSetTimelockNotAllowed() public {
-        vm.expectRevert("PHO: Not the owner, controller, or the governance timelock");
+        vm.expectRevert("Teller: Not the owner, controller, or the governance timelock");
         vm.prank(user1);
-        pho.setTimelock(address(0));
+        teller.setTimelock(address(0));
     }
 
     function _approveCaller(address toApprove) private {
         vm.prank(owner);
         teller.approveCaller(toApprove);
+    }
+
+    function testCannotSetTimelockSameAddress() public {
+        address currentTimelock = teller.timelockAddress();
+        vm.expectRevert("Teller: same address detected");
+        vm.prank(owner);
+        teller.setTimelock(currentTimelock);
     }
 }

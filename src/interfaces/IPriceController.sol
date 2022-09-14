@@ -2,20 +2,20 @@
 pragma solidity ^0.8.13;
 
 interface IPriceController {
-    event ControllerSet(address newConrollerAddress);
-    event OracleAddressSet(address newOracleAddress);
+    event ControllerSet(address indexed newControllerAddress);
+    event OracleAddressSet(address indexed newOracleAddress);
     event CooldownPeriodUpdated(uint256 newCooldownPeriod);
     event PriceBandUpdated(uint256 newPriceBand);
     event GapFractionUpdated(uint256 newGapFraction);
     event TokensExchanged(
-        address dexPool,
-        address tokenSent,
+        address indexed dexPool,
+        address indexed tokenSent,
         uint256 amountSent,
         address tokenReceived,
         uint256 amountReceived
     );
-    event DexPoolUpdated(address newDexPool);
-    event StabilizingTokenUpdated(address newStabilizingToken);
+    event DexPoolUpdated(address indexed newDexPool);
+    event StabilizingTokenUpdated(address indexed newStabilizingToken);
     event MaxSlippageUpdated(uint256 newMaxSlippage);
 
     function setController(address newControllerAddress) external;

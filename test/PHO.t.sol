@@ -8,9 +8,9 @@ import "./BaseSetup.t.sol";
 contract PHOTest is BaseSetup {
     event PHOBurned(address indexed from, address indexed burnCaller, uint256 amount);
     event PHOMinted(address indexed mintCaller, address indexed to, uint256 amount);
-    event TellerSet(address teller);
-    event ControllerSet(address controllerAddress);
-    event TimelockSet(address timelockAddress);
+    event TellerSet(address indexed teller);
+    event ControllerSet(address indexed controllerAddress);
+    event TimelockSet(address indexed timelockAddress);
 
     function setUp() public {
         vm.prank(address(teller));
@@ -105,6 +105,13 @@ contract PHOTest is BaseSetup {
         pho.setTeller(address(0));
     }
 
+    function testCannotSetTellerSameAddress() public {
+        address currentTeller = pho.tellerAddress();
+        vm.expectRevert("PHO: same address detected");
+        vm.prank(owner);
+        pho.setTeller(currentTeller);
+    }
+
     /// setController()
 
     function testSetController() public {
@@ -131,6 +138,13 @@ contract PHOTest is BaseSetup {
         pho.setController(address(0));
     }
 
+    function testCannotSetControllerSameAddress() public {
+        address currentController = pho.controllerAddress();
+        vm.expectRevert("PHO: same address detected");
+        vm.prank(owner);
+        pho.setController(currentController);
+    }
+
     /// setTimelock()
 
     function testSetTimelock() public {
@@ -155,5 +169,12 @@ contract PHOTest is BaseSetup {
         vm.expectRevert("PHO: Not the owner, controller, or the governance timelock");
         vm.prank(user1);
         pho.setTimelock(address(0));
+    }
+
+    function testCannotSetTimelockSameAddress() public {
+        address currentTimelock = pho.timelockAddress();
+        vm.expectRevert("PHO: same address detected");
+        vm.prank(owner);
+        pho.setTimelock(currentTimelock);
     }
 }

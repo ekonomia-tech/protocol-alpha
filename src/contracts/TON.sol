@@ -10,7 +10,6 @@ import "../interfaces/ITON.sol";
 contract TON is ITON, ERC20Burnable, Ownable {
     uint256 public constant genesis_supply = 100000000 * 10 ** 18;
 
-    address public oracleAddress;
     address public timelockAddress;
     address public controllerAddress;
     address public tellerAddress;
@@ -45,6 +44,7 @@ contract TON is ITON, ERC20Burnable, Ownable {
     /// @notice setting the timelock address
     function setTimelock(address newTimelock) external onlyByOwnerGovernanceOrController {
         require(newTimelock != address(0), "TON: zero address detected");
+        require(newTimelock != timelockAddress, "TON: same address detected");
         timelockAddress = newTimelock;
         emit TimelockSet(timelockAddress);
     }
@@ -52,6 +52,7 @@ contract TON is ITON, ERC20Burnable, Ownable {
     /// @notice setting the controller address
     function setController(address newController) external onlyByOwnerGovernanceOrController {
         require(newController != address(0), "TON: zero address detected");
+        require(newController != controllerAddress, "TON: same address detected");
         controllerAddress = newController;
         emit ControllerSet(controllerAddress);
     }
