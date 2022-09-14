@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 
 import "../interfaces/IPHO.sol";
 import "../interfaces/IPriceController.sol";
+import "../interfaces/ITeller.sol";
 import "../oracle/DummyOracle.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
@@ -38,6 +39,7 @@ contract PriceController is IPriceController, Ownable, AccessControl {
     uint256 stabilizingTokenDecimals;
 
     IPHO public pho;
+    ITeller public teller;
     DummyOracle public priceOracle;
     ICurvePool public dexPool;
     ICurveFactory public curveFactory;
@@ -58,6 +60,7 @@ contract PriceController is IPriceController, Ownable, AccessControl {
 
     constructor(
         address _pho_address,
+        address _teller_address,
         address _oracle_address,
         address _dex_pool_address,
         address _stabilizing_token,
@@ -69,6 +72,7 @@ contract PriceController is IPriceController, Ownable, AccessControl {
         uint256 _max_slippage
     ) {
         require(_pho_address != address(0), "Price Controller: zero address detected");
+        require(_teller_address != address(0), "Price Controller: zero address detected");
         require(_oracle_address != address(0), "Price Controller: zero address detected");
         require(_dex_pool_address != address(0), "Price Controller: zero address detected");
         require(_stabilizing_token != address(0), "Price Controller: zero address detected");
@@ -92,6 +96,7 @@ contract PriceController is IPriceController, Ownable, AccessControl {
         );
 
         pho = IPHO(_pho_address);
+        teller = ITeller(_teller_address);
         priceOracle = DummyOracle(_oracle_address);
         dexPool = ICurvePool(_dex_pool_address);
         stabilizingToken = IERC20(_stabilizing_token);
@@ -135,12 +140,12 @@ contract PriceController is IPriceController, Ownable, AccessControl {
 
         if (trend) {
             // if the market price is >1 then mint pho and exchange pho for bpToken
-            pho.pool_mint(address(this), tokenAmount);
+            teller.mintPHO(address(this), tokenAmount);
             amountReceived = exchangeTokens(true, tokenAmount);
         } else {
             amountReceived = exchangeTokens(false, tokenAmount);
             pho.approve(address(this), amountReceived);
-            pho.pool_burn_from(address(this), amountReceived);
+            pho.burn(address(this), amountReceived);
         }
 
         lastCooldownReset = block.timestamp;

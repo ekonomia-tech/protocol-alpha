@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.13;
 
-interface IShare {
-    function setOracle(address new_oracle) external;
-    function setTimelock(address new_timelock) external;
-    function setPHOAddress(address pho_contract_address) external;
-    function mint(address to, uint256 amount) external;
-    function pool_mint(address m_address, uint256 m_amount) external;
-    function pool_burn_from(address b_address, uint256 b_amount) external;
+interface ITON {
+    event TONBurned(address indexed from, uint256 amount);
+    event TimelockSet(address newTimelockAddress);
+    event ControllerSet(address controllerAddress);
+
+    function setTimelock(address timelockAddress) external;
+    function setController(address newController) external;
+    function burn(address from, uint256 amount) external;
 }

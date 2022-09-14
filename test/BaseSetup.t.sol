@@ -3,13 +3,12 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import {PHO} from "../src/contracts/PHO.sol";
-import {PIDController} from "../src/contracts/PIDController.sol";
 import {TON} from "../src/contracts/TON.sol";
 import {DummyOracle} from "../src/oracle/DummyOracle.sol";
-import {Pool} from "../src/contracts/Pool.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "src/interfaces/curve/ICurvePool.sol";
 import "src/interfaces/curve/ICurveFactory.sol";
+import "src/contracts/Teller.sol";
 
 abstract contract BaseSetup is Test {
     struct Balance {
@@ -20,10 +19,8 @@ abstract contract BaseSetup is Test {
 
     PHO public pho;
     TON public ton;
-    PIDController public pid;
+    Teller public teller;
     DummyOracle public priceOracle;
-    Pool public pool_usdc;
-    Pool public pool_usdc2;
 
     IERC20 usdc;
 
@@ -62,7 +59,7 @@ abstract contract BaseSetup is Test {
     uint256 public constant overPeg = (10 ** 6) + 6000;
     uint256 public constant underPeg = (10 ** 6) - (6000);
 
-    uint256 public constant GENESIS_SUPPLY_d18 = 100000 * 10 ** 18;
+    uint256 public constant GENESIS_SUPPLY_d18 = 100000000 * 10 ** 18;
     uint256 public constant GENESIS_SUPPLY_d6 = 100000 * 10 ** 6;
 
     uint256 public constant PRICE_PRECISION = 10 ** 6;
@@ -71,6 +68,8 @@ abstract contract BaseSetup is Test {
     address public constant weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant USDC_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     uint256 public constant POOL_CEILING = (2 ** 256) - 1;
+
+    uint256 tellerCeiling = 2 * 100 * tenThousand_d18; // set to 2 million
 
     constructor() {
         string memory RPC_URL = vm.envString("RPC_URL");
@@ -83,31 +82,10 @@ abstract contract BaseSetup is Test {
         vm.startPrank(owner);
         priceOracle = new DummyOracle();
         pho = new PHO("Pho", "PHO", owner, timelock_address);
-        ton = new TON("TON", "TON", address(priceOracle), timelock_address);
-        ton.setPHOAddress(address(pho));
+        ton = new TON("TON", "TON", owner, timelock_address);
 
-        pid = new PIDController(address(pho), owner, timelock_address, address(priceOracle));
-        pid.setMintingFee(9500); // .95% at genesis
-        pid.setRedemptionFee(4500); // .45% at genesis
-        pid.setController(controller);
-        pho.setController(controller);
-
-        usdc = IERC20(USDC_ADDRESS);
-        pool_usdc =
-        new Pool(address(pho), address(ton), address(pid), USDC_ADDRESS, owner, address(priceOracle), POOL_CEILING);
-        pho.addPool(address(pool_usdc));
-
-        // new code to accommodate not using constructor to mint unbacked PHO for tests
-        usdc.approve(address(pool_usdc), GENESIS_SUPPLY_d6);
-        pool_usdc.mint1t1PHO(GENESIS_SUPPLY_d6, GENESIS_SUPPLY_d18);
-
-        pho.transfer(user1, tenThousand_d18);
-        pho.transfer(user2, tenThousand_d18);
-        pho.transfer(user3, tenThousand_d18);
-
-        pool_usdc2 =
-        new Pool(address(pho), address(ton), address(pid), USDC_ADDRESS, owner, address(priceOracle), POOL_CEILING);
-        pho.addPool(address(pool_usdc2));
+        teller = new Teller(owner, timelock_address, address(pho), tellerCeiling);
+        pho.setTeller(address(teller));
 
         usdc = IERC20(USDC_ADDRESS);
 
@@ -147,8 +125,8 @@ abstract contract BaseSetup is Test {
     }
 
     function _getTON(address _to, uint256 _amount) internal {
-        vm.prank(address(pool_usdc));
-        ton.mint(_to, _amount);
+        vm.prank(owner);
+        ton.transfer(_to, _amount);
     }
 
     function _approveTON(address _owner, address _spender, uint256 _amount) internal {
@@ -169,6 +147,9 @@ abstract contract BaseSetup is Test {
     }
 
     function _deployFraxBPPHOPool() internal returns (address) {
+        vm.prank(address(teller));
+        pho.mint(owner, tenThousand_d18);
+
         IERC20 frax = IERC20(fraxAddress);
         IERC20 fraxBPLP = IERC20(fraxBPLPToken);
         ICurvePool fraxBP = ICurvePool(fraxBPAddress);
