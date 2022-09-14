@@ -44,3 +44,15 @@ If you are using Juan Blanco's [solidity](https://marketplace.visualstudio.com/i
   "solidity.compileUsingRemoteVersion": "v0.8.13+commit.abaa5c0e"
 }
 ```
+
+## Hardhat
+
+### Deploy contracts with hardhat
+
+Hardhat is only used with vyper contracts and contracts that interact with them
+
+https://hardhat.org/hardhat-runner/docs/guides/deploying
+
+```
+npx hardhat run --network <your-network> scripts/hardhat/deploy.js
+```
