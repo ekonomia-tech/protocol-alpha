@@ -47,11 +47,31 @@ If you are using Juan Blanco's [solidity](https://marketplace.visualstudio.com/i
 
 ## Hardhat
 
-### Deploy contracts with hardhat
+### Running Locally
 
-Hardhat is only used with vyper contracts and contracts that interact with them
+Follow the CLI commands outlined below to deploy the vyper contracts on a local blockchain.
 
-https://hardhat.org/hardhat-runner/docs/guides/deploying
+First, install dependencies.
+```
+$ npm install
+```
+
+Second, open a new window and start the local blockchain using the below CLI command:
+```
+$ npx hardhat node
+```
+
+Third, open a new window where you will run the following command to deploy the vyper contracts to the local network.
+
+```
+$ npx hardhat run --network localhost scripts/hardhat/deployGaugeController.ts
+```
+
+### Reasoning for Hardhat
+
+Vyper compatibility with foundry is still in the works, so Hardhat is chosen as a working framework.
+
+Hardhat is only used with vyper contracts and contracts that interact with them. More information can be found on hardhat deployment [here](https://hardhat.org/hardhat-runner/docs/guides/deploying).
 
 ```
 npx hardhat run --network <your-network> scripts/hardhat/deploy.js

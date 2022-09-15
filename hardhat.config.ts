@@ -1,5 +1,7 @@
-import { HardhatUserConfig } from "hardhat/types";
+import * as dotenv from 'dotenv';
+dotenv.config()
 
+import { HardhatUserConfig } from "hardhat/types";
 import "@nomiclabs/hardhat-vyper";
 import "@nomiclabs/hardhat-ethers";
 
@@ -13,14 +15,6 @@ const config: HardhatUserConfig = {
   },
   paths: {
     sources: "./src/hardhat",
-  },
-  networks: {
-    mainnet: {
-      accounts: { mnemonic: process.env.MNEMONIC },
-    },
-    goerlii: {
-      accounts: { mnemonic: process.env.MNEMONIC },
-    },
   },
 };
 
