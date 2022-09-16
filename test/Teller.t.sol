@@ -9,13 +9,13 @@ import "./BaseSetup.t.sol";
 contract TellerTest is BaseSetup {
     event ControllerSet(address indexed controllerAddress);
     event TimelockSet(address indexed timelockAddress);
-    event CallerApproved(address indexed caller, uint256 newCeiling);
+    event CallerWhitelisted(address indexed caller, uint256 newCeiling);
     event CallerRevoked(address indexed caller);
     event CallerCeilingModified(address indexed caller, uint256 newCeiling);
     event PHOCeilingSet(uint256 ceiling);
 
     function setUp() public {
-        _approveCaller(owner, 2 * tenThousand_d18);
+        _whitelistCaller(owner, 2 * tenThousand_d18);
     }
 
     /// mintPHO()
@@ -24,7 +24,7 @@ contract TellerTest is BaseSetup {
         uint256 ownerPHOBalanceBefore = pho.balanceOf(owner);
         uint256 tellerMintingBalanceBefore = teller.totalPHOMinted();
         uint256 phoTotalSupplyBefore = pho.totalSupply();
-        uint256 approvedMinterTotalMintedBefore = teller.mintingBalances(owner);
+        uint256 whitelistedMinterTotalMintedBefore = teller.mintingBalances(owner);
 
         vm.prank(owner);
         teller.mintPHO(owner, tenThousand_d18);
@@ -32,12 +32,14 @@ contract TellerTest is BaseSetup {
         uint256 ownerPHOBalanceAfter = pho.balanceOf(owner);
         uint256 tellerMintingBalanceAfter = teller.totalPHOMinted();
         uint256 phoTotalSupplyAfter = pho.totalSupply();
-        uint256 approvedMinterTotalMintedAfter = teller.mintingBalances(owner);
+        uint256 whitelistedMinterTotalMintedAfter = teller.mintingBalances(owner);
 
         assertEq(ownerPHOBalanceAfter, ownerPHOBalanceBefore + tenThousand_d18);
         assertEq(tellerMintingBalanceAfter, tellerMintingBalanceBefore + tenThousand_d18);
         assertEq(phoTotalSupplyAfter, phoTotalSupplyBefore + tenThousand_d18);
-        assertEq(approvedMinterTotalMintedAfter, approvedMinterTotalMintedBefore + tenThousand_d18);
+        assertEq(
+            whitelistedMinterTotalMintedAfter, whitelistedMinterTotalMintedBefore + tenThousand_d18
+        );
     }
 
     function testCannotMintPHONotApproved() public {
@@ -66,31 +68,31 @@ contract TellerTest is BaseSetup {
         teller.mintPHO(owner, callerCeiling + 1);
     }
 
-    /// approveCaller()
+    /// whitelistCaller()
 
-    function testApproveCaller() public {
+    function testWhitelistCaller() public {
         vm.expectEmit(true, false, false, true);
-        emit CallerApproved(address(103), tenThousand_d18);
+        emit CallerWhitelisted(address(103), tenThousand_d18);
         vm.prank(owner);
-        teller.approveCaller(address(103), tenThousand_d18);
+        teller.whitelistCaller(address(103), tenThousand_d18);
         assertEq(teller.whitelist(address(103)), tenThousand_d18);
     }
 
-    function testCannotApproveCallerNotAllowed() public {
+    function testCannotWhitelistCallerNotAllowed() public {
         vm.expectRevert("Ownable: caller is not the owner");
-        teller.approveCaller(address(103), tenThousand_d18);
+        teller.whitelistCaller(address(103), tenThousand_d18);
     }
 
-    function testCannotApproveCallerAddressZero() public {
+    function testCannotWhitelistCallerAddressZero() public {
         vm.expectRevert("Teller: zero address detected");
         vm.prank(owner);
-        teller.approveCaller(address(0), tenThousand_d18);
+        teller.whitelistCaller(address(0), tenThousand_d18);
     }
 
-    function testCannotApproveCallerAlreadyApproved() public {
+    function testCannotWhitelistCallerAlreadyApproved() public {
         vm.expectRevert("Teller: caller is already approved");
         vm.prank(owner);
-        teller.approveCaller(owner, tenThousand_d18);
+        teller.whitelistCaller(owner, tenThousand_d18);
     }
 
     /// revokeCaller()
@@ -123,7 +125,7 @@ contract TellerTest is BaseSetup {
     /// modifyCallerCeiling()
 
     function testModifyCallerCeiling() public {
-        _approveCaller(user1, tenThousand_d18);
+        _whitelistCaller(user1, tenThousand_d18);
         uint256 newCeiling = 2 * tenThousand_d18;
         vm.prank(user1);
         teller.mintPHO(owner, tenThousand_d18);
@@ -152,7 +154,7 @@ contract TellerTest is BaseSetup {
     }
 
     function testCannotModifyCallerCeilingTooLow() public {
-        _approveCaller(user1, tenThousand_d18);
+        _whitelistCaller(user1, tenThousand_d18);
         uint256 newCeiling = teller.whitelist(user1) - 1;
         vm.prank(user1);
         teller.mintPHO(owner, tenThousand_d18);
@@ -202,8 +204,8 @@ contract TellerTest is BaseSetup {
 
     /// private functions
 
-    function _approveCaller(address caller, uint256 ceiling) private {
+    function _whitelistCaller(address caller, uint256 ceiling) private {
         vm.prank(owner);
-        teller.approveCaller(caller, ceiling);
+        teller.whitelistCaller(caller, ceiling);
     }
 }

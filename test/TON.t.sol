@@ -20,25 +20,4 @@ contract TONTest is BaseSetup {
         assertEq(ton.totalSupply(), GENESIS_SUPPLY_d18);
         assertEq(ton.balanceOf(owner), GENESIS_SUPPLY_d18 - tenThousand_d18);
     }
-
-    /// burn()
-
-    function testBurn() public {
-        uint256 userBalanceBefore = ton.balanceOf(user1);
-        uint256 totalSupplyBefore = ton.totalSupply();
-
-        vm.prank(user1);
-        ton.approve(owner, fiveHundred_d18);
-
-        vm.expectEmit(true, true, false, true);
-        emit TONBurned(user1, fiveHundred_d18);
-        vm.prank(owner);
-        ton.burn(user1, fiveHundred_d18);
-
-        uint256 userBalanceAfter = ton.balanceOf(user1);
-        uint256 totalSupplyAfter = ton.totalSupply();
-
-        assertEq(userBalanceBefore, userBalanceAfter + fiveHundred_d18);
-        assertEq(totalSupplyBefore, totalSupplyAfter + fiveHundred_d18);
-    }
 }

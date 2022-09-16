@@ -6,7 +6,6 @@ import "./BaseSetup.t.sol";
 // error Unauthorized();
 
 contract PHOTest is BaseSetup {
-    event PHOMinted(address indexed mintCaller, address indexed to, uint256 amount);
     event TellerSet(address indexed teller);
 
     function setUp() public {
@@ -17,7 +16,7 @@ contract PHOTest is BaseSetup {
 
     function testPHOConstructor() public {
         assertEq(pho.balanceOf(user1), tenThousand_d18);
-        assertEq(pho.name(), "Pho");
+        assertEq(pho.name(), "PHO");
         assertEq(pho.symbol(), "PHO");
         assertEq(pho.decimals(), 18);
     }
@@ -36,8 +35,6 @@ contract PHOTest is BaseSetup {
         uint256 user1BalanceBefore = pho.balanceOf(user1);
         uint256 totalSupplyBefore = pho.totalSupply();
 
-        vm.expectEmit(true, true, false, true);
-        emit PHOMinted(address(teller), user1, fiveHundred_d18);
         vm.prank(address(teller));
         pho.mint(user1, fiveHundred_d18);
 

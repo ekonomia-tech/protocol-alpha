@@ -24,10 +24,9 @@ contract PHO is IPHO, ERC20Burnable, Ownable {
     /// @param amount the amount to mint
     function mint(address to, uint256 amount) external onlyTeller {
         super._mint(to, amount);
-        emit PHOMinted(msg.sender, to, amount);
     }
 
-    /// @notice set the teller address, which will be the only address capable of minting and burning
+    /// @notice set the teller address, which will be the only address capable of minting
     function setTeller(address newTeller) external onlyOwner {
         require(newTeller != address(0), "PHO: zero address detected");
         require(newTeller != teller, "PHO: same address detected");

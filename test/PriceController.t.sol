@@ -39,7 +39,7 @@ contract PriceControllerTest is BaseSetup {
         new PriceController(address(pho), address(teller), address(priceOracle), address(fraxBPPhoMetapool), USDC_ADDRESS, address(curveFactory), owner, 3600, 10 ** 4, 50000,99000);
 
         vm.prank(owner);
-        teller.approveCaller(address(priceController), 200 * tenThousand_d18);
+        teller.whitelistCaller(address(priceController), 200 * tenThousand_d18);
 
         vm.prank(address(priceController));
         teller.mintPHO(address(priceController), tenThousand_d18);
