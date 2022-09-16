@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import "../interfaces/IPHO.sol";
-import "../interfaces/ITON.sol";
 import "../interfaces/ITeller.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -14,12 +13,12 @@ contract Teller is ITeller, Ownable {
     IPHO public pho;
 
     uint256 public mintCeiling;
-    uint256 public totalPHOMinted;
+    uint256 public totalPHOMinted; // TODO - We need to hook up the revoking and deleting to the totalPHOMinted. And start decrementing the totalPHOMinted. Otherwise this will get out of sync with the actual PHO minted, and it will become meaningless.
 
-    /// the approved caller list and approved minting amount
+    /// whitelisted contracts that can ask the Teller to mint
     mapping(address => uint256) public whitelist;
 
-    /// tracks how much each approved caller have minted in $PHO
+    /// tracks max $PHO that whitelisted accounts can ask for
     mapping(address => uint256) public mintingBalances;
 
     constructor(address _phoAddress, uint256 _mintCeiling) {
@@ -46,14 +45,15 @@ contract Teller is ITeller, Ownable {
     /// @notice function to approve addresses of minting rights
     /// @param caller the requesting address to be approved minting rights
     /// @param ceiling the minting ceiling for the caller
-    function approveCaller(address caller, uint256 ceiling) external onlyOwner {
+    function whitelistCaller(address caller, uint256 ceiling) external onlyOwner {
         require(caller != address(0), "Teller: zero address detected");
         require(ceiling > 0, "Teller: zero value detected");
         require(whitelist[caller] == 0, "Teller: caller is already approved");
         whitelist[caller] = ceiling;
-        emit CallerApproved(caller, ceiling);
+        emit CallerWhitelisted(caller, ceiling);
     }
 
+    // TODO - We need to hook up the revoking and deleting to the totalPHOMinted. And start decrementing the totalPHOMinted.
     /// @notice function to revoke addresses of minting rights
     /// @param caller the address to be revoked minting rights
     function revokeCaller(address caller) external onlyOwner {
@@ -75,8 +75,8 @@ contract Teller is ITeller, Ownable {
         emit CallerCeilingModified(caller, newCeiling);
     }
 
-    /// @notice set a new $PHO minting ceiling for this teller
-    /// @param newCeiling the max amount of $PHO that this teller can mint
+    /// @notice set a new $PHO minting ceiling for the Teller
+    /// @param newCeiling the max amount of $PHO that the Teller can mint
     function setPHOCeiling(uint256 newCeiling) external onlyOwner {
         require(newCeiling > 0, "Teller: new ceiling cannot be 0");
         require(newCeiling != mintCeiling, "Teller: same ceiling value detected");

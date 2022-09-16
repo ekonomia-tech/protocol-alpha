@@ -81,7 +81,7 @@ abstract contract BaseSetup is Test {
 
         vm.startPrank(owner);
         priceOracle = new DummyOracle();
-        pho = new PHO("Pho", "PHO");
+        pho = new PHO("PHO", "PHO");
         ton = new TON("TON", "TON");
 
         teller = new Teller(address(pho), tellerCeiling);
