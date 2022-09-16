@@ -11,51 +11,33 @@ pragma solidity ^0.8.13;
 /// @author Ekonomia: https://github.com/ekonomia-tech
 
 contract Teller is ITeller, Ownable {
-    address public timelockAddress;
-    address public controllerAddress;
     IPHO public pho;
 
-    uint256 public phoCeiling;
+    uint256 public mintCeiling;
     uint256 public totalPHOMinted;
 
-    /// the approved caller list
-    mapping(address => bool) public approvedCallers;
+    /// the approved caller list and approved minting amount
+    mapping(address => uint256) public whitelist;
 
     /// tracks how much each approved caller have minted in $PHO
     mapping(address => uint256) public mintingBalances;
 
-    modifier onlyByOwnerGovernanceOrController() {
-        require(
-            msg.sender == owner() || msg.sender == timelockAddress
-                || msg.sender == controllerAddress,
-            "Teller: Not the owner, controller, or the governance timelock"
-        );
-        _;
-    }
-
-    modifier onlyApprovedCallers() {
-        require(approvedCallers[msg.sender], "Teller: caller is not approved");
-        _;
-    }
-
-    constructor(
-        address _controllerAddress,
-        address _timelockAddress,
-        address _phoAddress,
-        uint256 _phoCeiling
-    ) {
-        timelockAddress = _timelockAddress;
-        controllerAddress = _controllerAddress;
+    constructor(address _phoAddress, uint256 _mintCeiling) {
         pho = IPHO(_phoAddress);
-        phoCeiling = _phoCeiling;
+        mintCeiling = _mintCeiling;
     }
 
     /// @notice minting function for $PHO. only accessible to approved addresses
     /// @param to the user to mint $PHO to
     /// @param amount the amount of $PHO to mint
-    function mintPHO(address to, uint256 amount) external onlyApprovedCallers {
+    function mintPHO(address to, uint256 amount) external {
         require(to != address(0), "Teller: zero address detected");
-        require(totalPHOMinted + amount <= phoCeiling, "Teller: ceiling reached");
+        require(whitelist[msg.sender] > 0, "Teller: caller is not approved");
+        require(totalPHOMinted + amount <= mintCeiling, "Teller: ceiling reached");
+        require(
+            mintingBalances[msg.sender] + amount <= whitelist[msg.sender],
+            "Teller: caller ceiling reached"
+        );
         totalPHOMinted += amount;
         mintingBalances[msg.sender] += amount;
         pho.mint(to, amount);
@@ -63,46 +45,43 @@ contract Teller is ITeller, Ownable {
 
     /// @notice function to approve addresses of minting rights
     /// @param caller the requesting address to be approved minting rights
-    function approveCaller(address caller) external onlyByOwnerGovernanceOrController {
+    /// @param ceiling the minting ceiling for the caller
+    function approveCaller(address caller, uint256 ceiling) external onlyOwner {
         require(caller != address(0), "Teller: zero address detected");
-        require(approvedCallers[caller] == false, "Teller: caller is already approved");
-        approvedCallers[caller] = true;
-        emit CallerApproved(caller);
+        require(ceiling > 0, "Teller: zero value detected");
+        require(whitelist[caller] == 0, "Teller: caller is already approved");
+        whitelist[caller] = ceiling;
+        emit CallerApproved(caller, ceiling);
     }
 
     /// @notice function to revoke addresses of minting rights
     /// @param caller the address to be revoked minting rights
-    function revokeCaller(address caller) external onlyByOwnerGovernanceOrController {
+    function revokeCaller(address caller) external onlyOwner {
         require(caller != address(0), "Teller: zero address detected");
-        require(approvedCallers[caller], "Teller: caller is not approved");
-        delete approvedCallers[caller];
+        require(whitelist[caller] > 0, "Teller: caller is not approved");
+        delete whitelist[caller];
+        delete mintingBalances[caller];
         emit CallerRevoked(caller);
+    }
+
+    /// @notice modify the caller's minting ceiling
+    /// @param caller the address to modify it's ceiling
+    /// @param newCeiling the new minting ceiling for the caller
+    function modifyCallerCeiling(address caller, uint256 newCeiling) external onlyOwner {
+        require(caller != address(0), "Teller: zero address detected");
+        require(whitelist[caller] > 0, "Teller: caller is not approved");
+        require(mintingBalances[caller] < newCeiling, "Teller: new ceiling too low");
+        whitelist[caller] = newCeiling;
+        emit CallerCeilingModified(caller, newCeiling);
     }
 
     /// @notice set a new $PHO minting ceiling for this teller
     /// @param newCeiling the max amount of $PHO that this teller can mint
-    function setPHOCeiling(uint256 newCeiling) external onlyByOwnerGovernanceOrController {
+    function setPHOCeiling(uint256 newCeiling) external onlyOwner {
         require(newCeiling > 0, "Teller: new ceiling cannot be 0");
-        require(newCeiling != phoCeiling, "Teller: same ceiling value detected");
-        phoCeiling = newCeiling;
-        emit PHOCeilingSet(phoCeiling);
-    }
-
-    /// @notice set controller (owner) of this contract
-    /// @param newController the new controller address
-    function setController(address newController) external onlyByOwnerGovernanceOrController {
-        require(newController != address(0), "Teller: zero address detected");
-        require(newController != controllerAddress, "Teller: same address detected");
-        controllerAddress = newController;
-        emit ControllerSet(controllerAddress);
-    }
-
-    /// @notice set the timelock address to be used in this contract
-    /// @param newTimelock the new timelock address
-    function setTimelock(address newTimelock) external onlyByOwnerGovernanceOrController {
-        require(newTimelock != address(0), "Teller: zero address detected");
-        require(newTimelock != timelockAddress, "Teller: same address detected");
-        timelockAddress = newTimelock;
-        emit TimelockSet(timelockAddress);
+        require(newCeiling != mintCeiling, "Teller: same ceiling value detected");
+        require(newCeiling > totalPHOMinted, "Teller: new ceiling too low");
+        mintCeiling = newCeiling;
+        emit PHOCeilingSet(mintCeiling);
     }
 }
