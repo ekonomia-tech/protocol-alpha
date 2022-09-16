@@ -9,12 +9,13 @@ import "./BaseSetup.t.sol";
 contract TellerTest is BaseSetup {
     event ControllerSet(address indexed controllerAddress);
     event TimelockSet(address indexed timelockAddress);
-    event CallerApproved(address indexed caller);
+    event CallerApproved(address indexed caller, uint256 newCeiling);
     event CallerRevoked(address indexed caller);
+    event CallerCeilingModified(address indexed caller, uint256 newCeiling);
     event PHOCeilingSet(uint256 ceiling);
 
     function setUp() public {
-        _approveCaller(owner);
+        _approveCaller(owner, 2 * tenThousand_d18);
     }
 
     /// mintPHO()
@@ -52,37 +53,44 @@ contract TellerTest is BaseSetup {
     }
 
     function testCannotMintPHOCeilingReached() public {
-        uint256 phoCeiling = teller.phoCeiling();
+        uint256 mintCeiling = teller.mintCeiling();
         vm.expectRevert("Teller: ceiling reached");
         vm.prank(owner);
-        teller.mintPHO(user1, phoCeiling + tenThousand_d18);
+        teller.mintPHO(user1, mintCeiling + tenThousand_d18);
+    }
+
+    function testCannotMintPHOCallerCeilingReached() public {
+        uint256 callerCeiling = teller.whitelist(owner);
+        vm.expectRevert("Teller: caller ceiling reached");
+        vm.prank(owner);
+        teller.mintPHO(owner, callerCeiling + 1);
     }
 
     /// approveCaller()
 
     function testApproveCaller() public {
         vm.expectEmit(true, false, false, true);
-        emit CallerApproved(address(103));
+        emit CallerApproved(address(103), tenThousand_d18);
         vm.prank(owner);
-        teller.approveCaller(address(103));
-        assertTrue(teller.approvedCallers(address(103)));
+        teller.approveCaller(address(103), tenThousand_d18);
+        assertEq(teller.whitelist(address(103)), tenThousand_d18);
     }
 
     function testCannotApproveCallerNotAllowed() public {
-        vm.expectRevert("Teller: Not the owner, controller, or the governance timelock");
-        teller.approveCaller(address(103));
+        vm.expectRevert("Ownable: caller is not the owner");
+        teller.approveCaller(address(103), tenThousand_d18);
     }
 
     function testCannotApproveCallerAddressZero() public {
         vm.expectRevert("Teller: zero address detected");
         vm.prank(owner);
-        teller.approveCaller(address(0));
+        teller.approveCaller(address(0), tenThousand_d18);
     }
 
     function testCannotApproveCallerAlreadyApproved() public {
         vm.expectRevert("Teller: caller is already approved");
         vm.prank(owner);
-        teller.approveCaller(owner);
+        teller.approveCaller(owner, tenThousand_d18);
     }
 
     /// revokeCaller()
@@ -92,11 +100,11 @@ contract TellerTest is BaseSetup {
         emit CallerRevoked(owner);
         vm.prank(owner);
         teller.revokeCaller(owner);
-        assertFalse(teller.approvedCallers(owner));
+        assertTrue(teller.whitelist(owner) == 0);
     }
 
     function testCannotRevokeCallerNotAllowed() public {
-        vm.expectRevert("Teller: Not the owner, controller, or the governance timelock");
+        vm.expectRevert("Ownable: caller is not the owner");
         teller.revokeCaller(address(103));
     }
 
@@ -112,6 +120,47 @@ contract TellerTest is BaseSetup {
         teller.revokeCaller(user1);
     }
 
+    /// modifyCallerCeiling()
+
+    function testModifyCallerCeiling() public {
+        _approveCaller(user1, tenThousand_d18);
+        uint256 newCeiling = 2 * tenThousand_d18;
+        vm.prank(user1);
+        teller.mintPHO(owner, tenThousand_d18);
+        vm.expectEmit(true, false, false, true);
+        emit CallerCeilingModified(user1, newCeiling);
+        vm.prank(owner);
+        teller.modifyCallerCeiling(user1, newCeiling);
+    }
+
+    function testCannotModifyCallerCeilingNotAllowed() public {
+        vm.expectRevert("Ownable: caller is not the owner");
+        vm.prank(user1);
+        teller.modifyCallerCeiling(owner, 3 * tenThousand_d18);
+    }
+
+    function testCannotModifyCallerCeilingZeroAddress() public {
+        vm.expectRevert("Teller: zero address detected");
+        vm.prank(owner);
+        teller.modifyCallerCeiling(address(0), 0);
+    }
+
+    function testCannotModifyCallerCeilingNotApproved() public {
+        vm.expectRevert("Teller: caller is not approved");
+        vm.prank(owner);
+        teller.modifyCallerCeiling(user1, tenThousand_d18);
+    }
+
+    function testCannotModifyCallerCeilingTooLow() public {
+        _approveCaller(user1, tenThousand_d18);
+        uint256 newCeiling = teller.whitelist(user1) - 1;
+        vm.prank(user1);
+        teller.mintPHO(owner, tenThousand_d18);
+        vm.expectRevert("Teller: new ceiling too low");
+        vm.prank(owner);
+        teller.modifyCallerCeiling(user1, newCeiling);
+    }
+
     /// setPHOCeiling()
 
     function setPHOCeiling() public {
@@ -119,11 +168,11 @@ contract TellerTest is BaseSetup {
         emit PHOCeilingSet(tenThousand_d18);
         vm.prank(owner);
         teller.setPHOCeiling(tenThousand_d18);
-        assertEq(teller.phoCeiling(), tenThousand_d18);
+        assertEq(teller.mintCeiling(), tenThousand_d18);
     }
 
     function testCannotSetPhoCeilingNotAllowed() public {
-        vm.expectRevert("Teller: Not the owner, controller, or the governance timelock");
+        vm.expectRevert("Ownable: caller is not the owner");
         vm.prank(user1);
         teller.setPHOCeiling(tenThousand_d18);
     }
@@ -135,80 +184,26 @@ contract TellerTest is BaseSetup {
     }
 
     function testCannotSetPHOCeilingSameValue() public {
-        uint256 currentCeiling = teller.phoCeiling();
+        uint256 currentCeiling = teller.mintCeiling();
         vm.expectRevert("Teller: same ceiling value detected");
         vm.prank(owner);
         teller.setPHOCeiling(currentCeiling);
     }
 
-    /// setController()
-
-    function testSetController() public {
+    function testCannotSetPHOCeilingMintedMoreThanNewCeiling() public {
+        uint256 currentCeiling = teller.mintCeiling();
         vm.startPrank(owner);
-        address initialController = pho.controllerAddress();
-        vm.expectEmit(false, false, false, true);
-        emit ControllerSet(user1);
-        pho.setController(user1);
-
-        assertTrue(initialController != pho.controllerAddress());
-        assertEq(pho.controllerAddress(), user1);
+        teller.modifyCallerCeiling(owner, currentCeiling);
+        teller.mintPHO(user1, currentCeiling);
+        vm.expectRevert("Teller: new ceiling too low");
+        teller.setPHOCeiling(currentCeiling - 2000);
         vm.stopPrank();
     }
 
-    function testCannotSetControllerAddressZero() public {
-        vm.expectRevert("Teller: zero address detected");
+    /// private functions
+
+    function _approveCaller(address caller, uint256 ceiling) private {
         vm.prank(owner);
-        teller.setController(address(0));
-    }
-
-    function testCannotSetControllerNotAllowed() public {
-        vm.expectRevert("Teller: Not the owner, controller, or the governance timelock");
-        vm.prank(user1);
-        teller.setController(address(0));
-    }
-
-    function testCannotSetControllerSameAddress() public {
-        address currentController = teller.controllerAddress();
-        vm.expectRevert("Teller: same address detected");
-        vm.prank(owner);
-        teller.setController(currentController);
-    }
-
-    /// setTimelock()
-
-    function testSetTimelock() public {
-        vm.startPrank(owner);
-        address initialTimelock = pho.controllerAddress();
-        vm.expectEmit(false, false, false, true);
-        emit TimelockSet(user1);
-        teller.setTimelock(user1);
-
-        assertTrue(initialTimelock != teller.timelockAddress());
-        assertEq(teller.timelockAddress(), user1);
-        vm.stopPrank();
-    }
-
-    function testCannotSetTimelockAddressZero() public {
-        vm.expectRevert("Teller: zero address detected");
-        vm.prank(owner);
-        teller.setTimelock(address(0));
-    }
-
-    function testCannotSetTimelockNotAllowed() public {
-        vm.expectRevert("Teller: Not the owner, controller, or the governance timelock");
-        vm.prank(user1);
-        teller.setTimelock(address(0));
-    }
-
-    function _approveCaller(address toApprove) private {
-        vm.prank(owner);
-        teller.approveCaller(toApprove);
-    }
-
-    function testCannotSetTimelockSameAddress() public {
-        address currentTimelock = teller.timelockAddress();
-        vm.expectRevert("Teller: same address detected");
-        vm.prank(owner);
-        teller.setTimelock(currentTimelock);
+        teller.approveCaller(caller, ceiling);
     }
 }

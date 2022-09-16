@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.13;
 
-import "../interfaces/IPHO.sol";
+import "./PHO.sol";
 import "../interfaces/IPriceController.sol";
 import "../interfaces/ITeller.sol";
 import "../oracle/DummyOracle.sol";
@@ -38,7 +38,7 @@ contract PriceController is IPriceController, Ownable, AccessControl {
 
     uint256 stabilizingTokenDecimals;
 
-    IPHO public pho;
+    PHO public pho;
     ITeller public teller;
     DummyOracle public priceOracle;
     ICurvePool public dexPool;
@@ -95,7 +95,7 @@ contract PriceController is IPriceController, Ownable, AccessControl {
             "Price Controller: value can only be between 0 to 100000"
         );
 
-        pho = IPHO(_pho_address);
+        pho = PHO(_pho_address);
         teller = ITeller(_teller_address);
         priceOracle = DummyOracle(_oracle_address);
         dexPool = ICurvePool(_dex_pool_address);
@@ -145,7 +145,7 @@ contract PriceController is IPriceController, Ownable, AccessControl {
         } else {
             amountReceived = exchangeTokens(false, tokenAmount);
             pho.approve(address(this), amountReceived);
-            pho.burn(address(this), amountReceived);
+            pho.burnFrom(address(this), amountReceived);
         }
 
         lastCooldownReset = block.timestamp;

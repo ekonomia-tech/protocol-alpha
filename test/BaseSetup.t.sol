@@ -81,10 +81,10 @@ abstract contract BaseSetup is Test {
 
         vm.startPrank(owner);
         priceOracle = new DummyOracle();
-        pho = new PHO("Pho", "PHO", owner, timelock_address);
-        ton = new TON("TON", "TON", owner, timelock_address);
+        pho = new PHO("Pho", "PHO");
+        ton = new TON("TON", "TON");
 
-        teller = new Teller(owner, timelock_address, address(pho), tellerCeiling);
+        teller = new Teller(address(pho), tellerCeiling);
         pho.setTeller(address(teller));
 
         usdc = IERC20(USDC_ADDRESS);
