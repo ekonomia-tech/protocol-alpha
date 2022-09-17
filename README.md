@@ -45,6 +45,13 @@ If you are using Juan Blanco's [solidity](https://marketplace.visualstudio.com/i
 }
 ```
 
+## Common commands
+
+```bash
+$ forge test -vv # double v will allow showing console.log in test
+$ forge test -vvvvv # five v will show all stack traces
+```
+
 ## Hardhat
 
 ### Running Locally
