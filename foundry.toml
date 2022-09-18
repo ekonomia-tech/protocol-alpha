@@ -5,6 +5,7 @@ libs = ['lib']
 remappings = [
     "@openzeppelin=lib/openzeppelin-contracts/"
 ]
+fs_permissions = [{ access = "read", path = "./artifacts"}]
 
 [fmt]
 line_length = 100
