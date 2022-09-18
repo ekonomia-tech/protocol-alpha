@@ -9,12 +9,8 @@ interface ITeller {
     event PHOCeilingSet(uint256 ceiling);
 
     function mintPHO(address to, uint256 amount) external;
-
     function whitelistCaller(address caller, uint256 ceiling) external;
-
     function revokeCaller(address caller) external;
-
     function modifyCallerCeiling(address caller, uint256 newCeiling) external;
-
     function setPHOCeiling(uint256 ceiling) external;
 }
