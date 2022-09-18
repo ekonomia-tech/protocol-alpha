@@ -7,14 +7,20 @@ import "./BaseSetup.t.sol";
 // the project root.
 string constant gcArtifact = 'artifacts/src/hardhat/GaugeController.vy/GaugeController.json';
 
-contract GaugeControllerTest is BaseSetup {
-    function setUp() public {
-        console.log("STEVENDEBUG GaugeControllerTest.setUp()");
+interface GaugeContoller {
+    function get_total_weight() external view returns (uint256);
+}
 
-        address _gcArtifact = deployCode(gcArtifact);
+contract GaugeControllerTest is BaseSetup {
+    GaugeContoller public gaugeController;
+
+    function setUp() public {
+        address _gc = deployCode(gcArtifact, abi.encode("0x7997f32675bc0e67F66EE189913741076789136a", "0x7997f32675bc0e67F66EE189913741076789136a"));
+        gaugeController = GaugeContoller(_gc);
     }
 
-    function testSomething() public {
-        console.log("STEVENDEBUG GaugeControllerTest.testSomething()");
+    function testGetWeight() public {
+        uint256 weight = gaugeController.get_total_weight();
+        assertEq(0, weight);
     }
 }
