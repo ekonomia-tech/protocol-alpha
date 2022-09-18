@@ -10,6 +10,12 @@ import "src/interfaces/curve/ICurvePool.sol";
 import "src/interfaces/curve/ICurveFactory.sol";
 import "src/contracts/Teller.sol";
 
+string constant gcArtifact = 'artifacts/src/hardhat/GaugeController.vy/GaugeController.json';
+
+interface GaugeContoller {
+    function get_total_weight() external view returns (uint256);
+}
+
 abstract contract BaseSetup is Test {
     struct Balance {
         uint256 usdc;
@@ -21,6 +27,7 @@ abstract contract BaseSetup is Test {
     TON public ton;
     Teller public teller;
     DummyOracle public priceOracle;
+    GaugeContoller public gaugeController;
 
     IERC20 usdc;
 
@@ -88,6 +95,10 @@ abstract contract BaseSetup is Test {
         pho.setTeller(address(teller));
 
         usdc = IERC20(USDC_ADDRESS);
+
+        address dummyVeTon = 0x0000000000000000000000000000000000000000;
+        address _gc = deployCode(gcArtifact, abi.encode(address(ton), address(dummyVeTon)));
+        gaugeController = GaugeContoller(_gc);
 
         vm.stopPrank();
     }
