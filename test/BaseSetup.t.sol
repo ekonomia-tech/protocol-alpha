@@ -45,6 +45,11 @@ abstract contract BaseSetup is Test {
     address public fraxAddress = 0x853d955aCEf822Db058eb8505911ED77F175b99e;
     address public fraxBPLUSD = 0x497CE58F34605B9944E6b15EcafE6b001206fd25;
 
+    // oracle specific:
+
+    // Chainlink priceFeed for Frax-USD: https://data.chain.link/ethereum/mainnet/stablecoins/frax-usd
+    // Chainlink priceFeed for USDC-USD: https://data.chain.link/ethereum/mainnet/stablecoins/usdc-usd
+
     uint256 public constant one_d18 = 10 ** 18;
     uint256 public constant one_d6 = 10 ** 6;
     uint256 public constant ten_d18 = 10 * 10 ** 18;
