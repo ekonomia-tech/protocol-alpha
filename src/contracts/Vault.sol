@@ -20,7 +20,6 @@ contract Vault is IVault, Ownable {
     /// list of whitelisted contracts to be provided with collateral from this vault
     mapping(address => bool) public whitelist;
 
-    uint256 public immutable missingDecimals;
     uint256 public constant PRICE_PRECISION = 10 ** 6;
 
     /// @param _collateralToken the collateral token held by this vault
@@ -28,7 +27,6 @@ contract Vault is IVault, Ownable {
     constructor(address _collateralToken, address _oracleAddress) {
         priceOracle = DummyOracle(_oracleAddress);
         collateral = IERC20Metadata(_collateralToken);
-        missingDecimals = 18 - collateral.decimals();
     }
 
     /// @notice getter for the collateral token of this vault
@@ -44,8 +42,9 @@ contract Vault is IVault, Ownable {
     }
 
     /// @notice the collateral value locked in the vault in USD
+    /// @return uint256 d18 representation of USD value
     function getVaultUSDValue() external view returns (uint256) {
-        uint256 balance = collateral.balanceOf(address(this)) * (10 ** missingDecimals);
+        uint256 balance = collateral.balanceOf(address(this)) * (10 ** (18 - collateral.decimals()));
         /// returns USDC price for now, but will have to implement the oracle once its ready
         uint256 collateralPrice = priceOracle.getUSDCUSDPrice();
         return balance * collateralPrice / PRICE_PRECISION;

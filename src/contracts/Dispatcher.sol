@@ -83,7 +83,6 @@ contract Dispatcher is IDispatcher, Ownable {
     function addVault(address vaultToAdd) external onlyOwner {
         require(vaultToAdd != address(0), "Dispatcher: zero address detected");
         address vaultToken = IVault(vaultToAdd).getVaultToken();
-        require(vaultToken != address(0), "Dispatcher: vault does not exist");
         require(vaults[vaultToken] == address(0), "Dispatcher: vault already added");
         vaults[vaultToken] = vaultToAdd;
         emit VaultAdded(vaultToAdd);
@@ -94,7 +93,6 @@ contract Dispatcher is IDispatcher, Ownable {
     function removeVault(address vaultToRemove) external onlyOwner {
         require(vaultToRemove != address(0), "Dispatcher: zero address detected");
         address vaultToken = IVault(vaultToRemove).getVaultToken();
-        require(vaultToken != address(0), "Dispatcher: vault does not exist");
         require(vaults[vaultToken] != address(0), "Dispatcher: vault not registered");
         delete vaults[vaultToken];
         emit VaultRemoved(vaultToRemove);
@@ -104,6 +102,7 @@ contract Dispatcher is IDispatcher, Ownable {
     /// @param tellerAddress the address of the teller to be set
     function setTeller(address tellerAddress) external onlyOwner {
         require(tellerAddress != address(0), "Dispatcher: zero address detected");
+        require(tellerAddress != address(teller), "Dispatcher: same address detected");
         teller = ITeller(tellerAddress);
         emit TellerUpdated(tellerAddress);
     }
