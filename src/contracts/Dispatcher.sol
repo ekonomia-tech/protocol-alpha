@@ -3,7 +3,6 @@
 pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "../oracle/DummyOracle.sol";
 import "../interfaces/ITeller.sol";
 import "../interfaces/IDispatcher.sol";
 import "../interfaces/IVault.sol";
@@ -28,11 +27,11 @@ contract Dispatcher is IDispatcher, Ownable {
         teller = ITeller(_tellerAddress);
     }
 
-    /// @notice mint $PHO 1 to 1 provided the collateral
+    /// @notice mint 1 $PHO to 1 USD collateral value provided the collateral
     /// @param tokenIn the collateral token provided by the user
     /// @param amountIn the amount of collateral supplied by the user
     /// @param minPHOOut the minimum $PHO that the user is willing to accept
-    function mintPHO(address tokenIn, uint256 amountIn, uint256 minPHOOut) external {
+    function dispatchCollateral(address tokenIn, uint256 amountIn, uint256 minPHOOut) external {
         require(tokenIn != address(0), "Dispatcher: zero address detected");
         require(amountIn != 0, "Dispatcher: zero value detected");
         require(vaults[tokenIn] != address(0), "Dispatcher: token not accepted");
@@ -40,19 +39,19 @@ contract Dispatcher is IDispatcher, Ownable {
         IVault vault = IVault(vaults[tokenIn]);
         IERC20Metadata collateral = IERC20Metadata(tokenIn);
 
-        uint256 missingDecimals = 18 - collateral.decimals();
         uint256 collateralPrice = vault.getTokenPriceUSD();
-        uint256 collateralAmount_d18 = amountIn * (10 ** missingDecimals);
+        uint256 collateralAmount_d18 = amountIn * (10 ** (18 - collateral.decimals()));
         uint256 phoAmountOut = collateralAmount_d18 * collateralPrice / PRICE_PRECISION;
 
         require(phoAmountOut > minPHOOut, "Dispatcher: max slippage reached");
 
-        collateral.transferFrom(msg.sender, address(this), amountIn);
-        collateral.transfer(address(vault), amountIn);
+        collateral.transferFrom(msg.sender, address(vault), amountIn);
         teller.mintPHO(msg.sender, phoAmountOut);
+
+        emit Dispatch(msg.sender, tokenIn, amountIn, phoAmountOut);
     }
 
-    /// @notice redeem $PHO 1 to 1 and claim collateral
+    /// @notice redeem 1 $PHO to 1 USD collateral value and claim collateral
     /// @param tokenOut the collateral token in which the user wishes to redeem for
     /// @param amountIn the amount of $PHO the user wants to redeem
     /// @param minCollateralOut the minimum collateral the user is willing to get for the $PHO provided
@@ -64,9 +63,8 @@ contract Dispatcher is IDispatcher, Ownable {
         IVault vault = IVault(vaults[tokenOut]);
         IERC20Metadata collateral = IERC20Metadata(tokenOut);
 
-        uint256 missingDecimals = 18 - collateral.decimals();
         uint256 collateralPrice = vault.getTokenPriceUSD();
-        uint256 phoAmountPrecision = amountIn / (10 ** missingDecimals);
+        uint256 phoAmountPrecision = amountIn / (10 ** (18 - collateral.decimals()));
         uint256 collateralNeeded = phoAmountPrecision * PRICE_PRECISION / collateralPrice;
 
         require(
@@ -76,6 +74,8 @@ contract Dispatcher is IDispatcher, Ownable {
         vault.provide(collateralNeeded);
         pho.burnFrom(msg.sender, amountIn);
         collateral.transfer(msg.sender, collateralNeeded);
+
+        emit Redeem(msg.sender, tokenOut, amountIn, collateralNeeded);
     }
 
     /// @notice add vault to the vaults list this dispatcher can communicate with

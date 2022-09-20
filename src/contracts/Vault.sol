@@ -8,6 +8,7 @@ import "../oracle/DummyOracle.sol";
 import "../interfaces/IVault.sol";
 
 /// @title Vault contract
+/// @notice Each vault hold a single collateral token
 /// @author Ekonomia: https://github.com/Ekonomia
 
 /// TODO: modify the contract after the oracle is updated
@@ -30,8 +31,20 @@ contract Vault is IVault, Ownable {
         missingDecimals = 18 - collateral.decimals();
     }
 
+    /// @notice getter for the collateral token of this vault
+    function getVaultToken() external view returns (address) {
+        return address(collateral);
+    }
+
+    /// @notice the collateral token price in USD
+    /// @return uint256 the price of the token in USD
+    function getTokenPriceUSD() external view returns (uint256) {
+        /// returns USDC price for now, but will have to implement the oracle once its ready
+        return priceOracle.getUSDCUSDPrice();
+    }
+
     /// @notice the collateral value locked in the vault in USD
-    function getVaultDollarValue() external view returns (uint256) {
+    function getVaultUSDValue() external view returns (uint256) {
         uint256 balance = collateral.balanceOf(address(this)) * (10 ** missingDecimals);
         /// returns USDC price for now, but will have to implement the oracle once its ready
         uint256 collateralPrice = priceOracle.getUSDCUSDPrice();
@@ -45,17 +58,6 @@ contract Vault is IVault, Ownable {
         require(whitelist[msg.sender], "Vault: caller not approved");
         require(collateral.balanceOf(address(this)) >= amount, "Vault: not enough collateral");
         collateral.transfer(msg.sender, amount);
-    }
-
-    /// @notice getter for the collateral token of this vault
-    function getVaultToken() external view returns (address) {
-        return address(collateral);
-    }
-
-    /// @notice the collateral token price in USD
-    function getTokenPriceUSD() external view returns (uint256) {
-        /// returns USDC price for now, but will have to implement the oracle once its ready
-        return priceOracle.getUSDCUSDPrice();
     }
 
     /// @notice function to approve addresses to be provided with collateral from this vault

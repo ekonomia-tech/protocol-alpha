@@ -5,7 +5,7 @@ interface IVault {
     event CallerWhitelisted(address indexed caller);
     event CallerRevoked(address indexed caller);
 
-    function getVaultDollarValue() external view returns (uint256);
+    function getVaultUSDValue() external view returns (uint256);
     function provide(uint256 amount) external;
     function getVaultToken() external view returns (address);
     function getTokenPriceUSD() external view returns (uint256);
