@@ -23,6 +23,7 @@ abstract contract BaseSetup is Test {
     DummyOracle public priceOracle;
 
     IERC20 usdc;
+    IERC20 dai;
 
     address public owner = 0xed320Bf569E5F3c4e9313391708ddBFc58e296bb; // NOTE - vitalik.eth for tests but we may need a different address to supply USDC depending on our tests - vitalik only has 30k USDC
     address public timelock_address = address(100);
@@ -32,6 +33,7 @@ abstract contract BaseSetup is Test {
     address public user3 = address(3);
     address public dummyAddress = address(4);
     address public richGuy = 0x72A53cDBBcc1b9efa39c834A540550e23463AAcB;
+    address public daiWhale = 0xc08a8a9f809107c5A7Be6d90e315e4012c99F39a;
     address public fraxBPLPToken = 0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC;
     address public fraxBPAddress = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
     address public metaPoolFactoryAddress = 0xB9fC157394Af804a3578134A6585C0dc9cc990d4;
@@ -67,6 +69,7 @@ abstract contract BaseSetup is Test {
 
     address public constant weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant USDC_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address public constant DAI_ADDRESS = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     uint256 public constant POOL_CEILING = (2 ** 256) - 1;
 
     uint256 tellerCeiling = 2 * 100 * tenThousand_d18; // set to 2 million
@@ -88,6 +91,7 @@ abstract contract BaseSetup is Test {
         pho.setTeller(address(teller));
 
         usdc = IERC20(USDC_ADDRESS);
+        dai = IERC20(DAI_ADDRESS);
 
         vm.stopPrank();
     }
@@ -122,6 +126,28 @@ abstract contract BaseSetup is Test {
     {
         _getUSDC(_owner, _amountIn);
         _approveUSDC(_owner, _spender, _amountOut);
+    }
+
+    function _getDAI(address to, uint256 _amount) internal {
+        vm.prank(daiWhale);
+        dai.transfer(to, _amount);
+    }
+
+    function _approveDAI(address _owner, address _spender, uint256 _amount) internal {
+        vm.prank(_owner);
+        dai.approve(_spender, _amount);
+    }
+
+    function _fundAndApproveDAI(
+        address _owner,
+        address _spender,
+        uint256 _amountIn,
+        uint256 _amountOut
+    )
+        internal
+    {
+        _getDAI(_owner, _amountIn);
+        _approveDAI(_owner, _spender, _amountOut);
     }
 
     function _getTON(address _to, uint256 _amount) internal {
