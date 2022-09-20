@@ -8,4 +8,11 @@ contract GaugeControllerTest is BaseSetup {
         uint256 weight = gaugeController.get_total_weight();
         assertEq(0, weight);
     }
+
+    function testGetVeTONDetails() public {
+        assertEq(voteEscrow.name(), "veTON");
+        assertEq(voteEscrow.symbol(), "veTON");
+        assertEq(voteEscrow.decimals(), 18);
+        assertEq(voteEscrow.token(), address(ton));
+    }
 }

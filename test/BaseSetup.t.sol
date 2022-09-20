@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import {PHO} from "../src/contracts/PHO.sol";
 import {TON} from "../src/contracts/TON.sol";
 import {DummyOracle} from "../src/oracle/DummyOracle.sol";
+import {VoteEscrow} from "../src/contracts/VoteEscrow.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "src/interfaces/curve/ICurvePool.sol";
 import "src/interfaces/curve/ICurveFactory.sol";
@@ -28,6 +29,7 @@ abstract contract BaseSetup is Test {
     Teller public teller;
     DummyOracle public priceOracle;
     GaugeContoller public gaugeController;
+    VoteEscrow public voteEscrow;
 
     IERC20 usdc;
 
@@ -96,8 +98,8 @@ abstract contract BaseSetup is Test {
 
         usdc = IERC20(USDC_ADDRESS);
 
-        address dummyVeTon = 0x0000000000000000000000000000000000000000;
-        address _gc = deployCode(gcArtifact, abi.encode(address(ton), address(dummyVeTon)));
+        voteEscrow = new VoteEscrow(address(ton), "veTON", "veTON", "1");
+        address _gc = deployCode(gcArtifact, abi.encode(address(ton), address(voteEscrow)));
         gaugeController = GaugeContoller(_gc);
 
         vm.stopPrank();
