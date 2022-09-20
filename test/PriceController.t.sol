@@ -12,7 +12,6 @@ contract PriceControllerTest is BaseSetup {
     ICurvePool public fraxBP;
     ICurvePool public fraxBPPhoMetapool;
     IERC20 public fraxBPLP;
-    IERC20 public frax;
     ICurveFactory public curveFactory;
     PriceController public priceController;
 
@@ -26,7 +25,6 @@ contract PriceControllerTest is BaseSetup {
     uint256 public constant fractionPrecision = 10 ** 5;
 
     function setUp() public {
-        frax = IERC20(fraxAddress);
         fraxBPLP = IERC20(fraxBPLPToken);
         fraxBP = ICurvePool(fraxBPAddress);
         curveFactory = ICurveFactory(metaPoolFactoryAddress);

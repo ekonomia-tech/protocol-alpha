@@ -9,6 +9,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "src/interfaces/curve/ICurvePool.sol";
 import "src/interfaces/curve/ICurveFactory.sol";
 import "src/contracts/Teller.sol";
+import "src/contracts/Dispatcher.sol";
+import "src/contracts/Vault.sol";
 
 abstract contract BaseSetup is Test {
     struct Balance {
@@ -21,8 +23,11 @@ abstract contract BaseSetup is Test {
     TON public ton;
     Teller public teller;
     DummyOracle public priceOracle;
-
+    Dispatcher dispatcher;
+    Vault usdcVault;
+    Vault fraxVault;
     IERC20 usdc;
+    IERC20 frax;
 
     address public owner = 0xed320Bf569E5F3c4e9313391708ddBFc58e296bb; // NOTE - vitalik.eth for tests but we may need a different address to supply USDC depending on our tests - vitalik only has 30k USDC
     address public timelock_address = address(100);
@@ -87,7 +92,20 @@ abstract contract BaseSetup is Test {
         teller = new Teller(address(pho), tellerCeiling);
         pho.setTeller(address(teller));
 
+        dispatcher = new Dispatcher(address(pho), address(teller));
+        teller.whitelistCaller(address(dispatcher), 2000 * tenThousand_d18);
+
+        usdcVault = new Vault(USDC_ADDRESS, address(priceOracle));
+        fraxVault = new Vault(fraxAddress, address(priceOracle));
+
+        dispatcher.addVault(address(usdcVault));
+        dispatcher.addVault(address(fraxVault));
+
+        usdcVault.whitelistCaller(address(dispatcher));
+        fraxVault.whitelistCaller(address(dispatcher));
+
         usdc = IERC20(USDC_ADDRESS);
+        frax = IERC20(fraxAddress);
 
         vm.stopPrank();
     }
