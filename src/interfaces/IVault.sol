@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 interface IVault {
     event CallerWhitelisted(address indexed caller);
     event CallerRevoked(address indexed caller);
+    event OracleAddressSet(address indexed newOracleAddress);
 
     function getVaultUSDValue() external view returns (uint256);
     function provide(uint256 amount) external;
@@ -11,4 +12,5 @@ interface IVault {
     function getTokenPriceUSD() external view returns (uint256);
     function whitelistCaller(address caller) external;
     function revokeCaller(address caller) external;
+    function setOracleAddress(address newOracleAddress) external;
 }

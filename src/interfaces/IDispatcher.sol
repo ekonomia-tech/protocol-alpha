@@ -5,10 +5,10 @@ interface IDispatcher {
     event TellerUpdated(address indexed tellerAddress);
     event VaultAdded(address indexed vault);
     event VaultRemoved(address indexed vault);
-    event Dispatch(
+    event Dispatched(
         address indexed user, address indexed collateralToken, uint256 collateralIn, uint256 phoOut
     );
-    event Redeem(
+    event Redeemed(
         address indexed user, address indexed collateralToken, uint256 phoIn, uint256 collateralOut
     );
 

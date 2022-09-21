@@ -48,7 +48,7 @@ contract PriceControllerTest is BaseSetup {
         frax.transfer(address(priceController), tenThousand_d18);
     }
 
-    // /// setOracleAddress
+    /// setOracleAddress
 
     function testSetOracleAddress() public {
         address newAddress = address(110);

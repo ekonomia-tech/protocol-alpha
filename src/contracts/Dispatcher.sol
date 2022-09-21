@@ -48,7 +48,7 @@ contract Dispatcher is IDispatcher, Ownable {
         collateral.transferFrom(msg.sender, address(vault), amountIn);
         teller.mintPHO(msg.sender, phoAmountOut);
 
-        emit Dispatch(msg.sender, tokenIn, amountIn, phoAmountOut);
+        emit Dispatched(msg.sender, tokenIn, amountIn, phoAmountOut);
     }
 
     /// @notice redeem 1 $PHO to 1 USD collateral value and claim collateral
@@ -75,7 +75,7 @@ contract Dispatcher is IDispatcher, Ownable {
         pho.burnFrom(msg.sender, amountIn);
         collateral.transfer(msg.sender, collateralNeeded);
 
-        emit Redeem(msg.sender, tokenOut, amountIn, collateralNeeded);
+        emit Redeemed(msg.sender, tokenOut, amountIn, collateralNeeded);
     }
 
     /// @notice add vault to the vaults list this dispatcher can communicate with
