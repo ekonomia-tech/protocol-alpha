@@ -76,4 +76,13 @@ contract Vault is IVault, Ownable {
         delete whitelist[caller];
         emit CallerRevoked(caller);
     }
+
+    /// @notice set the oracle address for this contract
+    /// @param newOracleAddress the new address of the oracle used
+    function setOracleAddress(address newOracleAddress) external onlyOwner {
+        require(newOracleAddress != address(0), "Vault: zero address detected");
+        require(newOracleAddress != address(priceOracle), "Vault: same address detected");
+        priceOracle = DummyOracle(newOracleAddress);
+        emit OracleAddressSet(address(priceOracle));
+    }
 }

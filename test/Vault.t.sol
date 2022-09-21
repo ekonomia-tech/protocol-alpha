@@ -8,6 +8,7 @@ import "./BaseSetup.t.sol";
 contract VaultTest is BaseSetup {
     event CallerWhitelisted(address indexed caller);
     event CallerRevoked(address indexed caller);
+    event OracleAddressSet(address indexed newOracleAddress);
 
     function setUp() public {
         _fundAndApproveUSDC(owner, address(dispatcher), tenThousand_d6, tenThousand_d6);
@@ -126,6 +127,34 @@ contract VaultTest is BaseSetup {
         vm.expectRevert("Vault: caller is not approved");
         vm.prank(owner);
         usdcVault.revokeCaller(user1);
+    }
+
+    /// setOracleAddress
+
+    function testSetOracleAddress() public {
+        address newAddress = address(110);
+        vm.expectEmit(true, false, false, false);
+        emit OracleAddressSet(newAddress);
+        vm.prank(owner);
+        usdcVault.setOracleAddress(newAddress);
+    }
+
+    function testCannotSetOracleZeroAddress() public {
+        vm.expectRevert("Vault: zero address detected");
+        vm.prank(owner);
+        usdcVault.setOracleAddress(address(0));
+    }
+
+    function testCannotSetOracleNotAllowed() public {
+        vm.expectRevert("Ownable: caller is not the owner");
+        vm.prank(user1);
+        usdcVault.setOracleAddress(address(0));
+    }
+
+    function testCannotSetOracleSameAddress() public {
+        vm.expectRevert("Vault: same address detected");
+        vm.prank(owner);
+        usdcVault.setOracleAddress(address(priceOracle));
     }
 
     /// internal functions

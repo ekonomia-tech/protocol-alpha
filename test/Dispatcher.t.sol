@@ -4,16 +4,14 @@ pragma solidity ^0.8.13;
 import "./BaseSetup.t.sol";
 import "src/contracts/Vault.sol";
 
-// error Unauthorized();
-
 contract DispatcherTest is BaseSetup {
     event TellerUpdated(address indexed tellerAddress);
     event VaultAdded(address indexed vault);
     event VaultRemoved(address indexed vault);
-    event Dispatch(
+    event Dispatched(
         address indexed user, address indexed collateralToken, uint256 collateralIn, uint256 phoOut
     );
-    event Redeem(
+    event Redeemed(
         address indexed user, address indexed collateralToken, uint256 phoIn, uint256 collateralOut
     );
 
@@ -32,7 +30,7 @@ contract DispatcherTest is BaseSetup {
         uint256 tellerDispatcherMintBalanceBefore = teller.mintingBalances(address(dispatcher));
 
         vm.expectEmit(true, true, false, true);
-        emit Dispatch(user1, USDC_ADDRESS, amountIn, tenThousand_d18);
+        emit Dispatched(user1, USDC_ADDRESS, amountIn, tenThousand_d18);
         vm.prank(user1);
         dispatcher.dispatchCollateral(USDC_ADDRESS, amountIn, minPHOOut);
 
@@ -66,7 +64,7 @@ contract DispatcherTest is BaseSetup {
         uint256 tellerDispatcherMintBalanceBefore = teller.mintingBalances(address(dispatcher));
 
         vm.expectEmit(true, true, false, true);
-        emit Dispatch(user1, fraxAddress, amountIn, tenThousand_d18);
+        emit Dispatched(user1, fraxAddress, amountIn, tenThousand_d18);
         vm.prank(user1);
         dispatcher.dispatchCollateral(fraxAddress, amountIn, minPHOOut);
 
@@ -123,7 +121,7 @@ contract DispatcherTest is BaseSetup {
         uint256 user1PHOBalanceBefore = pho.balanceOf(user1);
 
         vm.expectEmit(true, true, false, true);
-        emit Redeem(user1, USDC_ADDRESS, phoIn, tenThousand_d6);
+        emit Redeemed(user1, USDC_ADDRESS, phoIn, tenThousand_d6);
         vm.prank(user1);
         dispatcher.redeemPHO(USDC_ADDRESS, tenThousand_d18, minCollateralOut);
 
@@ -151,7 +149,7 @@ contract DispatcherTest is BaseSetup {
         uint256 user1PHOBalanceBefore = pho.balanceOf(user1);
 
         vm.expectEmit(true, true, false, true);
-        emit Redeem(user1, fraxAddress, phoIn, tenThousand_d18);
+        emit Redeemed(user1, fraxAddress, phoIn, tenThousand_d18);
         vm.prank(user1);
         dispatcher.redeemPHO(fraxAddress, tenThousand_d18, minCollateralOut);
 
