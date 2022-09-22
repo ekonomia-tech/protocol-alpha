@@ -95,8 +95,8 @@ abstract contract BaseSetup is Test {
         dispatcher = new Dispatcher(address(pho), address(teller));
         teller.whitelistCaller(address(dispatcher), 2000 * tenThousand_d18);
 
-        usdcVault = new Vault(USDC_ADDRESS, address(priceOracle));
-        fraxVault = new Vault(fraxAddress, address(priceOracle));
+        usdcVault = new Vault(address(pho), USDC_ADDRESS, address(priceOracle));
+        fraxVault = new Vault(address(pho), fraxAddress, address(priceOracle));
 
         dispatcher.addVault(address(usdcVault));
         dispatcher.addVault(address(fraxVault));

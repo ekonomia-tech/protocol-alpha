@@ -14,7 +14,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 contract Dispatcher is IDispatcher, Ownable {
     ITeller public teller;
-    PHO public pho;
+    IPHO public pho;
 
     /// token => vault address
     mapping(address => address) public vaults;
@@ -23,7 +23,7 @@ contract Dispatcher is IDispatcher, Ownable {
     /// @param _phoAddress the address of the $PHO token contract
     /// @param _tellerAddress the address of the minting privileged teller contract
     constructor(address _phoAddress, address _tellerAddress) {
-        pho = PHO(_phoAddress);
+        pho = IPHO(_phoAddress);
         teller = ITeller(_tellerAddress);
     }
 
@@ -40,7 +40,7 @@ contract Dispatcher is IDispatcher, Ownable {
         IERC20Metadata collateral = IERC20Metadata(tokenIn);
 
         uint256 collateralPrice = vault.getTokenPriceUSD();
-        uint256 collateralAmount_d18 = amountIn * (10 ** (18 - collateral.decimals()));
+        uint256 collateralAmount_d18 = amountIn * (10 ** (pho.decimals() - collateral.decimals()));
         uint256 phoAmountOut = collateralAmount_d18 * collateralPrice / PRICE_PRECISION;
 
         require(phoAmountOut > minPHOOut, "Dispatcher: max slippage reached");
@@ -64,16 +64,16 @@ contract Dispatcher is IDispatcher, Ownable {
         IERC20Metadata collateral = IERC20Metadata(tokenOut);
 
         uint256 collateralPrice = vault.getTokenPriceUSD();
-        uint256 phoAmountPrecision = amountIn / (10 ** (18 - collateral.decimals()));
+        uint256 phoAmountPrecision = amountIn / (10 ** (pho.decimals() - collateral.decimals()));
         uint256 collateralNeeded = phoAmountPrecision * PRICE_PRECISION / collateralPrice;
 
         require(
             collateralNeeded <= collateral.balanceOf(address(vault)), "Dispatcher: vault too low"
         );
         require(collateralNeeded >= minCollateralOut, "Dispatcher: max slippage reached");
-        vault.provide(collateralNeeded);
+
         pho.burnFrom(msg.sender, amountIn);
-        collateral.transfer(msg.sender, collateralNeeded);
+        vault.provideTo(msg.sender, collateralNeeded);
 
         emit Redeemed(msg.sender, tokenOut, amountIn, collateralNeeded);
     }

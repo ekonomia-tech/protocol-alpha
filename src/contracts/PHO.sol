@@ -26,6 +26,10 @@ contract PHO is IPHO, ERC20Burnable, Ownable {
         super._mint(to, amount);
     }
 
+    function burnFrom(address account, uint256 amount) public override (ERC20Burnable, IPHO) {
+        super.burnFrom(account, amount);
+    }
+
     /// @notice set the teller address, which will be the only address capable of minting
     function setTeller(address newTeller) external onlyOwner {
         require(newTeller != address(0), "PHO: zero address detected");
