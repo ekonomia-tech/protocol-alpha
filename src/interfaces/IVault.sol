@@ -7,7 +7,7 @@ interface IVault {
     event OracleAddressSet(address indexed newOracleAddress);
 
     function getVaultUSDValue() external view returns (uint256);
-    function provide(uint256 amount) external;
+    function provideTo(address to, uint256 amount) external;
     function getVaultToken() external view returns (address);
     function getTokenPriceUSD() external view returns (uint256);
     function whitelistCaller(address caller) external;

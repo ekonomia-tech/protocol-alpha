@@ -40,15 +40,15 @@ contract VaultTest is BaseSetup {
         assertEq(usdcVault.getVaultUSDValue(), tenThousand_d18);
     }
 
-    /// provide()
+    /// provideTo()
 
-    function testProvide() public {
+    function testProvideTo() public {
         _dispatchCollateralUSDC();
         uint256 dispatcherUSDCBalanceBefore = usdc.balanceOf(address(dispatcher));
         uint256 vaultUSDCBalanceBefore = usdc.balanceOf(address(usdcVault));
 
         vm.prank(address(dispatcher));
-        usdcVault.provide(oneThousand_d6);
+        usdcVault.provideTo(address(dispatcher), oneThousand_d6);
 
         uint256 dispatcherUSDCBalanceAfter = usdc.balanceOf(address(dispatcher));
         uint256 vaultUSDCBalanceAfter = usdc.balanceOf(address(usdcVault));
@@ -57,22 +57,28 @@ contract VaultTest is BaseSetup {
         assertEq(vaultUSDCBalanceAfter, vaultUSDCBalanceBefore - oneThousand_d6);
     }
 
+    function testCannotProvideToAddressZero() public {
+        vm.expectRevert("Vault: zero address detected");
+        vm.prank(owner);
+        usdcVault.provideTo(address(0), tenThousand_d6);
+    }
+
     function testCannotProvideZeroAmount() public {
         vm.expectRevert("Vault: zero amount detected");
         vm.prank(address(dispatcher));
-        usdcVault.provide(0);
+        usdcVault.provideTo(msg.sender, 0);
     }
 
     function testCannotProvideNotApproved() public {
         vm.expectRevert("Vault: caller not approved");
         vm.prank(user1);
-        usdcVault.provide(oneThousand_d6);
+        usdcVault.provideTo(msg.sender, oneThousand_d6);
     }
 
     function testCannotProvideNotEnoughCollateral() public {
         vm.expectRevert("Vault: not enough collateral");
         vm.prank(address(dispatcher));
-        usdcVault.provide(oneThousand_d6);
+        usdcVault.provideTo(msg.sender, oneThousand_d6);
     }
 
     /// whitelistCaller()
