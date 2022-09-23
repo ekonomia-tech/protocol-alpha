@@ -6,22 +6,21 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract ChainlinkPriceFeed is IPriceOracle, Ownable {
-    event PriceFeedAdded(address indexed newToken, address indexed newFeed);
-    event PriceFeedRemoved(address indexed removedToken, address indexed removedFeed);
+    event FeedAdded(address indexed newToken, address indexed newFeed);
+    event FeedRemoved(address indexed removedToken, address indexed removedFeed);
 
+    /// the difference in precision between the decimal precision chainlink is returning to the wanted precision this contract returns
     uint256 public immutable precisionDifference;
 
     mapping(address => address) public priceFeeds;
 
-    constructor(uint256 _oraclePrecision, uint256 _responsePrecision) {
-        require(
-            _responsePrecision >= _oraclePrecision && _oraclePrecision != 0
-                && _responsePrecision != 0,
-            "Price Feed: bad values"
-        );
-        precisionDifference = _responsePrecision - _oraclePrecision;
+    /// @param _precisionDifference the decimal precision difference between the chainlink oracle and the desired return value
+    constructor(uint256 _precisionDifference) {
+        require(_precisionDifference > 0, "Price Feed: precision must be >0");
+        precisionDifference = _precisionDifference;
     }
 
+    /// @param baseToken the base token to retrieve the price in USD with 18 decimals.
     function getPrice(address baseToken) external view returns (uint256) {
         require(priceFeeds[baseToken] != address(0), "Price Feed: feed not registered");
         (, int256 price,,,) = AggregatorV3Interface(priceFeeds[baseToken]).latestRoundData();
@@ -29,20 +28,25 @@ contract ChainlinkPriceFeed is IPriceOracle, Ownable {
         return uint256(price) * (10 ** precisionDifference);
     }
 
+    /// @notice add a price feed for a specific XXX/USD pair
+    /// @param newToken the base token of the price feed
+    /// @param newFeed the price feed contract address
     function addFeed(address newToken, address newFeed) external onlyOwner {
         require(
             newFeed != address(0) && newToken != address(0), "Price Feed: zero address detected"
         );
         require(priceFeeds[newToken] != newFeed, "Price Feed: feed registered");
         priceFeeds[newToken] = newFeed;
-        emit PriceFeedAdded(newToken, newFeed);
+        emit FeedAdded(newToken, newFeed);
     }
 
+    /// @notice remove price feed form the available price feeds
+    /// @param feedToken the token of the feed to be removed
     function removeFeed(address feedToken) external onlyOwner {
         require(feedToken != address(0), "Price Feed: zero address detected");
         require(priceFeeds[feedToken] != address(0), "Price Feed: feed not registered");
         address deletedFeed = priceFeeds[feedToken];
         delete priceFeeds[feedToken];
-        emit PriceFeedRemoved(feedToken, deletedFeed);
+        emit FeedRemoved(feedToken, deletedFeed);
     }
 }
