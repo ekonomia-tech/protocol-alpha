@@ -6,11 +6,11 @@ import "src/contracts/Vault.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 contract ChainlinkPriceFeedTest is BaseSetup {
-    event PriceFeedAdded(address indexed newToken, address indexed newFeed);
-    event PriceFeedRemoved(address indexed removedToken, address indexed removedFeed);
+    event FeedAdded(address indexed newToken, address indexed newFeed);
+    event FeedRemoved(address indexed removedToken, address indexed removedFeed);
 
     function testConstructor() public {
-        assertEq(priceFeed.precisionDifference(), oracleResponsePrecision - oraclePrecision);
+        assertEq(priceFeed.precisionDifference(), precisionDifference);
     }
 
     /// getPrice()
@@ -43,9 +43,9 @@ contract ChainlinkPriceFeedTest is BaseSetup {
         AggregatorV3Interface ETHPriceFeed = AggregatorV3Interface(PriceFeed_ETHUSD);
 
         vm.prank(owner);
-        priceFeed.addFeed(fraxAddress, PriceFeed_ETHUSD);
+        priceFeed.addFeed(ethNullAddress, PriceFeed_ETHUSD);
 
-        uint256 internalPrice = priceFeed.getPrice(fraxAddress);
+        uint256 internalPrice = priceFeed.getPrice(ethNullAddress);
         (, int256 externalPrice,,,) = ETHPriceFeed.latestRoundData();
 
         assertEq(internalPrice, uint256(externalPrice) * (10 ** priceFeed.precisionDifference()));
@@ -68,7 +68,7 @@ contract ChainlinkPriceFeedTest is BaseSetup {
         assertTrue(USDCFeedAddress == address(0));
 
         vm.expectEmit(true, true, false, true);
-        emit PriceFeedAdded(USDC_ADDRESS, PriceFeed_USDCUSD);
+        emit FeedAdded(USDC_ADDRESS, PriceFeed_USDCUSD);
         _addUSDCFeed();
 
         assertEq(priceFeed.priceFeeds(USDC_ADDRESS), PriceFeed_USDCUSD);
@@ -96,7 +96,7 @@ contract ChainlinkPriceFeedTest is BaseSetup {
         _addUSDCFeed();
 
         vm.expectEmit(true, true, false, true);
-        emit PriceFeedRemoved(USDC_ADDRESS, PriceFeed_USDCUSD);
+        emit FeedRemoved(USDC_ADDRESS, PriceFeed_USDCUSD);
         vm.prank(owner);
         priceFeed.removeFeed(USDC_ADDRESS);
 

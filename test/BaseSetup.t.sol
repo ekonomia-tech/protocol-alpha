@@ -46,7 +46,8 @@ abstract contract BaseSetup is Test {
     address public fraxAddress = 0x853d955aCEf822Db058eb8505911ED77F175b99e;
     address public fraxBPLUSD = 0x497CE58F34605B9944E6b15EcafE6b001206fd25;
 
-    address public constant PriceFeed_ETHUSD = 0xaEA2808407B7319A31A383B6F8B60f04BCa23cE2;
+    address public constant ethNullAddress = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    address public constant PriceFeed_ETHUSD = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address public constant PriceFeed_USDCUSD = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
     address public constant PriceFeed_FRAXUSD = 0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD;
 
@@ -76,8 +77,7 @@ abstract contract BaseSetup is Test {
     uint256 public constant PRICE_PRECISION = 10 ** 6;
     uint256 public constant missing_decimals = 10 ** 12;
 
-    uint256 public constant oracleResponsePrecision = 18;
-    uint256 public constant oraclePrecision = 8;
+    uint256 public constant precisionDifference = 10;
 
     address public constant weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant USDC_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
@@ -116,7 +116,7 @@ abstract contract BaseSetup is Test {
         usdc = IERC20(USDC_ADDRESS);
         frax = IERC20(fraxAddress);
 
-        priceFeed = new ChainlinkPriceFeed(oraclePrecision, oracleResponsePrecision);
+        priceFeed = new ChainlinkPriceFeed(precisionDifference);
         vm.stopPrank();
     }
 
@@ -145,9 +145,7 @@ abstract contract BaseSetup is Test {
         address _spender,
         uint256 _amountIn,
         uint256 _amountOut
-    )
-        internal
-    {
+    ) internal {
         _getUSDC(_owner, _amountIn);
         _approveUSDC(_owner, _spender, _amountOut);
     }
@@ -167,9 +165,7 @@ abstract contract BaseSetup is Test {
         address _spender,
         uint256 _amountIn,
         uint256 _amountOut
-    )
-        internal
-    {
+    ) internal {
         _getTON(_owner, _amountIn);
         _approveTON(_owner, _spender, _amountOut);
     }
