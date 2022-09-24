@@ -40,12 +40,9 @@ abstract contract BaseSetup is Test {
     address public user3 = address(3);
     address public dummyAddress = address(4);
     address public richGuy = 0x72A53cDBBcc1b9efa39c834A540550e23463AAcB;
-    address public fraxBPLPToken = 0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC;
-    address public fraxBPAddress = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
+ 
     address public metaPoolFactoryAddress = 0xB9fC157394Af804a3578134A6585C0dc9cc990d4;
     address public fraxRichGuy = 0xd3d176F7e4b43C70a68466949F6C64F06Ce75BB9;
-    address public fraxAddress = 0x853d955aCEf822Db058eb8505911ED77F175b99e;
-    address public fraxBPLUSD = 0x497CE58F34605B9944E6b15EcafE6b001206fd25;
 
     address public constant ethNullAddress = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address public constant PriceFeed_ETHUSD = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
@@ -91,6 +88,15 @@ abstract contract BaseSetup is Test {
 
     address public constant weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant USDC_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address public fraxAddress = 0x853d955aCEf822Db058eb8505911ED77F175b99e;
+    address public fraxBPAddress = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
+    address public fraxBPLPToken = 0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC;
+    address public fraxBPLUSD = 0x497CE58F34605B9944E6b15EcafE6b001206fd25;
+    // address public fraxChainlinkPriceFeed = 0xb9e1e3a9feff48998e45fa90847ed4d467e8bcfd;
+    // address public usdcChainlinkPriceFeed = 0x8fffffd4afb6115b954bd326cbe7b4ba576818f6;
+    // address public ethNullAddress = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    // address public ethUSDChainlinkPriceFeed = 0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419;
+
     uint256 public constant POOL_CEILING = (2 ** 256) - 1;
 
     uint256 tellerCeiling = 2 * 100 * tenThousand_d18; // set to 2 million
@@ -107,6 +113,14 @@ abstract contract BaseSetup is Test {
         priceOracle = new DummyOracle();
         pho = new PHO("PHO", "PHO");
         ton = new TON("TON", "TON");
+        // priceFeed = new PriceFeed(); // TODO - setup in accordance to Niv's code or replace with his constructor if any.
+        
+        // // set base pricefeeds needed for CurveTWAPOracle
+        // priceFeed.addFeed(fraxAddress, fraxChainlinkPriceFeed);
+        // priceFeed.addFeed(USDC_ADDRESS, usdcChainlinkPriceFeed);
+        // priceFeed.addFeed(ethNullAddress, ethUSDChainlinkPriceFeed);
+        // // Chainlink priceFeed for Frax-USD: https://data.chain.link/ethereum/mainnet/stablecoins/frax-usd
+        // // Chainlink priceFeed for USDC-USD: https://data.chain.link/ethereum/mainnet/stablecoins/usdc-usd
 
         teller = new Teller(address(pho), tellerCeiling);
         pho.setTeller(address(teller));
