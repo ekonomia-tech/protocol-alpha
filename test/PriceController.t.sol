@@ -9,10 +9,10 @@ import "src/contracts/PriceController.sol";
 
 contract PriceControllerTest is BaseSetup {
     ICurvePool public curvePool;
-    ICurvePool public fraxBP;
-    ICurvePool public fraxBPPhoMetapool;
-    IERC20 public fraxBPLP;
-    ICurveFactory public curveFactory;
+    // ICurvePool public fraxBP;
+    // ICurvePool public fraxBPPhoMetapool;
+    // IERC20 public fraxBPLP;
+    // ICurveFactory public curveFactory;
     PriceController public priceController;
 
     /// Contract relevant test constants
@@ -29,14 +29,9 @@ contract PriceControllerTest is BaseSetup {
         fraxBP = ICurvePool(fraxBPAddress);
         curveFactory = ICurveFactory(metaPoolFactoryAddress);
 
-        // we need USDC to deploy said metapool. owner is funded through richGuy I believe
-        // approves fraxBP to pull usdc from owner in return for LP tokens
         _fundAndApproveUSDC(owner, address(fraxBP), tenThousand_d6, tenThousand_d6);
 
-        // then we deploy the fraxBPPhoMetapool, nice
         fraxBPPhoMetapool = ICurvePool(_deployFraxBPPHOPool());
-
-        // 
 
         priceController =
         new PriceController(address(pho), address(teller), address(priceOracle), address(fraxBPPhoMetapool), USDC_ADDRESS, address(curveFactory), owner, 3600, 10 ** 4, 50000,99000);
