@@ -11,7 +11,9 @@ import "src/interfaces/curve/ICurveFactory.sol";
 import "src/contracts/Teller.sol";
 import "src/contracts/Dispatcher.sol";
 import "src/contracts/Vault.sol";
-// import "src/contracts/PriceFeed.sol";
+import "src/oracle/ChainlinkPriceFeed.sol";
+import "src/oracle/PHOTWAPOracle.sol";
+import "src/interfaces/IPHOOracle.sol";
 
 abstract contract BaseSetup is Test {
     struct Balance {
@@ -24,13 +26,19 @@ abstract contract BaseSetup is Test {
     TON public ton;
     Teller public teller;
     DummyOracle public priceOracle;
+    ChainlinkPriceFeed public priceFeed;
     Dispatcher dispatcher;
     Vault usdcVault;
     Vault fraxVault;
     IERC20 usdc;
     IERC20 frax;
+    IERC20 fraxBPLP;
+    ICurvePool fraxBP;
+    ICurveFactory curveFactory;
+    ICurvePool fraxBPPhoMetapool;
 
-    address public owner = 0x72A53cDBBcc1b9efa39c834A540550e23463AAcB;
+
+    address public owner = 0xed320Bf569E5F3c4e9313391708ddBFc58e296bb;
     // address public owner = 0xed320Bf569E5F3c4e9313391708ddBFc58e296bb; // NOTE - vitalik.eth for tests but we may need a different address to supply USDC depending on our tests - vitalik only has 30k USDC
     address public timelock_address = address(100);
     address public controller = address(101);
@@ -39,7 +47,6 @@ abstract contract BaseSetup is Test {
     address public user3 = address(3);
     address public dummyAddress = address(4);
     address public richGuy = 0x72A53cDBBcc1b9efa39c834A540550e23463AAcB;
- 
     address public metaPoolFactoryAddress = 0xB9fC157394Af804a3578134A6585C0dc9cc990d4;
     address public fraxRichGuy = 0xd3d176F7e4b43C70a68466949F6C64F06Ce75BB9;
 
@@ -64,6 +71,8 @@ abstract contract BaseSetup is Test {
     uint256 public constant tenThousand_d18 = 10000 * 10 ** 18;
     uint256 public constant tenThousand_d6 = 10000 * 10 ** 6;
 
+    uint256 public constant twoHundredFiftyThousand_d18 = 250000 * 10 ** 18;
+    uint256 public constant fiveHundredThousand_d18 = 500000 * 10 ** 18;
     uint256 public constant one_m_d6 = 1000000 * 10 ** 6;
     uint256 public constant one_m_d18 = 1000000 * 10 ** 18;
     uint256 public constant five_m_d6 = 5000000 * 10 ** 6;
@@ -76,22 +85,30 @@ abstract contract BaseSetup is Test {
 
     uint256 public constant GENESIS_SUPPLY_d18 = 100000000 * 10 ** 18;
     uint256 public constant GENESIS_SUPPLY_d6 = 100000 * 10 ** 6;
-    uint256 public constant PRICE_THRESHOLD = 100; // 10000 = 100%
-    uint256 public period = 604800; // 1 week in seconds
 
     uint256 public constant PRICE_PRECISION = 10 ** 6;
     uint256 public constant missing_decimals = 10 ** 12;
+    uint256 public constant PHO_PRICE_PRECISION = 10 ** 18;
+    uint256 public constant FEED_PRECISION = 10 ** 10;
+
+    uint256 public constant oracleResponsePrecision = 18;
+    uint256 public constant oraclePrecision = 8;
+
+    // phoOracle specific
+    uint256 public constant PRICE_THRESHOLD = 100000; // 10%, since 10 ** 6 (1000000) = 100%
+    uint256 public period = 604800; // 1 week in seconds
 
     address public constant weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant USDC_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address public fraxAddress = 0x853d955aCEf822Db058eb8505911ED77F175b99e;
     address public fraxBPAddress = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
     address public fraxBPLPToken = 0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC;
+    address public fraxBPPool = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
     address public fraxBPLUSD = 0x497CE58F34605B9944E6b15EcafE6b001206fd25;
-    // address public fraxChainlinkPriceFeed = 0xb9e1e3a9feff48998e45fa90847ed4d467e8bcfd;
-    // address public usdcChainlinkPriceFeed = 0x8fffffd4afb6115b954bd326cbe7b4ba576818f6;
-    // address public ethNullAddress = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-    // address public ethUSDChainlinkPriceFeed = 0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419;
+    address public ethNullAddress = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    address public constant PriceFeed_ETHUSD = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+    address public constant PriceFeed_USDCUSD = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
+    address public constant PriceFeed_FRAXUSD = 0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD;
 
     uint256 public constant POOL_CEILING = (2 ** 256) - 1;
 
@@ -109,14 +126,6 @@ abstract contract BaseSetup is Test {
         priceOracle = new DummyOracle();
         pho = new PHO("PHO", "PHO");
         ton = new TON("TON", "TON");
-        // priceFeed = new PriceFeed(); // TODO - setup in accordance to Niv's code or replace with his constructor if any.
-        
-        // // set base pricefeeds needed for CurveTWAPOracle
-        // priceFeed.addFeed(fraxAddress, fraxChainlinkPriceFeed);
-        // priceFeed.addFeed(USDC_ADDRESS, usdcChainlinkPriceFeed);
-        // priceFeed.addFeed(ethNullAddress, ethUSDChainlinkPriceFeed);
-        // // Chainlink priceFeed for Frax-USD: https://data.chain.link/ethereum/mainnet/stablecoins/frax-usd
-        // // Chainlink priceFeed for USDC-USD: https://data.chain.link/ethereum/mainnet/stablecoins/usdc-usd
 
         teller = new Teller(address(pho), tellerCeiling);
         pho.setTeller(address(teller));
@@ -135,6 +144,11 @@ abstract contract BaseSetup is Test {
 
         usdc = IERC20(USDC_ADDRESS);
         frax = IERC20(fraxAddress);
+
+        priceFeed = new ChainlinkPriceFeed(oraclePrecision, oracleResponsePrecision);
+
+        curveFactory = ICurveFactory(metaPoolFactoryAddress);
+        fraxBP = ICurvePool(fraxBPAddress);
 
         vm.stopPrank();
     }
@@ -193,15 +207,37 @@ abstract contract BaseSetup is Test {
         _approveTON(_owner, _spender, _amountOut);
     }
 
+    function _getFRAX(address _to, uint256 _amount) internal {
+        vm.prank(fraxRichGuy);
+        frax.transfer(_to, _amount);
+    }
+
+    function _approveFRAX(address _owner, address _spender, uint256 _amount) internal {
+        vm.prank(_owner);
+        frax.approve(_spender, _amount);
+    }
+
+    function _fundAndApproveFRAX(
+        address _owner,
+        address _spender,
+        uint256 _amountIn,
+        uint256 _amountOut
+    )
+        internal
+    {
+        _getFRAX(_owner, _amountIn);
+        _approveFRAX(_owner, _spender, _amountOut);
+    }
+    
+
     /// @notice funds owner with USDC, approves fraxBP to pull owner USDC, funds owner with FRAX from fraxRichGuy, approves fraxBP to pull owner FRAX, owner adds liquidity to fraxBP, owner deploys metapool FraxBP/PHO, owner adds liquidity to FraxBP/PHO. Owner has all the LP tokens to start for FraxBP/PHO
     function _deployFraxBPPHOPool() internal returns (address) {
         vm.prank(address(teller));
         pho.mint(owner, tenThousand_d18);
 
-        IERC20 frax = IERC20(fraxAddress);
-        IERC20 fraxBPLP = IERC20(fraxBPLPToken);
-        ICurvePool fraxBP = ICurvePool(fraxBPAddress);
-        ICurveFactory curveFactory = ICurveFactory(metaPoolFactoryAddress);
+        frax = IERC20(fraxAddress);
+        fraxBPLP = IERC20(fraxBPLPToken);
+        // curveFactory = ICurveFactory(metaPoolFactoryAddress);
 
         _fundAndApproveUSDC(owner, address(fraxBP), tenThousand_d6, tenThousand_d6);
 
@@ -224,7 +260,7 @@ abstract contract BaseSetup is Test {
             address(fraxBP), "FRAXBP/PHO", "FRAXBPPHO", address(pho), 200, 4000000, 0
         );
 
-        ICurvePool fraxBPPhoMetapool = ICurvePool(fraxBPPhoMetapoolAddress);
+        fraxBPPhoMetapool = ICurvePool(fraxBPPhoMetapoolAddress);
         pho.approve(address(fraxBPPhoMetapool), tenThousand_d18);
         fraxBPLP.approve(address(fraxBPPhoMetapool), tenThousand_d18);
 
@@ -241,10 +277,12 @@ abstract contract BaseSetup is Test {
 
     /// @notice funds owner with USDC, approves fraxBP to pull owner USDC, funds owner with FRAX from fraxRichGuy, approves fraxBP to pull owner FRAX, owner adds liquidity to fraxBP, owner deploys metapool FraxBP/PHO, owner adds liquidity to FraxBP/PHO. Owner has all the LP tokens to start for FraxBP/PHO
     function _deployFraxBPPHOPoolOneMillion() internal returns (address) {
-        IERC20 frax = IERC20(fraxAddress);
-        IERC20 fraxBPLP = IERC20(fraxBPLPToken);
-        ICurvePool fraxBP = ICurvePool(fraxBPAddress);
-        ICurveFactory curveFactory = ICurveFactory(metaPoolFactoryAddress);
+        vm.prank(address(teller));
+        pho.mint(owner, one_m_d18);
+        frax = IERC20(fraxAddress);
+        fraxBPLP = IERC20(fraxBPLPToken);
+        fraxBP = ICurvePool(fraxBPAddress);
+        curveFactory = ICurveFactory(metaPoolFactoryAddress);
 
         _fundAndApproveUSDC(owner, address(fraxBP), one_m_d6, one_m_d6);
 
@@ -253,31 +291,24 @@ abstract contract BaseSetup is Test {
         fraxBPmetaLiquidity[1] = one_m_d6; // usdc
         uint256 minLPOut = one_m_d18;
 
-        vm.startPrank(fraxRichGuy);
-        frax.transfer(owner, one_m_d18 * 5);
-        vm.stopPrank();
+        vm.prank(fraxRichGuy);
+        frax.transfer(owner, one_m_d18);
 
         vm.startPrank(owner);
-
         usdc.approve(address(fraxBP), one_m_d6);
         frax.approve(address(fraxBP), one_m_d18);
-
         fraxBP.add_liquidity(fraxBPmetaLiquidity, 0);
-
         address fraxBPPhoMetapoolAddress = curveFactory.deploy_metapool(
             address(fraxBP), "FRAXBP/PHO", "FRAXBPPHO", address(pho), 200, 4000000, 0
         );
-
-        ICurvePool fraxBPPhoMetapool = ICurvePool(fraxBPPhoMetapoolAddress);
+        fraxBPPhoMetapool = ICurvePool(fraxBPPhoMetapoolAddress);
         pho.approve(address(fraxBPPhoMetapool), one_m_d18);
         fraxBPLP.approve(address(fraxBPPhoMetapool), one_m_d18);
-
         uint256[2] memory metaLiquidity;
         metaLiquidity[0] = one_m_d18;
         metaLiquidity[1] = one_m_d18;
-
-        fraxBPPhoMetapool.add_liquidity(metaLiquidity, 0);
-
+        fraxBPPhoMetapool.add_liquidity(metaLiquidity, 0); // FraxBP-PHO metapool now at 66/33 split, respectively. Meaning 33/33/33 for underlying assets: USDC/Frax/PHO
+        vm.stopPrank();
         return fraxBPPhoMetapoolAddress;
     }
 }
