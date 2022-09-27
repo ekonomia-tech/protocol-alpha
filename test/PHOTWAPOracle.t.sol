@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "src/interfaces/curve/ICurvePool.sol";
 import "src/interfaces/curve/ICurveFactory.sol";
 import {PHOTWAPOracle} from "../src/oracle/PHOTWAPOracle.sol";
+// import "./Console.sol";
 
 /// @notice basic tests assessing genesis PHOTWAPOracle
 /// @dev for function sigs in metapool, see https://etherscan.io/address/0x497CE58F34605B9944E6b15EcafE6b001206fd25#code
@@ -99,14 +100,25 @@ contract PHOTWAPOracleTest is BaseSetup {
         uint256 expectedPriceCumulativeLast0 = expectedBlockTimeStamp * expectedTWAP0;
         uint256 expectedPriceCumulativeLast1 = expectedBlockTimeStamp * expectedTWAP1;
         uint256 expectedNewUSDPHOPrice = expectedTWAP0 * _getUSDPerFraxBP() / PHO_PRICE_PRECISION;
+        uint256 oldUSDPHOPrice = phoTwapOracle.latestUSDPHOPrice();
 
         assertEq(expectedPeriodTimeElapsed, block.timestamp - phoTwapOracle.latestBlockTimestamp()); //latestBlockTimestamp should be zero
+
+        // console.log("balances(0): %s", fraxBPPhoMetapool.balances(0));
+        // console.log("balances(1): %s", fraxBPPhoMetapool.balances(1));
+        // console.log("TEST(_getUSDPerFraxBP(): %s", phoTwapOracle._getUSDPerFraxBP());
+        // console.log("TEST - fraxInFraxBP: %s", fraxBP.balances(0));
+        // console.log("TEST - InFraxBP: %s", fraxBP.balances(1));
+        // console.log("TEST - usdcInFraxBP: %s", fraxBP.balances(1));
+        // console.log("TEST - fraxBPLP total supply: %s", fraxBPLP.totalSupply());
+        // console.log("Chainlink Prices: frax %s, usdc %s", priceFeed.getPrice(fraxAddress), priceFeed.getPrice(USDC_ADDRESS));
 
         vm.expectEmit(true, true, false, true);
         emit PriceUpdated(expectedNewUSDPHOPrice, expectedBlockTimeStamp);
         uint256 newUSDPHOPrice = phoTwapOracle.getPrice();
 
         assertEq(expectedNewUSDPHOPrice, phoTwapOracle.latestUSDPHOPrice());
+        // console.log("expectedNewUSDPHOPrice: %s and latestUSDPHOPrice: %s and oldUSDPHOPrice: %s", expectedNewUSDPHOPrice, phoTwapOracle.latestUSDPHOPrice(), oldUSDPHOPrice);
         assertEq(phoTwapOracle.initOracle(), true);
         assertEq(expectedPriceCumulativeLast0, phoTwapOracle.priceCumulativeLast(0));
         assertEq(expectedPriceCumulativeLast1, phoTwapOracle.priceCumulativeLast(1));
@@ -119,16 +131,28 @@ contract PHOTWAPOracleTest is BaseSetup {
     /// NOTE - accuracy is tbd
     function testGetPriceSwapToken0() public {    
         twapFixture(); // getPrice() called for first time, and we've fast forwarded 1 period
+
+        uint256 oldUSDPHOPrice = phoTwapOracle.latestUSDPHOPrice();
+
         vm.startPrank(owner); 
-        fraxBPPhoMetapool.exchange(0, 1, fiveHundredThousand_d18, tenThousand_d18); // TODO - not sure if the minimum amount greatly affects the returnValue
-        uint256 expectedNewUSDPHOPrice = _getNewUSDPHOPrice();        
+        fraxBPPhoMetapool.exchange(0, 1, tenThousand_d18, tenThousand_d18); // TODO - not sure if the minimum amount greatly affects the returnValue
+        uint256 expectedNewUSDPHOPrice = _getNewUSDPHOPrice();
+        console.log("expectedNewUSDPHOPrice: %s and oldUSDPHOPrice: %s", expectedNewUSDPHOPrice, phoTwapOracle.latestUSDPHOPrice(), oldUSDPHOPrice);
+                
         // vm.expectEmit(true, true, false, true);
         // emit PriceUpdated(expectedNewUSDPHOPrice, block.timestamp);
         // phoTwapOracle.getPrice();
+
+        
+        // console.log("expectedNewUSDPHOPrice: %s and latestUSDPHOPrice: %s and oldUSDPHOPrice: %s", expectedNewUSDPHOPrice, phoTwapOracle.latestUSDPHOPrice(), oldUSDPHOPrice);
+
+
         // assertEq(expectedNewUSDPHOPrice, phoTwapOracle.latestUSDPHOPrice());
         // assertEq(block.timestamp, phoTwapOracle.latestBlockTimestamp());
         vm.stopPrank();
     }
+
+    // TODO - come up with test that tests the exact tipping point for allowed threshold. This is more just for tests, no extra code should be needed in the implemented contract, PHOTWAPOracle.sol for this. Essentially: calc backwards, what is the threshold, basically come out with the priceAllowed && then use that to calculate the change in balances that can be allowed essentially.
 
     // /// @notice same as last test but swap token 1 for token 0
     // function testGetPriceSwapToken1() public {
@@ -290,7 +314,7 @@ contract PHOTWAPOracleTest is BaseSetup {
     function twapFixture() public {
         _fundAndApproveFRAX(owner, fraxBPPhoMetapoolAddress, one_m_d18, 0);
         vm.startPrank(owner);
-        phoTwapOracle.getPrice();
+        phoTwapOracle.getPrice(); 
         vm.warp(phoTwapOracle.latestBlockTimestamp() + period + 1);
         // pho.approve(address(fraxBPPhoMetapool), six_m_d18);
         // fraxBPLP.approve(address(fraxBPPhoMetapool), six_m_d18);
@@ -304,7 +328,7 @@ contract PHOTWAPOracleTest is BaseSetup {
         uint256 usdcInFraxBP = fraxBP.balances(1); // USDC - decimals: 6
         uint256 fraxPerFraxBP = fraxInFraxBP * PHO_PRICE_PRECISION / fraxBPLP.totalSupply(); // UNITS: (FRAX/FraxBP) - scaled by d18
         uint256 usdcPerFraxBP = usdcInFraxBP * PHO_PRICE_PRECISION * missing_decimals / fraxBPLP.totalSupply(); // UNITS: (USDC/FraxBP) - scaled by d18
-        uint256 usdPerFraxBP = (((fraxPerFraxBP / priceFeed.getPrice(fraxAddress))) + (usdcPerFraxBP / priceFeed.getPrice(USDC_ADDRESS))) * (FEED_PRECISION); // UNITS: (USD/FraxBP) - scaled by d18
+        uint256 usdPerFraxBP = (((fraxPerFraxBP * PHO_PRICE_PRECISION / priceFeed.getPrice(fraxAddress))) + (usdcPerFraxBP * PHO_PRICE_PRECISION / priceFeed.getPrice(USDC_ADDRESS))); // UNITS: (USD/FraxBP) - scaled by d18
         return usdPerFraxBP;
     }
 
@@ -320,17 +344,20 @@ contract PHOTWAPOracleTest is BaseSetup {
 
         uint256 expectedPeriodTimeElapsed = block.timestamp - phoTwapOracle.latestBlockTimestamp();
         uint256[2] memory expectedPriceCumulativeNew;
-        expectedPriceCumulativeNew[0] = ((token0Price) * expectedPeriodTimeElapsed);
-        expectedPriceCumulativeNew[1] = ((token1Price) * expectedPeriodTimeElapsed);
+        expectedPriceCumulativeNew[0] = ((token0Price) * expectedPeriodTimeElapsed * PHO_PRICE_PRECISION);
+        expectedPriceCumulativeNew[1] = ((token1Price) * expectedPeriodTimeElapsed * PHO_PRICE_PRECISION);
         uint256[2] memory lastTwap = [phoTwapOracle.twap(0), phoTwapOracle.twap(1)];
         uint256[2] memory expectedTwap;
         uint256[2] memory priceCumulativeLast = [phoTwapOracle.priceCumulativeLast(0), phoTwapOracle.priceCumulativeLast(1)];
 
         for(uint256 i = 0; i < 2; i++ ) {
+            console.log("CHECK: PriceCumNew: %s, PriceCumLast: %s, PeriodTimeElapsed: %s",expectedPriceCumulativeNew[i], priceCumulativeLast[i], expectedPeriodTimeElapsed);
             expectedTwap[i] = (expectedPriceCumulativeNew[i] - priceCumulativeLast[i]) / expectedPeriodTimeElapsed;
+            // console.log("twap: %s", expectedTwap[i] / PHO_PRICE_PRECISION);
             // console log each thing here and see if the divisor is smaller than the numerator.
         } // want twap[0], the price FraxBP/PHO, we keep the other just in case
  
+        // uint256 expectedLatestUSDPHOPrice = 1;
         uint256 expectedLatestUSDPHOPrice = (expectedTwap[0] * _getUSDPerFraxBP()) / PHO_PRICE_PRECISION; //  UNITS: (USD/PHO) = (FraxBP/PHO * USD/FraxBP) - decimals d18
         return expectedLatestUSDPHOPrice;
     }

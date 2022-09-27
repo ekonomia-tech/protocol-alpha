@@ -9,6 +9,7 @@ import "../interfaces/IPHOOracle.sol";
 import "../interfaces/curve/ICurvePool.sol";
 import "../interfaces/curve/ICurveFactory.sol";
 import "../interfaces/IPriceOracle.sol";
+// import "../../test/Console.sol";
 
 /// @title PHOTWAPOracle
 /// @notice Oracle exposing USD/PHO price using v1 Curve PHO/FraxBP Metapool TWAP Pair Oracle && USD PriceFeeds (USD/FRAX && USD/USDC)
@@ -92,7 +93,6 @@ contract PHOTWAPOracle is IPHOOracle, Ownable {
         uint256 token1Price = token0balance * PRICE_PRECISION / token1balance;
 
         if(!initOracle) {
-            require(!initOracle, "PHOTWAPOracle: oracle not initialized");
             twap = [token0Price, token1Price];
             latestBlockTimestamp = block.timestamp;
             priceCumulativeLast = [token0Price * latestBlockTimestamp, token1Price * latestBlockTimestamp];
@@ -106,8 +106,8 @@ contract PHOTWAPOracle is IPHOOracle, Ownable {
         require(periodTimeElapsed >= period, "PHOTWAPOracle: period not elapsed");
 
         uint256[2] memory priceCumulativeNew;
-        priceCumulativeNew[0] = ((token0Price) * periodTimeElapsed);
-        priceCumulativeNew[1] = ((token1Price) * periodTimeElapsed);
+        priceCumulativeNew[0] = ((token0Price) * periodTimeElapsed * PRICE_PRECISION);
+        priceCumulativeNew[1] = ((token1Price) * periodTimeElapsed * PRICE_PRECISION);
         uint256[] memory lastTwap;
 
         // NOTE - This gives weekly twap, we check this against the price threshold to ensure a robust oracle against attacks
@@ -197,12 +197,12 @@ contract PHOTWAPOracle is IPHOOracle, Ownable {
 
     /// @notice helper to get USD per FraxBP by checking underlying asset composition (FRAX and USDC)
     /// @return newest USD/FraxBP (scaled by d18) price answer derived from fraxBP balances and USD/Frax && USD/USDC priceFeeds
-    function _getUSDPerFraxBP() internal returns(uint256) {
+    function _getUSDPerFraxBP() public returns(uint256) {
         uint256 fraxInFraxBP = fraxBPPool.balances(0); // FRAX - decimals: 18
         uint256 usdcInFraxBP = fraxBPPool.balances(1); // USDC - decimals: 6
         uint256 fraxPerFraxBP = fraxInFraxBP * PRICE_PRECISION / fraxBPLP.totalSupply(); // UNITS: (FRAX/FraxBP) - scaled by d18
         uint256 usdcPerFraxBP = usdcInFraxBP * PRICE_PRECISION * USDC_MISSING_DECIMALS / fraxBPLP.totalSupply(); // UNITS: (USDC/FraxBP) - scaled by d18
-        uint256 usdPerFraxBP = ((fraxPerFraxBP / priceFeeds.getPrice(fraxAddress)) + (usdcPerFraxBP / priceFeeds.getPrice(usdcAddress))) * (FEED_PRECISION); // UNITS: (USD/FraxBP) - scaled by d18
+        uint256 usdPerFraxBP = ((fraxPerFraxBP * PRICE_PRECISION / priceFeeds.getPrice(fraxAddress)) + (usdcPerFraxBP  * PRICE_PRECISION / priceFeeds.getPrice(usdcAddress))); // UNITS: (USD/FraxBP) - scaled by d18
         return usdPerFraxBP;
     }
 
