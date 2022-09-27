@@ -37,7 +37,7 @@ contract PHOTWAPOracle is IPHOOracle, Ownable {
     uint256 public constant THRESHOLD_PRECISION = 10 ** 6;
     uint256 public constant FEED_PRECISION = 10 ** 8;
     uint256 public constant PRICE_PRECISION = 10 ** 18;
-    uint256 public constant USDC_MISSING_DECIMALS = 12;
+    uint256 public constant USDC_MISSING_DECIMALS = 10 ** 12;
     uint256 public constant MAX_PRICE_THRESHOLD = 10 ** 6;
 
     modifier onlyByOwnerOrGovernance() {
