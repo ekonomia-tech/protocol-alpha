@@ -57,20 +57,23 @@ contract PHOTWAPOracle is IPHOOracle, Ownable {
         address _fraxBPLPToken,
         address _fraxAddress,
         address _usdcAddress,
+        address _priceFeed,
         uint256 _period,
         address _dex_pool_address,
         uint256 _priceUpdateThreshold
     ) {
-        require(_pho_address != address(0) && _dex_pool_address != address(0) && _curve_factory != address(0) && _fraxBPPool != address(0) && _usdcAddress != address(0) && _fraxBPLPToken != address(0) && _fraxAddress != address(0) && _usdcAddress != address(0) && _period != 0, "PHOTWAPOracle: zero address or values detected");
+        require(_pho_address != address(0) && _dex_pool_address != address(0) && _curve_factory != address(0) && _fraxBPPool != address(0) && _usdcAddress != address(0) && _fraxBPLPToken != address(0) && _fraxAddress != address(0) && _usdcAddress != address(0) && _priceFeed != address(0) && _period != 0, "PHOTWAPOracle: zero address or values detected");
 
         pho = IPHO(_pho_address);
         curveFactory = ICurveFactory(_curve_factory);
+        dexPool = ICurvePool(_dex_pool_address);
         tokens[0] = dexPool.coins(0); // PHO
         tokens[1] = dexPool.coins(1); // FraxBP LP Token
         fraxBPPool = ICurvePool(_fraxBPPool);
         fraxBPLP = IERC20(_fraxBPLPToken);
         fraxAddress = _fraxAddress;
         usdcAddress = _usdcAddress;
+        priceFeeds = IPriceOracle(_priceFeed);
         period = _period;
         setPriceSource(_dex_pool_address); // TODO - don't think this is allowed in constructor
         setPriceUpdateThreshold(_priceUpdateThreshold); // TODO - not sure if I can call this here either

@@ -105,7 +105,8 @@ abstract contract BaseSetup is Test {
     address public fraxBPLPToken = 0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC;
     address public fraxBPPool = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
     address public fraxBPLUSD = 0x497CE58F34605B9944E6b15EcafE6b001206fd25;
-    address public ethNullAddress = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    // address public ethNullAddress = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    address public ethNullAddress = address(56);
     address public constant PriceFeed_ETHUSD = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address public constant PriceFeed_USDCUSD = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
     address public constant PriceFeed_FRAXUSD = 0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD;
@@ -278,7 +279,7 @@ abstract contract BaseSetup is Test {
     /// @notice funds owner with USDC, approves fraxBP to pull owner USDC, funds owner with FRAX from fraxRichGuy, approves fraxBP to pull owner FRAX, owner adds liquidity to fraxBP, owner deploys metapool FraxBP/PHO, owner adds liquidity to FraxBP/PHO. Owner has all the LP tokens to start for FraxBP/PHO
     function _deployFraxBPPHOPoolOneMillion() internal returns (address) {
         vm.prank(address(teller));
-        pho.mint(owner, one_m_d18);
+        pho.mint(owner, five_m_d18);
         frax = IERC20(fraxAddress);
         fraxBPLP = IERC20(fraxBPLPToken);
         fraxBP = ICurvePool(fraxBPAddress);
