@@ -216,13 +216,11 @@ abstract contract BaseSetup is Test {
         address _spender,
         uint256 _amountIn,
         uint256 _amountOut
-    )
-        internal
-    {
+    ) internal {
         _getFRAX(_owner, _amountIn);
         _approveFRAX(_owner, _spender, _amountOut);
     }
-    
+
     function _deployFraxBPPHOPool() internal returns (address) {
         vm.prank(address(teller));
         pho.mint(owner, tenThousand_d18);
@@ -264,5 +262,4 @@ abstract contract BaseSetup is Test {
 
         return fraxBPPhoMetapoolAddress;
     }
-    
 }

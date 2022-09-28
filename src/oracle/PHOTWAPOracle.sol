@@ -20,9 +20,9 @@ contract PHOTWAPOracle is IPHOOracle, Ownable {
     ICurvePool public dexPool; // curve metapool oracle is pulling balances for twap
     ICurvePool public fraxBPPool; // frax basepool (USDC && Frax underlying assets) used for normalizing FraxBP price to USD with priceFeeds
     IERC20 public fraxBPLP; // fraxBP LP Token address
-    IPriceOracle public priceFeeds; 
+    IPriceOracle public priceFeeds;
 
-    address public fraxAddress; 
+    address public fraxAddress;
     address public usdcAddress;
     uint256 public period; // timespan for regular TWAP updates in seconds
     bool public initOracle; // whether getPrice() has been called once or not yet
@@ -63,7 +63,14 @@ contract PHOTWAPOracle is IPHOOracle, Ownable {
         address _dex_pool_address,
         uint256 _priceUpdateThreshold
     ) {
-        require(_pho_address != address(0) && _dex_pool_address != address(0) && _curve_factory != address(0) && _fraxBPPool != address(0) && _usdcAddress != address(0) && _fraxBPLPToken != address(0) && _fraxAddress != address(0) && _usdcAddress != address(0) && _priceFeed != address(0) && _period != 0, "PHOTWAPOracle: zero address or values detected");
+        require(
+            _pho_address != address(0) && _dex_pool_address != address(0)
+                && _curve_factory != address(0) && _fraxBPPool != address(0)
+                && _usdcAddress != address(0) && _fraxBPLPToken != address(0)
+                && _fraxAddress != address(0) && _usdcAddress != address(0) && _priceFeed != address(0)
+                && _period != 0,
+            "PHOTWAPOracle: zero address or values detected"
+        );
 
         pho = IPHO(_pho_address);
         curveFactory = ICurveFactory(_curve_factory);
@@ -83,22 +90,25 @@ contract PHOTWAPOracle is IPHOOracle, Ownable {
     /// @notice queries metapool for new twap && calculates newPHOPrice (USD/PHO)
     /// @dev called directly by our own contracts that rely on an updated price (PriceController.sol)
     /// @return newPHOPrice USD/PHO updated once per `period`
-    /// TODO - not sure about what the return value should be, when do we use int vs uint256? chainlink pricefeed have the getter return int. We may just want to put in a require() to get the price to make sense. 
+    /// TODO - not sure about what the return value should be, when do we use int vs uint256? chainlink pricefeed have the getter return int. We may just want to put in a require() to get the price to make sense.
     function getPrice() external override returns (uint256) {
-        require(dexPool.balances(0) != 0 && dexPool.balances(1) != 0, "PHOTWAPOracle: metapool balance(s) cannot be 0");
+        require(
+            dexPool.balances(0) != 0 && dexPool.balances(1) != 0,
+            "PHOTWAPOracle: metapool balance(s) cannot be 0"
+        );
 
         uint256 token0balance = dexPool.balances(0);
         uint256 token1balance = dexPool.balances(1);
         uint256 token0Price = token1balance * PRICE_PRECISION / token0balance;
         uint256 token1Price = token0balance * PRICE_PRECISION / token1balance;
 
-        if(!initOracle) {
+        if (!initOracle) {
             twap = [token0Price, token1Price];
             latestBlockTimestamp = block.timestamp;
             priceCumulativeLast = [token0Price, token1Price];
-            latestUSDPHOPrice = (twap[0] * _getUSDPerFraxBP()) / PRICE_PRECISION; 
+            latestUSDPHOPrice = (twap[0] * _getUSDPerFraxBP()) / PRICE_PRECISION;
             initOracle = true;
-            emit PriceUpdated(latestUSDPHOPrice, latestBlockTimestamp); 
+            emit PriceUpdated(latestUSDPHOPrice, latestBlockTimestamp);
             return latestUSDPHOPrice;
         }
 
@@ -109,28 +119,34 @@ contract PHOTWAPOracle is IPHOOracle, Ownable {
         priceCumulativeNew[0] = ((token0Price) * periodTimeElapsed);
         priceCumulativeNew[1] = ((token1Price) * periodTimeElapsed);
 
-        for(uint256 i = 0; i < 2; i++ ) {
-            // lastTwap[i] = twap[i];
+        for (uint256 i = 0; i < 2; i++) {
             twap[i] = ((priceCumulativeNew[i] - priceCumulativeLast[i])) / periodTimeElapsed;
-        } // want twap[0], the price FraxBP/PHO, we keep the other just in case. 
+        } // want twap[0], the price FraxBP/PHO, we keep the other just in case.
 
         uint256 priceBPSChange;
         uint256 oldUSDPHOPrice = latestUSDPHOPrice;
         latestUSDPHOPrice = (twap[0] * _getUSDPerFraxBP()) / PRICE_PRECISION; //  UNITS: (USD/PHO) = (FraxBP/PHO * USD/FraxBP) - decimals d18
 
-        if(latestUSDPHOPrice > oldUSDPHOPrice) {
-            priceBPSChange = ((latestUSDPHOPrice - oldUSDPHOPrice)) * THRESHOLD_PRECISION / oldUSDPHOPrice;
+        if (latestUSDPHOPrice > oldUSDPHOPrice) {
+            priceBPSChange =
+                ((latestUSDPHOPrice - oldUSDPHOPrice)) * THRESHOLD_PRECISION / oldUSDPHOPrice;
         } else {
-            priceBPSChange = ((oldUSDPHOPrice - latestUSDPHOPrice)) * THRESHOLD_PRECISION / oldUSDPHOPrice;
+            priceBPSChange =
+                ((oldUSDPHOPrice - latestUSDPHOPrice)) * THRESHOLD_PRECISION / oldUSDPHOPrice;
         }
 
-        if(priceBPSChange > priceUpdateThreshold) {
+        if (priceBPSChange > priceUpdateThreshold) {
             latestUSDPHOPrice = oldUSDPHOPrice;
-            
+
             thresholdExceeded = true;
             emit PriceThresholdExceeded(thresholdExceeded);
             return latestUSDPHOPrice;
             // NOTE - need to figure out contingency plan when price fluctuates largely
+        }
+
+        // NOTE - not adding testing to check the boolean because we are not sure if we are keeping this contingency setup / this contingency set up is a separate issue
+        if (thresholdExceeded) {
+            thresholdExceeded = false;
         }
 
         latestBlockTimestamp = block.timestamp;
@@ -139,20 +155,20 @@ contract PHOTWAPOracle is IPHOOracle, Ownable {
 
         emit PriceUpdated(latestUSDPHOPrice, latestBlockTimestamp);
         return latestUSDPHOPrice;
-    }    
+    }
 
     /// @notice calculates return amount of inputToken (only metapool basetokens) with current TWAP
     /// @param _token input ERC20 metapool basetoken address
     /// @param _amountIn total value of input token being priced
-    /// @return amountOut price of inputToken (scaled by d18), in units of other basetoken, based on current TWAP (either FraxBP/PHO, or PHO/FraxBP) 
+    /// @return amountOut price of inputToken (scaled by d18), in units of other basetoken, based on current TWAP (either FraxBP/PHO, or PHO/FraxBP)
     /// NOTE this will always return 0 before getPrice() has been called successfully for the first time
     /// NOTE I'm not sure when this would be used tbh, maybe a front end getter for specified input values? The Curve Metapool should have this actually though so don't know if we'd be using this.
-    function consult(address _token, uint256 _amountIn) external override view returns (uint256) {
+    function consult(address _token, uint256 _amountIn) external view override returns (uint256) {
         require(initOracle, "PHOTWAPOracle: PHOTWAPOracle not initialized");
         require(_amountIn != 0, "PHOTWAPOracle: _amountIn != 0");
         uint256 amountOut;
         if (_token == tokens[0]) {
-            amountOut = twap[0] * (_amountIn) / PRICE_PRECISION;  
+            amountOut = twap[0] * (_amountIn) / PRICE_PRECISION;
         } else {
             require(_token == tokens[1], "PHOTWAPOracle: invalid token");
             amountOut = twap[1] * (_amountIn) / PRICE_PRECISION;
@@ -161,7 +177,7 @@ contract PHOTWAPOracle is IPHOOracle, Ownable {
     }
 
     /// @notice set the price source (dex pool) address that this contract interacts with
-    /// @dev likely rare that the metapool needs to be set again, but in case curve upgrades and we have new metapools that are compatible, this is available 
+    /// @dev likely rare that the metapool needs to be set again, but in case curve upgrades and we have new metapools that are compatible, this is available
     /// @param _priceSource address for metapool that twap is derived from for FraxBP/PHO
     function setPriceSource(address _priceSource) public onlyByOwnerOrGovernance {
         require(_priceSource != address(0), "PHOTWAPOracle: zero address detected");
@@ -187,21 +203,30 @@ contract PHOTWAPOracle is IPHOOracle, Ownable {
 
     /// @notice sets the suggested price update threshold
     /// @param _priceUpdateThreshold the suggested price update threshold, expressed in basis points - 10 ** 6 BP corresponding to 100%
-    function setPriceUpdateThreshold(uint256 _priceUpdateThreshold) public onlyByOwnerOrGovernance {
-        require(_priceUpdateThreshold <= MAX_PRICE_THRESHOLD && _priceUpdateThreshold > 0, "PHOTWAPOracle: invalid priceUpdateThreshold value");
+    function setPriceUpdateThreshold(uint256 _priceUpdateThreshold)
+        public
+        onlyByOwnerOrGovernance
+    {
+        require(
+            _priceUpdateThreshold <= MAX_PRICE_THRESHOLD && _priceUpdateThreshold > 0,
+            "PHOTWAPOracle: invalid priceUpdateThreshold value"
+        );
         priceUpdateThreshold = _priceUpdateThreshold;
         emit PriceUpdateThresholdChanged(_priceUpdateThreshold);
-    }  
+    }
 
     /// @notice helper to get USD per FraxBP by checking underlying asset composition (FRAX and USDC)
     /// @return newest USD/FraxBP (scaled by d18) price answer derived from fraxBP balances and USD/Frax && USD/USDC priceFeeds
-    function _getUSDPerFraxBP() internal returns(uint256) {
+    function _getUSDPerFraxBP() internal returns (uint256) {
         uint256 fraxInFraxBP = fraxBPPool.balances(0); // FRAX - decimals: 18
         uint256 usdcInFraxBP = fraxBPPool.balances(1); // USDC - decimals: 6
         uint256 fraxPerFraxBP = fraxInFraxBP * PRICE_PRECISION / fraxBPLP.totalSupply(); // UNITS: (FRAX/FraxBP) - scaled by d18
-        uint256 usdcPerFraxBP = usdcInFraxBP * PRICE_PRECISION * USDC_MISSING_DECIMALS / fraxBPLP.totalSupply(); // UNITS: (USDC/FraxBP) - scaled by d18
-        uint256 usdPerFraxBP = ((fraxPerFraxBP * PRICE_PRECISION / priceFeeds.getPrice(fraxAddress)) + (usdcPerFraxBP  * PRICE_PRECISION / priceFeeds.getPrice(usdcAddress))); // UNITS: (USD/FraxBP) - scaled by d18
+        uint256 usdcPerFraxBP =
+            usdcInFraxBP * PRICE_PRECISION * USDC_MISSING_DECIMALS / fraxBPLP.totalSupply(); // UNITS: (USDC/FraxBP) - scaled by d18
+        uint256 usdPerFraxBP = (
+            (fraxPerFraxBP * PRICE_PRECISION / priceFeeds.getPrice(fraxAddress))
+                + (usdcPerFraxBP * PRICE_PRECISION / priceFeeds.getPrice(usdcAddress))
+        ); // UNITS: (USD/FraxBP) - scaled by d18
         return usdPerFraxBP;
     }
-
 }
