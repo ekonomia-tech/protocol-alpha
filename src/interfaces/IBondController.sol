@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.13;
 
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IBondDispatcher} from "../interfaces/IBondDispatcher.sol";
 
@@ -25,12 +26,12 @@ interface IBondController {
 
     /// State vars
 
+    /// @notice bond market info
     /// @dev bond controller sends payout tokens and recieves quote tokens
     struct BondMarket {
         ERC20 payoutToken; // payout token that bonders receive - PHO or TON
         ERC20 quoteToken; // quote token that bonders deposit
-        bool capacityInQuote; // capacity limit is in payment token (true) or in payout (false, default)
-        uint256 capacity; // capacity remaining
+        uint256 capacity; // capacity remaining - in terms of payout token
         uint256 totalDebt; // total payout token debt from market
         uint256 minPrice; // minimum price (debt will stop decaying to maintain this)
         uint256 maxPayout; // max payout tokens out in one order
@@ -39,7 +40,7 @@ interface IBondController {
         uint256 scale; // scaling factor for the market (see MarketParams struct)
     }
 
-    /// @notice information used to control how a bond market changes
+    /// @notice info used to control how a bond market changes
     struct BondTerms {
         uint256 controlVariable; // scaling variable for price
         uint256 maxDebt; // max payout token debt accrued
@@ -71,30 +72,16 @@ interface IBondController {
     }
 
     /// @notice Market params
-    /// @param payoutToken payout token
-    /// @param quoteToken quote token
-    /// @param capacityInQuote whether capacity in quote token (true) or payout token (false)
-    /// @param capacity capacity
-    /// @param formattedInitialPrice initial price
-    /// @param formattedMinimumPrice min price
-    /// @param debtBuffer buffer for debt
-    /// @param vesting if fixed term then vesting length otherwise vesting expiry timestamp
-    /// @param conclusion conclusion timestamp
-    /// @param depositInterval deposit interval
-    /// @param scaleAdjustment scale adjustment
-    /// @return id of new bond market
     struct MarketParams {
-        ERC20 payoutToken;
-        ERC20 quoteToken;
-        bool capacityInQuote;
-        uint256 capacity;
-        uint256 formattedInitialPrice;
-        uint256 formattedMinimumPrice;
-        uint32 debtBuffer;
-        uint48 vesting;
-        uint48 conclusion;
-        uint32 depositInterval;
-        int8 scaleAdjustment;
+        ERC20 payoutToken; // payout token
+        ERC20 quoteToken; // quote token
+        uint256 capacity; // capacity
+        uint256 formattedInitialPrice; // initial price
+        uint256 formattedMinimumPrice; // min price
+        uint48 vesting; // if fixed term then vesting length otherwise vesting expiry timestamp
+        uint48 conclusion; // conclusion timestamp
+        uint32 depositInterval; // deposit interval
+        int8 scaleAdjustment; // scale adjustment
     }
 
     /// @notice creates a new bond market - only allowed by controller
@@ -125,7 +112,7 @@ interface IBondController {
     /// 1. Tune interval - Frequency of tuning
     /// 2. Tune adjustment delay - Time to implement downward tuning adjustments
     /// 3. Debt decay interval - Interval over which debt should decay completely
-    function setIntervals(uint256 marketId, uint32[3] calldata intervals_)
+    function setIntervals(uint256 marketId, uint32[] calldata intervals_)
         external;
 
     /// @notice set the controller defaults
@@ -139,7 +126,7 @@ interface IBondController {
     /// 6. Minimum debt buffer - the minimum amount of debt over the initial debt to trigger a market shutdown
     /// @dev The defaults set here are important to avoid edge cases in market behavior, e.g. a very short market reacts doesn't tune well
     /// @dev Only applies to new markets that are created after the change
-    function setDefaults(uint32[6] memory defaults_) external;
+    function setDefaults(uint32[] memory defaults_) external;
 
     /// View functions
 
@@ -159,16 +146,6 @@ interface IBondController {
             uint256 maxPayout
         );
 
-    /// @notice calculate current market price of payout token in quote tokens
-    /// @param marketId bond market id
-    /// @return price for market in configured decimals
-    function marketPrice(uint256 marketId) external view returns (uint256);
-
-    /// @notice scale value to use when converting between quote token and payout token amounts with marketPrice()
-    /// @param marketId bond market id
-    /// @return scaling factor for market in configured decimals
-    function marketScale(uint256 marketId) external view returns (uint256);
-
     /// @notice Payout due for amount of quote tokens
     /// @dev Accounts for debt and control variable decay so it is up to date
     /// @param amount_ amount of quote tokens to spend
@@ -187,20 +164,13 @@ interface IBondController {
         view
         returns (uint256);
 
-    /// @notice returns current capacity of a market
-    function currentCapacity(uint256 marketId) external view returns (uint256);
-
     /// View functions
 
     /// @notice calculate market price of payout token in quote tokens
     /// @dev p = CV * D where CV is control variable and D is debt
     /// @param marketId bond market id
     /// @return price for market in configured decimals
-    function marketPrice(uint256 marketId)
-        external
-        view
-        override
-        returns (uint256);
+    function marketPrice(uint256 marketId) external view returns (uint256);
 
     /// @notice calculate debt factoring in decay
     /// @dev accounts for debt decay since last deposit

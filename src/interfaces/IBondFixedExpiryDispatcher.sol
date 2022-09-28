@@ -3,9 +3,9 @@
 pragma solidity ^0.8.13;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {ERC20BondToken} from "../ERC20BondToken.sol";
+import {ERC20BondToken} from "../contracts/ERC20BondToken.sol";
 
-interface IBondFixedExpiryTeller {
+interface IBondFixedExpiryDispatcher {
     /// @notice redeem a fixed-expiry bond token for the underlying token (bond token must have matured)
     /// @param token_ token to redeem
     /// @param amount_ amount to redeem

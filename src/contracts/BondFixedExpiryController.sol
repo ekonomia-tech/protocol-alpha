@@ -12,7 +12,7 @@ import {IBondFixedExpiryDispatcher} from "../interfaces/IBondFixedExpiryDispatch
 contract BondFixedExpiryController is BondBaseController {
     /// Constructor
     constructor(
-        IBondDispatcher _bondDispatcher,
+        address _bondDispatcher,
         address _controllerAddress,
         address _phoAddress,
         address _tonAddress

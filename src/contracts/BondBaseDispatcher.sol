@@ -3,6 +3,9 @@
 pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {IBondDispatcher} from "../interfaces/IBondDispatcher.sol";
 import {IBondController} from "../interfaces/IBondController.sol";
@@ -17,7 +20,7 @@ abstract contract BondBaseDispatcher is
     Ownable,
     ReentrancyGuard
 {
-    using TransferHelper for ERC20;
+    using SafeERC20 for ERC20;
     using FullMath for uint256;
 
     /// Errors
@@ -41,8 +44,8 @@ abstract contract BondBaseDispatcher is
     modifier onlyOwnerOrController() {
         require(
             msg.sender == owner() ||
-                msg.sender == controllerAddress ||
-                "BondDispatcher: not the owner or controller"
+                (bondController != address(0) && msg.sender == bondController),
+            "BondDispatcher: not the owner or controller"
         );
         _;
     }
@@ -79,7 +82,7 @@ abstract contract BondBaseDispatcher is
         onlyOwnerOrController
         returns (uint256)
     {
-        marketId = marketCounter;
+        uint256 marketId = marketCounter;
         marketsForPayout[address(payoutToken_)].push(marketId);
         marketsForQuote[address(quoteToken_)].push(marketId);
         ++marketCounter;
@@ -97,7 +100,7 @@ abstract contract BondBaseDispatcher is
             ERC20 token = tokens_[i];
             uint256 send = rewards[msg.sender][token];
             rewards[msg.sender][token] = 0;
-            token.safeTransfer(to_, send);
+            token.transfer(to_, send);
         }
     }
 
@@ -117,7 +120,7 @@ abstract contract BondBaseDispatcher is
     ) external virtual nonReentrant returns (uint256, uint48) {
         require(
             bondController != address(0),
-            "Bond Dispatcher: zero address detected"
+            "BondDispatcher: zero address detected"
         );
         ERC20 payoutToken;
         ERC20 quoteToken;
@@ -126,8 +129,8 @@ abstract contract BondBaseDispatcher is
         // calculate fees for purchase via protocol fee
         uint256 toProtocol = amount_.mulDiv(protocolFee, FEE_DECIMALS);
 
-        (, payoutToken, quoteToken, vesting, ) = IBondController(bondController)
-            .getMarketInfoForPurchase(id_);
+        (payoutToken, quoteToken, vesting, ) = IBondController(bondController)
+            .getMarketInfoForPurchase(marketId);
 
         // bond controller handles bond pricing, capacity, and duration
         uint256 amountLessFee = amount_ - toProtocol;
@@ -140,12 +143,12 @@ abstract contract BondBaseDispatcher is
         // allocate fees to protocol
         rewards[_protocol][quoteToken] += toProtocol;
 
-        // ensure enough payout tokens are available
-        _handleTransfers(id_, amount_, payout, toProtocol);
+        // TODO: handle transfers and ensure enough payout tokens are available
+        // _handleTransfers(marketId, amount_, payout, toProtocol);
         // handle payout to user (either transfer tokens if instant swap or issue bond token)
-        uint48 expiry = _handlePayout(recipient_, payout, payoutToken, vesting);
+        uint48 expiry = 0; // _handlePayout(recipient_, payout, payoutToken, vesting);
 
-        emit Bonded(id_, amount_, payout);
+        emit Bonded(marketId, amount_, payout);
 
         return (payout, expiry);
     }
@@ -155,19 +158,19 @@ abstract contract BondBaseDispatcher is
         uint256 marketId,
         uint256 amount_,
         uint256 payout_,
-        uint256 feePaid_
+        uint256 feePamarketId
     ) internal {
         require(
             bondController != address(0),
-            "Bond Dispatcher: zero address detected"
+            "BondDispatcher: zero address detected"
         );
         // get info from controller
         (ERC20 payoutToken, ERC20 quoteToken, , ) = IBondController(
             bondController
-        ).getMarketInfoForPurchase(id_);
+        ).getMarketInfoForPurchase(marketId);
 
         // calculate amount net of fees
-        uint256 amountLessFee = amount_ - feePaid_;
+        uint256 amountLessFee = amount_ - feePamarketId;
 
         // note: currently dispatcher holding funds
         // transfer from msg sender to bond controller

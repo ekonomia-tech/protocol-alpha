@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 /// @author Ekonomia: https://github.com/Ekonomia
 /// @dev ERC20 tokens for fixed term bonds
 contract ERC20BondToken is ERC20, Ownable {
-    uint8 public decimals;
+    uint8 internal _decimals;
     ERC20 public underlying;
     uint48 public expiry;
     address public dispatcher;
@@ -26,14 +26,18 @@ contract ERC20BondToken is ERC20, Ownable {
     constructor(
         string memory _name,
         string memory _symbol,
-        uint8 _decimals,
+        uint8 __decimals,
         ERC20 _underlying,
         uint48 _expiry,
         address _dispatcher
     ) ERC20(_name, _symbol) {
-        decimals = _decimals;
+        _decimals = __decimals;
         underlying = _underlying;
         dispatcher = _dispatcher;
+    }
+
+    function decimals() public view virtual override returns (uint8) {
+        return _decimals;
     }
 
     /// @notice mint new bond tokens
@@ -41,5 +45,9 @@ contract ERC20BondToken is ERC20, Ownable {
     /// @param amount the amount to mint
     function mint(address to, uint256 amount) external onlyDispatcher {
         super._mint(to, amount);
+    }
+
+    function burn(address from, uint256 amount) external onlyDispatcher {
+        _burn(from, amount);
     }
 }

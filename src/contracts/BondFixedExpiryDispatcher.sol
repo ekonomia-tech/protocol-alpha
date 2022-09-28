@@ -3,12 +3,14 @@
 pragma solidity ^0.8.13;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {BondBaseDispatcher} from "./BondBaseDispatcher.sol";
 import {IBondController} from "../interfaces/IBondController.sol";
 import {IBondFixedExpiryDispatcher} from "../interfaces/IBondFixedExpiryDispatcher.sol";
 import {ERC20BondToken} from "./ERC20BondToken.sol";
 import {TransferHelper} from "../libraries/TransferHelper.sol"; // TODO: modify
 import {FullMath} from "../libraries/FullMath.sol";
+import {BondUtils} from "../libraries/BondUtils.sol";
 
 /// @title Bond Fixed Expiry Dispatcher
 /// @author Ekonomia: https://github.com/ekonomia-tech
@@ -56,13 +58,14 @@ contract BondFixedExpiryDispatcher is
         ERC20 underlying_,
         uint48 vesting_
     ) internal override returns (uint48) {
+        uint48 expiry;
         if (vesting_ > uint48(block.timestamp)) {
             expiry = vesting_;
             // fixed-expiry bonds mint ERC-20 tokens
             bondTokens[underlying_][expiry].mint(recipient_, payout_);
         } else {
             // if no expiry, then transfer payout directly to user
-            underlying_.safeTransfer(recipient_, payout_);
+            underlying_.transfer(recipient_, payout_);
         }
         return expiry;
     }
@@ -128,16 +131,14 @@ contract BondFixedExpiryDispatcher is
         // create bond token if one doesn't already exist
         ERC20BondToken bondToken = bondTokens[underlying_][expiry_];
         if (bondToken == ERC20BondToken(address(0))) {
-            (string memory name, string memory symbol) = _getNameAndSymbol(
-                underlying_,
-                expiry_
-            );
+            (string memory name, string memory symbol) = BondUtils
+                ._getNameAndSymbol(underlying_, expiry_);
             bondToken = new ERC20BondToken(
                 name,
                 symbol,
                 IERC20Metadata(underlying_).decimals(),
                 underlying_,
-                expiry,
+                expiry_,
                 address(this)
             );
             bondTokens[underlying_][expiry_] = bondToken;
@@ -153,9 +154,8 @@ contract BondFixedExpiryDispatcher is
         override
         returns (ERC20BondToken)
     {
-        (, , ERC20 underlying, , uint48 vesting, ) = IBondController(
-            bondController
-        ).getMarketInfoForPurchase(marketId);
+        (ERC20 underlying, , uint48 vesting, ) = IBondController(bondController)
+            .getMarketInfoForPurchase(marketId);
         return bondTokens[underlying][vesting];
     }
 }
