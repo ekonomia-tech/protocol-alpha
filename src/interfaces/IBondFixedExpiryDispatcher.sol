@@ -17,11 +17,9 @@ interface IBondFixedExpiryDispatcher {
     /// @param amount_ amount of underlying tokens to deposit
     /// @return address of the ERC20 bond token received
     /// @return address of the ERC20 bond token received
-    function create(
-        ERC20 underlying_,
-        uint48 expiry_,
-        uint256 amount_
-    ) external returns (ERC20BondToken, uint256);
+    function create(ERC20 underlying_, uint48 expiry_, uint256 amount_)
+        external
+        returns (ERC20BondToken, uint256);
 
     /// @notice deploy a new ERC20 bond token for an (underlying, expiry) pair and return its address
     /// @dev ERC20 used for fixed-expiry
@@ -29,15 +27,10 @@ interface IBondFixedExpiryDispatcher {
     /// @param underlying_ ERC20 token redeemable when the bond token vests
     /// @param expiry_ timestamp at which the bond token can be redeemed for the underlying token
     /// @return address of the ERC20 bond token being created
-    function deploy(ERC20 underlying_, uint48 expiry_)
-        external
-        returns (ERC20BondToken);
+    function deploy(ERC20 underlying_, uint48 expiry_) external returns (ERC20BondToken);
 
     /// @notice get the ERC20BondToken contract corresponding to a market
     /// @param marketId id of the market
     /// @return ERC20BondToken contract address
-    function getBondTokenForMarket(uint256 marketId)
-        external
-        view
-        returns (ERC20BondToken);
+    function getBondTokenForMarket(uint256 marketId) external view returns (ERC20BondToken);
 }

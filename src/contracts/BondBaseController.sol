@@ -32,7 +32,7 @@ abstract contract BondBaseController is IBondController, Ownable {
 
     // vesting param longer than 50 years is considered a timestamp for fixed expiry
     uint48 internal constant MAX_FIXED_TERM = 52 weeks * 50;
-    uint48 internal constant FEE_DECIMALS = 10**5; // 1% = 1000
+    uint48 internal constant FEE_DECIMALS = 10 ** 5; // 1% = 1000
 
     // note: BondDispatcher handles interactions with users and issues tokens
     IBondDispatcher public immutable bondDispatcher;
@@ -51,10 +51,7 @@ abstract contract BondBaseController is IBondController, Ownable {
     }
 
     modifier onlyBondDispatcher() {
-        require(
-            msg.sender == address(bondDispatcher),
-            "BondController: not bond dispatcher"
-        );
+        require(msg.sender == address(bondDispatcher), "BondController: not bond dispatcher");
         _;
     }
 
@@ -66,10 +63,8 @@ abstract contract BondBaseController is IBondController, Ownable {
         address _tonAddress
     ) {
         require(
-            address(_bondDispatcher) != address(0) &&
-                address(_controllerAddress) != address(0) &&
-                address(_phoAddress) != address(0) &&
-                address(_tonAddress) != address(0),
+            address(_bondDispatcher) != address(0) && address(_controllerAddress) != address(0)
+                && address(_phoAddress) != address(0) && address(_tonAddress) != address(0),
             "BondController: zero address detected"
         );
         bondDispatcher = IBondDispatcher(_bondDispatcher);
@@ -87,10 +82,7 @@ abstract contract BondBaseController is IBondController, Ownable {
     /// Market functions
 
     /// @inheritdoc IBondController
-    function createMarket(bytes calldata params_)
-        external
-        virtual
-        returns (uint256);
+    function createMarket(bytes calldata params_) external virtual returns (uint256);
 
     /// @notice core market creation logic, see IBondController.createMarket()
     function _createMarket(MarketParams memory params_)
@@ -100,18 +92,16 @@ abstract contract BondBaseController is IBondController, Ownable {
     {
         // require payoutToken is either PHO or TON
         require(
-            address(params_.payoutToken) == phoAddress ||
-                address(params_.payoutToken) == tonAddress,
+            address(params_.payoutToken) == phoAddress || address(params_.payoutToken) == tonAddress,
             "BondController: payoutToken must be PHO or TON"
         );
 
         // ensure params are in bounds
         require(
-            params_.quoteToken.decimals() == 18 &&
-                params_.scaleAdjustment < 24 &&
-                params_.formattedInitialPrice > params_.formattedMinimumPrice &&
-                (params_.conclusion - block.timestamp) > minMarketDuration &&
-                (params_.depositInterval > minDepositInterval),
+            params_.quoteToken.decimals() == 18 && params_.scaleAdjustment < 24
+                && params_.formattedInitialPrice > params_.formattedMinimumPrice
+                && (params_.conclusion - block.timestamp) > minMarketDuration
+                && (params_.depositInterval > minDepositInterval),
             "BondController: createMarket invalid params"
         );
 
@@ -119,23 +109,18 @@ abstract contract BondBaseController is IBondController, Ownable {
         // scaleAdjustment should = (payoutDecimals - quoteDecimals) - ((payoutPriceDecimals - quotePriceDecimals) / 2)
         uint256 scale;
         unchecked {
-            scale = 10**uint8(36 + params_.scaleAdjustment);
+            scale = 10 ** uint8(36 + params_.scaleAdjustment);
         }
 
         // bond dispatcher registers market
-        uint256 marketId = bondDispatcher.registerMarket(
-            params_.payoutToken,
-            params_.quoteToken
-        );
+        uint256 marketId = bondDispatcher.registerMarket(params_.payoutToken, params_.quoteToken);
 
         // Setting vars
         uint32 debtDecayInterval = minDebtDecayInterval;
-        uint256 tuneIntervalCapacity = (params_.capacity *
-            params_.depositInterval) /
-            uint256(params_.conclusion - block.timestamp);
-        uint256 lastTuneDebt = ((params_.capacity) *
-            uint256(debtDecayInterval)) /
-            uint256(params_.conclusion - block.timestamp);
+        uint256 tuneIntervalCapacity = (params_.capacity * params_.depositInterval)
+            / uint256(params_.conclusion - block.timestamp);
+        uint256 lastTuneDebt = ((params_.capacity) * uint256(debtDecayInterval))
+            / uint256(params_.conclusion - block.timestamp);
 
         // Bond metadata
         metadata[marketId] = BondMetadata({
@@ -156,13 +141,12 @@ abstract contract BondBaseController is IBondController, Ownable {
         //         * 10**(36 + scaleAdjustment + quoteDecimals - payoutDecimals + payoutPriceDecimals - quotePriceDecimals)
         // uint256 capacity = params_.capacity;
 
-        uint256 targetDebt = (params_.capacity * uint256(debtDecayInterval)) /
-            (uint256(params_.conclusion - block.timestamp));
+        uint256 targetDebt = (params_.capacity * uint256(debtDecayInterval))
+            / (uint256(params_.conclusion - block.timestamp));
 
         // max payout = capacity / deposit interval, i.e. 1000 TOK of capacity / 10 days = 100 TOK max
-        uint256 maxPayout = (params_.capacity *
-            uint256(params_.depositInterval)) /
-            uint256(params_.conclusion - block.timestamp);
+        uint256 maxPayout = (params_.capacity * uint256(params_.depositInterval))
+            / uint256(params_.conclusion - block.timestamp);
 
         // Bond market
         markets[marketId] = BondMarket({
@@ -179,16 +163,14 @@ abstract contract BondBaseController is IBondController, Ownable {
 
         // max debt is circuit breaker - 3 decimal, 1000 = 1% above initial price
         // i.e. 10% buffer = initial debt * 1.1
-        uint256 maxDebt = targetDebt +
-            ((targetDebt * minDebtBuffer) / FEE_DECIMALS);
+        uint256 maxDebt = targetDebt + ((targetDebt * minDebtBuffer) / FEE_DECIMALS);
 
         // CV initially is set to initial price = desired initial price
         // P = CV * D / S i.e. price = control variable * debt / scale
 
         // Bond terms
         terms[marketId] = BondTerms({
-            controlVariable: (params_.formattedInitialPrice * scale) /
-                targetDebt,
+            controlVariable: (params_.formattedInitialPrice * scale) / targetDebt,
             maxDebt: maxDebt,
             vesting: params_.vesting,
             conclusion: params_.conclusion
@@ -200,7 +182,7 @@ abstract contract BondBaseController is IBondController, Ownable {
             address(params_.quoteToken),
             params_.vesting,
             params_.formattedInitialPrice
-        );
+            );
 
         return marketId;
     }
@@ -212,19 +194,15 @@ abstract contract BondBaseController is IBondController, Ownable {
         onlyOwnerOrController
     {
         require(
-            intervals_[0] != 0 &&
-                intervals_[1] != 0 &&
-                intervals_[2] != 0 &&
-                intervals_[0] > intervals_[1] &&
-                intervals_.length == 3,
+            intervals_[0] != 0 && intervals_[1] != 0 && intervals_[2] != 0
+                && intervals_[0] > intervals_[1] && intervals_.length == 3,
             "BondController: setIntervals invalid params"
         );
 
         BondMetadata storage meta = metadata[marketId];
         // check that tuneInterval >= depositInterval && debtDecayInterval >= minDebtDecayInterval
         require(
-            intervals_[0] >= meta.depositInterval &&
-                intervals_[2] >= minDebtDecayInterval,
+            intervals_[0] >= meta.depositInterval && intervals_[2] >= minDebtDecayInterval,
             "BondController: setIntervals invalid params"
         );
 
@@ -232,23 +210,15 @@ abstract contract BondBaseController is IBondController, Ownable {
 
         // update intervals
         meta.tuneInterval = intervals_[0];
-        meta.tuneIntervalCapacity =
-            (market.capacity * uint256(intervals_[0])) /
-            (uint256(terms[marketId].conclusion) - block.timestamp); // don't have a stored value for market duration, this will update tuneIntervalCapacity based on time remaining
+        meta.tuneIntervalCapacity = (market.capacity * uint256(intervals_[0]))
+            / (uint256(terms[marketId].conclusion) - block.timestamp); // don't have a stored value for market duration, this will update tuneIntervalCapacity based on time remaining
         meta.tuneAdjustmentDelay = intervals_[1];
         meta.debtDecayInterval = intervals_[2];
     }
 
     /// @inheritdoc IBondController
-    function setDefaults(uint32[] memory defaults_)
-        external
-        override
-        onlyOwnerOrController
-    {
-        require(
-            defaults_.length == 6,
-            "BondController: setDefaults invalid params"
-        );
+    function setDefaults(uint32[] memory defaults_) external override onlyOwnerOrController {
+        require(defaults_.length == 6, "BondController: setDefaults invalid params");
         defaultTuneInterval = defaults_[0];
         defaultTuneAdjustment = defaults_[1];
         minDebtDecayInterval = defaults_[2];
@@ -258,43 +228,32 @@ abstract contract BondBaseController is IBondController, Ownable {
     }
 
     /// @inheritdoc IBondController
-    function closeMarket(uint256 marketId)
-        external
-        override
-        onlyOwnerOrController
-    {
+    function closeMarket(uint256 marketId) external override onlyOwnerOrController {
         _close(marketId);
     }
 
     /// Dispatcher functions
 
     /// @inheritdoc IBondController
-    function purchaseBond(
-        uint256 marketId,
-        uint256 amount_,
-        uint256 minAmountOut_
-    ) external override onlyBondDispatcher returns (uint256) {
+    function purchaseBond(uint256 marketId, uint256 amount_, uint256 minAmountOut_)
+        external
+        override
+        onlyBondDispatcher
+        returns (uint256)
+    {
         BondMarket storage market = markets[marketId];
         BondTerms memory term = terms[marketId];
 
         // Markets end at a defined timestamp
         uint48 currentTime = uint48(block.timestamp);
-        require(
-            currentTime < term.conclusion,
-            "BondController: purchaseBond window passed"
-        );
+        require(currentTime < term.conclusion, "BondController: purchaseBond window passed");
 
-        (uint256 price, uint256 payout) = _decayAndGetPrice(
-            marketId,
-            amount_,
-            uint48(block.timestamp)
-        ); // debt and control variable decay over time
+        (uint256 price, uint256 payout) =
+            _decayAndGetPrice(marketId, amount_, uint48(block.timestamp)); // debt and control variable decay over time
 
         // payout must be > than user inputted min and < maxPayout and capacity
         require(
-            (payout > minAmountOut_ &&
-                payout < market.maxPayout &&
-                payout < market.capacity),
+            (payout > minAmountOut_ && payout < market.maxPayout && payout < market.capacity),
             "BondController: purchaseBond invalid params"
         );
 
@@ -334,11 +293,10 @@ abstract contract BondBaseController is IBondController, Ownable {
     /// @param time_ current timestamp (saves gas when passed in)
     /// @return marketPrice_ current market price of bond, accounting for decay
     /// @return payout_ amount of payout tokens received at current price
-    function _decayAndGetPrice(
-        uint256 marketId,
-        uint256 amount_,
-        uint48 time_
-    ) internal returns (uint256, uint256) {
+    function _decayAndGetPrice(uint256 marketId, uint256 amount_, uint48 time_)
+        internal
+        returns (uint256, uint256)
+    {
         BondMarket memory market = markets[marketId];
 
         // TODO: adjustments and CV tuning
@@ -346,7 +304,9 @@ abstract contract BondBaseController is IBondController, Ownable {
         // price cannot be lower than min
         uint256 marketPrice_ = _currentMarketPrice(marketId);
         uint256 minPrice = market.minPrice;
-        if (marketPrice_ < minPrice) marketPrice_ = minPrice;
+        if (marketPrice_ < minPrice) {
+            marketPrice_ = minPrice;
+        }
 
         // payout for the deposit = amount / price
         // TODO: modify this and change tests
@@ -361,11 +321,7 @@ abstract contract BondBaseController is IBondController, Ownable {
     /// @param marketId id of market
     /// @param time_ timestamp (saves gas when passed in)
     /// @param price_ current price of the market
-    function _tune(
-        uint256 marketId,
-        uint48 time_,
-        uint256 price_
-    ) internal {
+    function _tune(uint256 marketId, uint48 time_, uint256 price_) internal {
         BondMetadata memory meta = metadata[marketId];
         BondMarket memory market = markets[marketId];
 
@@ -379,17 +335,9 @@ abstract contract BondBaseController is IBondController, Ownable {
     /// @dev uses info from storage because data has been updated before call (vs marketPrice())
     /// @param marketId id of market
     /// @return price for market in payout token decimals
-    function _currentMarketPrice(uint256 marketId)
-        internal
-        view
-        returns (uint256)
-    {
+    function _currentMarketPrice(uint256 marketId) internal view returns (uint256) {
         BondMarket memory market = markets[marketId];
-        return
-            terms[marketId].controlVariable.mulDiv(
-                market.totalDebt,
-                market.scale
-            );
+        return terms[marketId].controlVariable.mulDiv(market.totalDebt, market.scale);
     }
 
     /// @notice amount of debt to decay from total debt for market ID
@@ -401,17 +349,12 @@ abstract contract BondBaseController is IBondController, Ownable {
         uint256 currentTime = block.timestamp;
         uint256 secondsSince;
         unchecked {
-            secondsSince = currentTime > lastDecay
-                ? currentTime - lastDecay
-                : 0;
+            secondsSince = currentTime > lastDecay ? currentTime - lastDecay : 0;
         }
         return
             secondsSince > meta.debtDecayInterval
-                ? markets[marketId].totalDebt
-                : markets[marketId].totalDebt.mulDiv(
-                    secondsSince,
-                    uint256(meta.debtDecayInterval)
-                );
+            ? markets[marketId].totalDebt
+            : markets[marketId].totalDebt.mulDiv(secondsSince, uint256(meta.debtDecayInterval));
     }
 
     /// @notice amount to decay control variable by
@@ -419,25 +362,17 @@ abstract contract BondBaseController is IBondController, Ownable {
     /// @return decay change in control variable
     /// @return secondsSince seconds since last change in control variable
     /// @return active whether or not change remains active
-    function _controlDecay(uint256 marketId)
-        internal
-        view
-        returns (
-            uint256,
-            uint48,
-            bool
-        )
-    {
+    function _controlDecay(uint256 marketId) internal view returns (uint256, uint48, bool) {
         Adjustment memory info = adjustments[marketId];
-        if (!info.active) return (0, 0, false);
+        if (!info.active) {
+            return (0, 0, false);
+        }
 
         uint48 secondsSince = uint48(block.timestamp) - info.lastAdjustment;
         bool active = secondsSince < info.timeToAdjusted;
-        uint256 decay = active
-            ? info.change.mulDiv(
-                uint256(secondsSince),
-                uint256(info.timeToAdjusted)
-            )
+        uint256 decay =
+            active
+            ? info.change.mulDiv(uint256(secondsSince), uint256(info.timeToAdjusted))
             : info.change;
         return (decay, secondsSince, active);
     }
@@ -448,105 +383,56 @@ abstract contract BondBaseController is IBondController, Ownable {
     function getMarketInfoForPurchase(uint256 marketId)
         external
         view
-        returns (
-            ERC20,
-            ERC20,
-            uint48,
-            uint256
-        )
+        returns (ERC20, ERC20, uint48, uint256)
     {
         BondMarket memory market = markets[marketId];
-        return (
-            market.payoutToken,
-            market.quoteToken,
-            terms[marketId].vesting,
-            market.maxPayout
-        );
+        return (market.payoutToken, market.quoteToken, terms[marketId].vesting, market.maxPayout);
     }
 
     /// @inheritdoc IBondController
-    function marketPrice(uint256 marketId)
-        public
-        view
-        override
-        returns (uint256)
-    {
+    function marketPrice(uint256 marketId) public view override returns (uint256) {
         uint256 price = currentControlVariable(marketId).mulDivUp(
-            currentDebt(marketId),
-            markets[marketId].scale
+            currentDebt(marketId), markets[marketId].scale
         );
 
-        return
-            (price > markets[marketId].minPrice)
-                ? price
-                : markets[marketId].minPrice;
+        return (price > markets[marketId].minPrice) ? price : markets[marketId].minPrice;
     }
 
     /// @inheritdoc IBondController
-    function payoutFor(uint256 amount_, uint256 marketId)
-        public
-        view
-        override
-        returns (uint256)
-    {
+    function payoutFor(uint256 amount_, uint256 marketId) public view override returns (uint256) {
         // calc the payout for the given amount of tokens
         uint256 fee = amount_.mulDiv(bondDispatcher.getFee(), FEE_DECIMALS);
-        uint256 payout = (amount_ - fee).mulDiv(
-            markets[marketId].scale,
-            marketPrice(marketId)
-        );
+        uint256 payout = (amount_ - fee).mulDiv(markets[marketId].scale, marketPrice(marketId));
 
         // check that the payout <= maxPayout
-        require(
-            payout < markets[marketId].maxPayout,
-            "BondController: payoutFor exceeds maxPayout"
-        );
+        require(payout < markets[marketId].maxPayout, "BondController: payoutFor exceeds maxPayout");
         return payout;
     }
 
     /// @inheritdoc IBondController
-    function maxAmountAccepted(uint256 marketId)
-        external
-        view
-        returns (uint256)
-    {
+    function maxAmountAccepted(uint256 marketId) external view returns (uint256) {
         // calc max amount of quote tokens for max bond size
         // max of maxPayout and remaining capacity converted to quote tokens
         BondMarket memory market = markets[marketId];
         uint256 price = marketPrice(marketId);
         uint256 quoteCapacity = market.capacity.mulDiv(price, market.scale);
         uint256 maxQuote = market.maxPayout.mulDiv(price, market.scale);
-        uint256 amountAccepted = quoteCapacity < maxQuote
-            ? quoteCapacity
-            : maxQuote;
+        uint256 amountAccepted = quoteCapacity < maxQuote ? quoteCapacity : maxQuote;
 
         // returns estimated fee based on amountAccepted and dispatcher fees (slightly conservative)
-        uint256 estimatedFee = amountAccepted.mulDiv(
-            bondDispatcher.getFee(),
-            FEE_DECIMALS
-        );
+        uint256 estimatedFee = amountAccepted.mulDiv(bondDispatcher.getFee(), FEE_DECIMALS);
 
         return amountAccepted + estimatedFee;
     }
 
     /// @inheritdoc IBondController
-    function currentDebt(uint256 marketId)
-        public
-        view
-        override
-        returns (uint256)
-    {
+    function currentDebt(uint256 marketId) public view override returns (uint256) {
         return markets[marketId].totalDebt - _debtDecay(marketId);
     }
 
     /// @inheritdoc IBondController
-    function currentControlVariable(uint256 marketId)
-        public
-        view
-        override
-        returns (uint256)
-    {
-        (uint256 decay, , ) = _controlDecay(marketId);
+    function currentControlVariable(uint256 marketId) public view override returns (uint256) {
+        (uint256 decay,,) = _controlDecay(marketId);
         return terms[marketId].controlVariable - decay;
     }
 }

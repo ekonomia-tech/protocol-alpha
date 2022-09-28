@@ -15,10 +15,7 @@ import {BondUtils} from "../libraries/BondUtils.sol";
 /// @title Bond Fixed Expiry Dispatcher
 /// @author Ekonomia: https://github.com/ekonomia-tech
 /// @dev An implementation of the BondBaseDispatcher for bond markets with fixed term using ERC20 tokens
-contract BondFixedExpiryDispatcher is
-    BondBaseDispatcher,
-    IBondFixedExpiryDispatcher
-{
+contract BondFixedExpiryDispatcher is BondBaseDispatcher, IBondFixedExpiryDispatcher {
     using TransferHelper for ERC20;
     using FullMath for uint256;
 
@@ -27,9 +24,7 @@ contract BondFixedExpiryDispatcher is
 
     /// Events
     event ERC20BondTokenCreated(
-        ERC20BondToken bondToken,
-        ERC20 indexed underlying,
-        uint48 indexed expiry
+        ERC20BondToken bondToken, ERC20 indexed underlying, uint48 indexed expiry
     );
 
     /// State vars
@@ -52,12 +47,11 @@ contract BondFixedExpiryDispatcher is
     /// @param underlying_ token to be paid out
     /// @param vesting_ timestamp when the payout will vest
     /// @return expiry timestamp when the payout will vest
-    function _handlePayout(
-        address recipient_,
-        uint256 payout_,
-        ERC20 underlying_,
-        uint48 vesting_
-    ) internal override returns (uint48) {
+    function _handlePayout(address recipient_, uint256 payout_, ERC20 underlying_, uint48 vesting_)
+        internal
+        override
+        returns (uint48)
+    {
         uint48 expiry;
         if (vesting_ > uint48(block.timestamp)) {
             expiry = vesting_;
@@ -73,22 +67,25 @@ contract BondFixedExpiryDispatcher is
     /// Deposit / Mint
 
     /// @inheritdoc IBondFixedExpiryDispatcher
-    function create(
-        ERC20 underlying_,
-        uint48 expiry_,
-        uint256 amount_
-    ) external override nonReentrant returns (ERC20BondToken, uint256) {
+    function create(ERC20 underlying_, uint48 expiry_, uint256 amount_)
+        external
+        override
+        nonReentrant
+        returns (ERC20BondToken, uint256)
+    {
         ERC20BondToken bondToken = bondTokens[underlying_][expiry_];
 
         // revert if no token exists, must call deploy first
-        if (bondToken == ERC20BondToken(address(0x00)))
+        if (bondToken == ERC20BondToken(address(0x00))) {
             revert Dispatcher_TokenDoesNotExist(underlying_, expiry_);
+        }
 
         // transfer in underlying
         uint256 oldBalance = underlying_.balanceOf(address(this));
         underlying_.transferFrom(msg.sender, address(this), amount_);
-        if (underlying_.balanceOf(address(this)) < oldBalance + amount_)
+        if (underlying_.balanceOf(address(this)) < oldBalance + amount_) {
             revert Dispatcher_UnsupportedToken();
+        }
 
         // calculate fee and store it
         if (protocolFee > 0) {
@@ -108,13 +105,10 @@ contract BondFixedExpiryDispatcher is
     /// Redeem
 
     /// @inheritdoc IBondFixedExpiryDispatcher
-    function redeem(ERC20BondToken token_, uint256 amount_)
-        external
-        override
-        nonReentrant
-    {
-        if (uint48(block.timestamp) < token_.expiry())
+    function redeem(ERC20BondToken token_, uint256 amount_) external override nonReentrant {
+        if (uint48(block.timestamp) < token_.expiry()) {
             revert Dispatcher_TokenNotMatured(token_.expiry());
+        }
         token_.burn(msg.sender, amount_);
         token_.underlying().transfer(msg.sender, amount_);
     }
@@ -131,8 +125,8 @@ contract BondFixedExpiryDispatcher is
         // create bond token if one doesn't already exist
         ERC20BondToken bondToken = bondTokens[underlying_][expiry_];
         if (bondToken == ERC20BondToken(address(0))) {
-            (string memory name, string memory symbol) = BondUtils
-                ._getNameAndSymbol(underlying_, expiry_);
+            (string memory name, string memory symbol) =
+                BondUtils._getNameAndSymbol(underlying_, expiry_);
             bondToken = new ERC20BondToken(
                 name,
                 symbol,
@@ -154,8 +148,8 @@ contract BondFixedExpiryDispatcher is
         override
         returns (ERC20BondToken)
     {
-        (ERC20 underlying, , uint48 vesting, ) = IBondController(bondController)
-            .getMarketInfoForPurchase(marketId);
+        (ERC20 underlying,, uint48 vesting,) =
+            IBondController(bondController).getMarketInfoForPurchase(marketId);
         return bondTokens[underlying][vesting];
     }
 }

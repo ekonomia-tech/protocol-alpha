@@ -94,10 +94,7 @@ contract BondDispatcherTest is BaseSetup {
         vm.prank(owner);
         bondFixedExpiryDispatcher.registerMarket(ERC20(pho), ERC20(ton));
         assertEq(bondFixedExpiryDispatcher.marketCounter(), 1);
-        assertEq(
-            bondFixedExpiryDispatcher.marketsForPayout(address(pho), 0),
-            0
-        );
+        assertEq(bondFixedExpiryDispatcher.marketsForPayout(address(pho), 0), 0);
         assertEq(bondFixedExpiryDispatcher.marketsForQuote(address(ton), 0), 0);
     }
 
@@ -133,12 +130,7 @@ contract BondDispatcherTest is BaseSetup {
         uint256 minAmountOut = 50000;
         vm.expectRevert("BondDispatcher: zero address detected");
         vm.prank(owner);
-        bondFixedExpiryDispatcher.purchase(
-            recipient,
-            marketId,
-            amount,
-            minAmountOut
-        );
+        bondFixedExpiryDispatcher.purchase(recipient, marketId, amount, minAmountOut);
     }
 
     // Basic purchase - TODO: enable transfers
@@ -149,16 +141,14 @@ contract BondDispatcherTest is BaseSetup {
         uint256 minAmountOut = 50000;
 
         vm.prank(owner);
-        bondFixedExpiryDispatcher.setBondController(
-            address(bondFixedExpiryController)
-        );
+        bondFixedExpiryDispatcher.setBondController(address(bondFixedExpiryController));
 
         MarketParams memory params = MarketParams({
             payoutToken: pho,
             quoteToken: ton,
-            capacity: 10**18,
-            formattedInitialPrice: 10**6,
-            formattedMinimumPrice: 10**4,
+            capacity: 10 ** 18,
+            formattedInitialPrice: 10 ** 6,
+            formattedMinimumPrice: 10 ** 4,
             vesting: 1000000000,
             conclusion: 10000000000,
             depositInterval: 24 hours,
@@ -168,11 +158,6 @@ contract BondDispatcherTest is BaseSetup {
         bondFixedExpiryController.createMarket(abi.encode(params));
 
         vm.prank(user1);
-        bondFixedExpiryDispatcher.purchase(
-            recipient,
-            marketId,
-            amount,
-            minAmountOut
-        );
+        bondFixedExpiryDispatcher.purchase(recipient, marketId, amount, minAmountOut);
     }
 }

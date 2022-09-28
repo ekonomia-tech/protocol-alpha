@@ -15,11 +15,7 @@ import {FullMath} from "../libraries/FullMath.sol";
 /// @title Bond Dispatcher
 /// @author Ekonomia: https://github.com/ekonomia-tech
 /// @dev Handles user interactions with bonds
-abstract contract BondBaseDispatcher is
-    IBondDispatcher,
-    Ownable,
-    ReentrancyGuard
-{
+abstract contract BondBaseDispatcher is IBondDispatcher, Ownable, ReentrancyGuard {
     using SafeERC20 for ERC20;
     using FullMath for uint256;
 
@@ -43,8 +39,7 @@ abstract contract BondBaseDispatcher is
 
     modifier onlyOwnerOrController() {
         require(
-            msg.sender == owner() ||
-                (bondController != address(0) && msg.sender == bondController),
+            msg.sender == owner() || (bondController != address(0) && msg.sender == bondController),
             "BondDispatcher: not the owner or controller"
         );
         _;
@@ -58,20 +53,12 @@ abstract contract BondBaseDispatcher is
     }
 
     /// @inheritdoc IBondDispatcher
-    function setProtocolFee(uint48 fee_)
-        external
-        override
-        onlyOwnerOrController
-    {
+    function setProtocolFee(uint48 fee_) external override onlyOwnerOrController {
         protocolFee = fee_;
     }
 
     /// @inheritdoc IBondDispatcher
-    function setBondController(address _bondController)
-        external
-        override
-        onlyOwnerOrController
-    {
+    function setBondController(address _bondController) external override onlyOwnerOrController {
         bondController = _bondController;
     }
 
@@ -112,16 +99,13 @@ abstract contract BondBaseDispatcher is
     /// User functions
 
     /// @inheritdoc IBondDispatcher
-    function purchase(
-        address recipient_,
-        uint256 marketId,
-        uint256 amount_,
-        uint256 minAmountOut_
-    ) external virtual nonReentrant returns (uint256, uint48) {
-        require(
-            bondController != address(0),
-            "BondDispatcher: zero address detected"
-        );
+    function purchase(address recipient_, uint256 marketId, uint256 amount_, uint256 minAmountOut_)
+        external
+        virtual
+        nonReentrant
+        returns (uint256, uint48)
+    {
+        require(bondController != address(0), "BondDispatcher: zero address detected");
         ERC20 payoutToken;
         ERC20 quoteToken;
         uint48 vesting;
@@ -129,16 +113,13 @@ abstract contract BondBaseDispatcher is
         // calculate fees for purchase via protocol fee
         uint256 toProtocol = amount_.mulDiv(protocolFee, FEE_DECIMALS);
 
-        (payoutToken, quoteToken, vesting, ) = IBondController(bondController)
-            .getMarketInfoForPurchase(marketId);
+        (payoutToken, quoteToken, vesting,) =
+            IBondController(bondController).getMarketInfoForPurchase(marketId);
 
         // bond controller handles bond pricing, capacity, and duration
         uint256 amountLessFee = amount_ - toProtocol;
-        uint256 payout = IBondController(bondController).purchaseBond(
-            marketId,
-            amountLessFee,
-            minAmountOut_
-        );
+        uint256 payout =
+            IBondController(bondController).purchaseBond(marketId, amountLessFee, minAmountOut_);
 
         // allocate fees to protocol
         rewards[_protocol][quoteToken] += toProtocol;
@@ -159,15 +140,13 @@ abstract contract BondBaseDispatcher is
         uint256 amount_,
         uint256 payout_,
         uint256 feePamarketId
-    ) internal {
-        require(
-            bondController != address(0),
-            "BondDispatcher: zero address detected"
-        );
+    )
+        internal
+    {
+        require(bondController != address(0), "BondDispatcher: zero address detected");
         // get info from controller
-        (ERC20 payoutToken, ERC20 quoteToken, , ) = IBondController(
-            bondController
-        ).getMarketInfoForPurchase(marketId);
+        (ERC20 payoutToken, ERC20 quoteToken,,) =
+            IBondController(bondController).getMarketInfoForPurchase(marketId);
 
         // calculate amount net of fees
         uint256 amountLessFee = amount_ - feePamarketId;
@@ -177,14 +156,16 @@ abstract contract BondBaseDispatcher is
         uint256 quoteBalance = quoteToken.balanceOf(address(this));
         quoteToken.safeTransferFrom(msg.sender, address(this), amount_);
         // check whether full amount recieved
-        if (quoteToken.balanceOf(address(this)) < quoteBalance + amount_)
+        if (quoteToken.balanceOf(address(this)) < quoteBalance + amount_) {
             revert Dispatcher_UnsupportedToken();
+        }
 
         // transfer tokens from bond controller -> dispatcher
         uint256 payoutBalance = payoutToken.balanceOf(address(this));
         payoutToken.safeTransferFrom(bondController, address(this), payout_);
-        if (payoutToken.balanceOf(address(this)) < (payoutBalance + payout_))
+        if (payoutToken.balanceOf(address(this)) < (payoutBalance + payout_)) {
             revert Dispatcher_UnsupportedToken();
+        }
 
         quoteToken.safeTransfer(bondController, amountLessFee);
     }
@@ -196,10 +177,8 @@ abstract contract BondBaseDispatcher is
     /// @param underlying_ token to be paid out
     /// @param vesting_ time parameter depending on implementation
     /// @return expiry timestamp when the payout will vest
-    function _handlePayout(
-        address recipient_,
-        uint256 payout_,
-        ERC20 underlying_,
-        uint48 vesting_
-    ) internal virtual returns (uint48 expiry);
+    function _handlePayout(address recipient_, uint256 payout_, ERC20 underlying_, uint48 vesting_)
+        internal
+        virtual
+        returns (uint48 expiry);
 }

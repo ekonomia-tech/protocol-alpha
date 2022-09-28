@@ -15,10 +15,7 @@ contract ERC20BondToken is ERC20, Ownable {
     address public dispatcher;
 
     modifier onlyDispatcher() {
-        require(
-            msg.sender == dispatcher,
-            "ERC20BondToken: caller is not the dispatcher"
-        );
+        require(msg.sender == dispatcher, "ERC20BondToken: caller is not the dispatcher");
         _;
     }
 
@@ -30,7 +27,9 @@ contract ERC20BondToken is ERC20, Ownable {
         ERC20 _underlying,
         uint48 _expiry,
         address _dispatcher
-    ) ERC20(_name, _symbol) {
+    )
+        ERC20(_name, _symbol)
+    {
         _decimals = __decimals;
         underlying = _underlying;
         dispatcher = _dispatcher;

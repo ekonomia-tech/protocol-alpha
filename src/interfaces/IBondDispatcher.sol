@@ -15,12 +15,9 @@ interface IBondDispatcher {
     /// @param minAmountOut_ min acceptable amount of bond to receive. Prevents frontrunning
     /// @return amount amount of payout token to be received from the bond
     /// @return timestamp when bond token can be redeemed for underlying
-    function purchase(
-        address recipient_,
-        uint256 marketId,
-        uint256 amount_,
-        uint256 minAmountOut_
-    ) external returns (uint256, uint48);
+    function purchase(address recipient_, uint256 marketId, uint256 amount_, uint256 minAmountOut_)
+        external
+        returns (uint256, uint48);
 
     /// @notice current fee charged by the dispatcher based on the protocol fee
     /// @return fee in bps (3 decimal places)

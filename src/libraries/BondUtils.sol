@@ -41,34 +41,15 @@ library BondUtils {
         }
 
         string memory yearStr = _uint2str(year % 10000);
-        string memory monthStr = month < 10
-            ? string(abi.encodePacked("0", _uint2str(month)))
-            : _uint2str(month);
-        string memory dayStr = day < 10
-            ? string(abi.encodePacked("0", _uint2str(day)))
-            : _uint2str(day);
+        string memory monthStr =
+            month < 10 ? string(abi.encodePacked("0", _uint2str(month))) : _uint2str(month);
+        string memory dayStr =
+            day < 10 ? string(abi.encodePacked("0", _uint2str(day))) : _uint2str(day);
 
         // Construct name/symbol strings.
-        name = string(
-            abi.encodePacked(
-                underlying_.name(),
-                " ",
-                yearStr,
-                "-",
-                monthStr,
-                "-",
-                dayStr
-            )
-        );
-        symbol = string(
-            abi.encodePacked(
-                underlying_.symbol(),
-                "-",
-                yearStr,
-                monthStr,
-                dayStr
-            )
-        );
+        name =
+            string(abi.encodePacked(underlying_.name(), " ", yearStr, "-", monthStr, "-", dayStr));
+        symbol = string(abi.encodePacked(underlying_.symbol(), "-", yearStr, monthStr, dayStr));
     }
 
     // Some fancy math to convert a uint into a string, courtesy of Provable Things.

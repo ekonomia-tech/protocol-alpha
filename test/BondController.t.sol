@@ -69,7 +69,7 @@ contract BondControllerTest is BaseSetup {
     uint32 public minMarketDuration; // market duration
     uint32 public minDebtBuffer; // debt buffer
 
-    uint48 internal constant FEE_DECIMALS = 10**5;
+    uint48 internal constant FEE_DECIMALS = 10 ** 5;
 
     function setUp() public {
         vm.prank(owner);
@@ -87,9 +87,7 @@ contract BondControllerTest is BaseSetup {
         );
 
         vm.prank(owner);
-        bondFixedExpiryDispatcher.setBondController(
-            address(bondFixedExpiryController)
-        );
+        bondFixedExpiryDispatcher.setBondController(address(bondFixedExpiryController));
 
         defaultTuneInterval = 24 hours;
         defaultTuneAdjustment = 1 hours;
@@ -147,9 +145,9 @@ contract BondControllerTest is BaseSetup {
         MarketParams memory params = MarketParams({
             payoutToken: pho,
             quoteToken: ton,
-            capacity: 10**18,
-            formattedInitialPrice: 10**6,
-            formattedMinimumPrice: 10**4,
+            capacity: 10 ** 18,
+            formattedInitialPrice: 10 ** 6,
+            formattedMinimumPrice: 10 ** 4,
             vesting: 1000000000,
             conclusion: 10000000000,
             depositInterval: 1000000,
@@ -166,9 +164,9 @@ contract BondControllerTest is BaseSetup {
         MarketParams memory params = MarketParams({
             payoutToken: ERC20(fraxBPLUSD),
             quoteToken: ton,
-            capacity: 10**18,
-            formattedInitialPrice: 10**6,
-            formattedMinimumPrice: 10**4,
+            capacity: 10 ** 18,
+            formattedInitialPrice: 10 ** 6,
+            formattedMinimumPrice: 10 ** 4,
             vesting: 1000000000,
             conclusion: 10000000000,
             depositInterval: 24 hours,
@@ -182,9 +180,9 @@ contract BondControllerTest is BaseSetup {
         params = MarketParams({
             payoutToken: pho,
             quoteToken: ton,
-            capacity: 10**18,
-            formattedInitialPrice: 10**6,
-            formattedMinimumPrice: 10**4,
+            capacity: 10 ** 18,
+            formattedInitialPrice: 10 ** 6,
+            formattedMinimumPrice: 10 ** 4,
             vesting: 1000000000,
             conclusion: 10000000000,
             depositInterval: 24 hours,
@@ -198,9 +196,9 @@ contract BondControllerTest is BaseSetup {
         params = MarketParams({
             payoutToken: pho,
             quoteToken: ton,
-            capacity: 10**18,
-            formattedInitialPrice: 10**4,
-            formattedMinimumPrice: 10**5,
+            capacity: 10 ** 18,
+            formattedInitialPrice: 10 ** 4,
+            formattedMinimumPrice: 10 ** 5,
             vesting: 1000000000,
             conclusion: 10000000000,
             depositInterval: 24 hours,
@@ -214,9 +212,9 @@ contract BondControllerTest is BaseSetup {
         params = MarketParams({
             payoutToken: pho,
             quoteToken: ton,
-            capacity: 10**18,
-            formattedInitialPrice: 10**4,
-            formattedMinimumPrice: 10**5,
+            capacity: 10 ** 18,
+            formattedInitialPrice: 10 ** 4,
+            formattedMinimumPrice: 10 ** 5,
             vesting: 1000000000,
             conclusion: uint48(block.timestamp) + 1 days - 1,
             depositInterval: 24 hours,
@@ -230,9 +228,9 @@ contract BondControllerTest is BaseSetup {
         params = MarketParams({
             payoutToken: pho,
             quoteToken: ton,
-            capacity: 10**18,
-            formattedInitialPrice: 10**4,
-            formattedMinimumPrice: 10**5,
+            capacity: 10 ** 18,
+            formattedInitialPrice: 10 ** 4,
+            formattedMinimumPrice: 10 ** 5,
             vesting: 1000000000,
             conclusion: 10000000000,
             depositInterval: 1 hours - 1,
@@ -248,9 +246,9 @@ contract BondControllerTest is BaseSetup {
         MarketParams memory params = MarketParams({
             payoutToken: pho,
             quoteToken: ton,
-            capacity: 10**18,
-            formattedInitialPrice: 10**6,
-            formattedMinimumPrice: 10**4,
+            capacity: 10 ** 18,
+            formattedInitialPrice: 10 ** 6,
+            formattedMinimumPrice: 10 ** 4,
             vesting: 1000000000,
             conclusion: 10000000000,
             depositInterval: 24 hours,
@@ -273,13 +271,11 @@ contract BondControllerTest is BaseSetup {
             uint256 lastTuneDebt
         ) = bondFixedExpiryController.metadata(0);
 
-        uint256 currentTuneIntervalCapacity = (params.capacity *
-            params.depositInterval) /
-            uint256(params.conclusion - block.timestamp);
+        uint256 currentTuneIntervalCapacity = (params.capacity * params.depositInterval)
+            / uint256(params.conclusion - block.timestamp);
 
-        uint256 currentLastTuneDebt = ((params.capacity) *
-            uint256(debtDecayInterval)) /
-            uint256(params.conclusion - block.timestamp);
+        uint256 currentLastTuneDebt = ((params.capacity) * uint256(debtDecayInterval))
+            / uint256(params.conclusion - block.timestamp);
 
         assertEq(lastTune, uint48(block.timestamp));
         assertEq(lastDecay, uint48(block.timestamp));
@@ -289,10 +285,7 @@ contract BondControllerTest is BaseSetup {
         assertEq(tuneAdjustmentDelay, defaultTuneAdjustment);
         assertEq(debtDecayInterval, minDebtDecayInterval);
         assertEq(tuneIntervalCapacity, currentTuneIntervalCapacity);
-        assertEq(
-            tuneBelowCapacity,
-            params.capacity - currentTuneIntervalCapacity
-        );
+        assertEq(tuneBelowCapacity, params.capacity - currentTuneIntervalCapacity);
         assertEq(lastTuneDebt, currentLastTuneDebt);
     }
 
@@ -301,9 +294,9 @@ contract BondControllerTest is BaseSetup {
         MarketParams memory params = MarketParams({
             payoutToken: pho,
             quoteToken: ton,
-            capacity: 10**18,
-            formattedInitialPrice: 10**6,
-            formattedMinimumPrice: 10**4,
+            capacity: 10 ** 18,
+            formattedInitialPrice: 10 ** 6,
+            formattedMinimumPrice: 10 ** 4,
             vesting: 1000000000,
             conclusion: 10000000000,
             depositInterval: 24 hours,
@@ -313,15 +306,14 @@ contract BondControllerTest is BaseSetup {
         bondFixedExpiryController.createMarket(abi.encode(params));
 
         // Bond market
-        uint256 targetDebt = (params.capacity * uint256(minDebtDecayInterval)) /
-            (uint256(params.conclusion - block.timestamp));
+        uint256 targetDebt = (params.capacity * uint256(minDebtDecayInterval))
+            / (uint256(params.conclusion - block.timestamp));
 
         // max payout = capacity / deposit interval, i.e. 1000 TOK of capacity / 10 days = 100 TOK max
-        uint256 currentMaxPayout = (params.capacity *
-            uint256(params.depositInterval)) /
-            uint256(params.conclusion - block.timestamp);
+        uint256 currentMaxPayout = (params.capacity * uint256(params.depositInterval))
+            / uint256(params.conclusion - block.timestamp);
 
-        uint256 currentScale = 10**uint8(36 + params.scaleAdjustment);
+        uint256 currentScale = 10 ** uint8(36 + params.scaleAdjustment);
 
         (
             ERC20 payoutToken,
@@ -351,9 +343,9 @@ contract BondControllerTest is BaseSetup {
         MarketParams memory params = MarketParams({
             payoutToken: pho,
             quoteToken: ton,
-            capacity: 10**18,
-            formattedInitialPrice: 10**6,
-            formattedMinimumPrice: 10**4,
+            capacity: 10 ** 18,
+            formattedInitialPrice: 10 ** 6,
+            formattedMinimumPrice: 10 ** 4,
             vesting: 1000000000,
             conclusion: 10000000000,
             depositInterval: 24 hours,
@@ -363,22 +355,16 @@ contract BondControllerTest is BaseSetup {
         bondFixedExpiryController.createMarket(abi.encode(params));
 
         // From prev
-        uint256 targetDebt = (params.capacity * uint256(minDebtDecayInterval)) /
-            (uint256(params.conclusion - block.timestamp));
+        uint256 targetDebt = (params.capacity * uint256(minDebtDecayInterval))
+            / (uint256(params.conclusion - block.timestamp));
 
-        uint256 currentScale = 10**uint8(36 + params.scaleAdjustment);
+        uint256 currentScale = 10 ** uint8(36 + params.scaleAdjustment);
 
-        uint256 currentMaxDebt = targetDebt +
-            ((targetDebt * minDebtBuffer) / FEE_DECIMALS);
-        uint256 currentControlVariable = (params.formattedInitialPrice *
-            currentScale) / targetDebt;
+        uint256 currentMaxDebt = targetDebt + ((targetDebt * minDebtBuffer) / FEE_DECIMALS);
+        uint256 currentControlVariable = (params.formattedInitialPrice * currentScale) / targetDebt;
         // Bond terms
-        (
-            uint256 controlVariable,
-            uint256 maxDebt,
-            uint48 vesting,
-            uint48 conclusion
-        ) = bondFixedExpiryController.terms(0);
+        (uint256 controlVariable, uint256 maxDebt, uint48 vesting, uint48 conclusion) =
+            bondFixedExpiryController.terms(0);
         assertEq(controlVariable, currentControlVariable);
         assertEq(maxDebt, currentMaxDebt);
         assertEq(vesting, params.vesting);
@@ -440,9 +426,9 @@ contract BondControllerTest is BaseSetup {
         MarketParams memory params = MarketParams({
             payoutToken: pho,
             quoteToken: ton,
-            capacity: 10**18,
-            formattedInitialPrice: 10**6,
-            formattedMinimumPrice: 10**4,
+            capacity: 10 ** 18,
+            formattedInitialPrice: 10 ** 6,
+            formattedMinimumPrice: 10 ** 4,
             vesting: 1000000000,
             conclusion: 10000000000,
             depositInterval: 24 hours,
@@ -473,8 +459,8 @@ contract BondControllerTest is BaseSetup {
             uint256 lastTuneDebt
         ) = bondFixedExpiryController.metadata(0);
 
-        uint256 currentTuneIntervalCapacity = (10**18 * uint256(intervals[0])) /
-            uint256(10000000000 - block.timestamp);
+        uint256 currentTuneIntervalCapacity =
+            (10 ** 18 * uint256(intervals[0])) / uint256(10000000000 - block.timestamp);
 
         assertEq(tuneInterval, intervals[0]);
         assertEq(tuneIntervalCapacity, currentTuneIntervalCapacity);
@@ -513,10 +499,7 @@ contract BondControllerTest is BaseSetup {
         bondFixedExpiryController.setDefaults(defaults);
 
         assertEq(bondFixedExpiryController.defaultTuneInterval(), defaults[0]);
-        assertEq(
-            bondFixedExpiryController.defaultTuneAdjustment(),
-            defaults[1]
-        );
+        assertEq(bondFixedExpiryController.defaultTuneAdjustment(), defaults[1]);
         assertEq(bondFixedExpiryController.minDebtDecayInterval(), defaults[2]);
         assertEq(bondFixedExpiryController.minDepositInterval(), defaults[3]);
         assertEq(bondFixedExpiryController.minMarketDuration(), defaults[4]);
@@ -537,9 +520,9 @@ contract BondControllerTest is BaseSetup {
         MarketParams memory params = MarketParams({
             payoutToken: pho,
             quoteToken: ton,
-            capacity: 10**18,
-            formattedInitialPrice: 10**6,
-            formattedMinimumPrice: 10**4,
+            capacity: 10 ** 18,
+            formattedInitialPrice: 10 ** 6,
+            formattedMinimumPrice: 10 ** 4,
             vesting: 1000000000,
             conclusion: 10000000000,
             depositInterval: 24 hours,
@@ -551,10 +534,8 @@ contract BondControllerTest is BaseSetup {
         vm.prank(owner);
         bondFixedExpiryController.closeMarket(0);
 
-        (, , , uint48 conclusion) = bondFixedExpiryController.terms(0);
-        (, , uint256 capacity, , , , , , ) = bondFixedExpiryController.markets(
-            0
-        );
+        (,,, uint48 conclusion) = bondFixedExpiryController.terms(0);
+        (,, uint256 capacity,,,,,,) = bondFixedExpiryController.markets(0);
 
         assertEq(conclusion, uint48(block.timestamp));
         assertEq(capacity, 0);
@@ -578,9 +559,9 @@ contract BondControllerTest is BaseSetup {
         MarketParams memory params = MarketParams({
             payoutToken: pho,
             quoteToken: ton,
-            capacity: 10**18,
-            formattedInitialPrice: 10**6,
-            formattedMinimumPrice: 10**4,
+            capacity: 10 ** 18,
+            formattedInitialPrice: 10 ** 6,
+            formattedMinimumPrice: 10 ** 4,
             vesting: 1000000000,
             conclusion: uint48(block.timestamp + 2 days),
             depositInterval: 24 hours,
@@ -603,9 +584,9 @@ contract BondControllerTest is BaseSetup {
         MarketParams memory params = MarketParams({
             payoutToken: pho,
             quoteToken: ton,
-            capacity: 10**18,
-            formattedInitialPrice: 10**6,
-            formattedMinimumPrice: 10**4,
+            capacity: 10 ** 18,
+            formattedInitialPrice: 10 ** 6,
+            formattedMinimumPrice: 10 ** 4,
             vesting: 1000000000,
             conclusion: 10000000000,
             depositInterval: 24 hours,
@@ -614,25 +595,16 @@ contract BondControllerTest is BaseSetup {
         vm.prank(owner);
         bondFixedExpiryController.createMarket(abi.encode(params));
 
-        uint256 targetDebt = (params.capacity * uint256(minDebtDecayInterval)) /
-            (uint256(params.conclusion - block.timestamp));
+        uint256 targetDebt = (params.capacity * uint256(minDebtDecayInterval))
+            / (uint256(params.conclusion - block.timestamp));
 
         vm.prank(address(bondFixedExpiryDispatcher));
         bondFixedExpiryController.purchaseBond(0, amount, minAmountOut);
 
-        (
-            ,
-            ,
-            uint256 capacity,
-            uint256 totalDebt,
-            ,
-            ,
-            uint256 sold,
-            uint256 purchased,
+        (,, uint256 capacity, uint256 totalDebt,,, uint256 sold, uint256 purchased,) =
+            bondFixedExpiryController.markets(0);
 
-        ) = bondFixedExpiryController.markets(0);
-
-        assertEq(capacity, 10**18 - amount);
+        assertEq(capacity, 10 ** 18 - amount);
         assertEq(totalDebt, targetDebt + amount + 1);
         assertEq(purchased, amount);
         assertEq(sold, amount);

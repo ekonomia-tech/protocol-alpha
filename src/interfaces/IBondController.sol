@@ -18,11 +18,7 @@ interface IBondController {
         uint256 initialPrice
     );
     event MarketClosed(uint256 indexed id);
-    event Tuned(
-        uint256 indexed id,
-        uint256 oldControlVariable,
-        uint256 newControlVariable
-    );
+    event Tuned(uint256 indexed id, uint256 oldControlVariable, uint256 newControlVariable);
 
     /// State vars
 
@@ -99,11 +95,9 @@ interface IBondController {
     /// @param amount_ amount to deposit in exchange for bond (after fee has been deducted)
     /// @param minAmountOut_ min acceptable amount of bond to receive. Prevents frontrunning
     /// @return payout amount of payout token to be received from the bond
-    function purchaseBond(
-        uint256 marketId,
-        uint256 amount_,
-        uint256 minAmountOut_
-    ) external returns (uint256 payout);
+    function purchaseBond(uint256 marketId, uint256 amount_, uint256 minAmountOut_)
+        external
+        returns (uint256 payout);
 
     /// @notice set market intervals to different values than the defaults
     /// @dev tuneInterval should be greater than tuneAdjustmentDelay
@@ -112,8 +106,7 @@ interface IBondController {
     /// 1. Tune interval - Frequency of tuning
     /// 2. Tune adjustment delay - Time to implement downward tuning adjustments
     /// 3. Debt decay interval - Interval over which debt should decay completely
-    function setIntervals(uint256 marketId, uint32[] calldata intervals_)
-        external;
+    function setIntervals(uint256 marketId, uint32[] calldata intervals_) external;
 
     /// @notice set the controller defaults
     /// @notice must be policy
@@ -139,12 +132,7 @@ interface IBondController {
     function getMarketInfoForPurchase(uint256 marketId)
         external
         view
-        returns (
-            ERC20 payoutToken,
-            ERC20 quoteToken,
-            uint48 vesting,
-            uint256 maxPayout
-        );
+        returns (ERC20 payoutToken, ERC20 quoteToken, uint48 vesting, uint256 maxPayout);
 
     /// @notice Payout due for amount of quote tokens
     /// @dev Accounts for debt and control variable decay so it is up to date
@@ -152,17 +140,11 @@ interface IBondController {
     /// @param marketId bond market id
     /// Inputting the zero address will take into account just the protocol fee.
     /// @return amount of payout tokens to be paid
-    function payoutFor(uint256 amount_, uint256 marketId)
-        external
-        view
-        returns (uint256);
+    function payoutFor(uint256 amount_, uint256 marketId) external view returns (uint256);
 
     /// @notice returns maximum amount of quote token accepted by the market
     /// @param marketId bond market id
-    function maxAmountAccepted(uint256 marketId)
-        external
-        view
-        returns (uint256);
+    function maxAmountAccepted(uint256 marketId) external view returns (uint256);
 
     /// View functions
 
@@ -182,8 +164,5 @@ interface IBondController {
     /// @dev accounts for control variable adjustment
     /// @param marketId bond market id
     /// @return cv control variable for market in payout token decimals
-    function currentControlVariable(uint256 marketId)
-        external
-        view
-        returns (uint256);
+    function currentControlVariable(uint256 marketId) external view returns (uint256);
 }
