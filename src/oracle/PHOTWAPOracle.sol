@@ -33,6 +33,7 @@ contract PHOTWAPOracle is IPHOOracle, Ownable {
     address[2] public tokens; // used in consult() to assess which twap to use in return calculation
     uint256[2] public twap; // index 0 == PHO (units: FraxBP/PHO), index 1 == FraxBP (units: PHO/FraxBP) based off of PriceController.sol setup
     uint256 public priceUpdateThreshold; // expressed in basis points, 10 ** 6 BP corresponding to 100%
+    bool public thresholdExceeded;
 
     uint256 public constant THRESHOLD_PRECISION = 10 ** 6;
     uint256 public constant FEED_PRECISION = 10 ** 8;
@@ -123,7 +124,14 @@ contract PHOTWAPOracle is IPHOOracle, Ownable {
             priceBPSChange = ((oldUSDPHOPrice - latestUSDPHOPrice)) * THRESHOLD_PRECISION / oldUSDPHOPrice;
         }
 
-        require(priceBPSChange <= priceUpdateThreshold, "PHOTWAPOracle: new twap !> priceUpdateThreshold"); // UNITS: 10 ** 6
+        if(priceBPSChange > priceUpdateThreshold) {
+            latestUSDPHOPrice = oldUSDPHOPrice;
+            
+            thresholdExceeded = true;
+            emit PriceThresholdExceeded(thresholdExceeded);
+            return latestUSDPHOPrice;
+            // NOTE - need to figure out contingency plan when price fluctuates largely
+        }
 
         latestBlockTimestamp = block.timestamp;
         priceCumulativeLast[0] = priceCumulativeNew[0];
@@ -162,6 +170,7 @@ contract PHOTWAPOracle is IPHOOracle, Ownable {
             "PHOTWAPOracle: address does not point to a metapool"
         );
 
+        initOracle = false;
         address[8] memory underlyingCoins = curveFactory.get_underlying_coins(_priceSource);
         bool isPhoPresent;
         for (uint256 i = 0; i < underlyingCoins.length; i++) {

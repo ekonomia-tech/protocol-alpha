@@ -6,6 +6,7 @@ pragma solidity ^0.8.13;
 /// @author Ekonomia: https://github.com/Ekonomia
 interface IPHOOracle {
     event PriceUpdated(uint256 indexed latestPHOUSDPrice, uint256 indexed blockTimestampLast);
+    event PriceThresholdExceeded(bool priceThresholdChangeExceeded);
     event PriceSourceUpdated(address indexed priceSource); 
     event PriceUpdateThresholdChanged(uint256 priceUpdateThreshold);
 
