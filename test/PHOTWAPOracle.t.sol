@@ -24,6 +24,7 @@ contract PHOTWAPOracleTest is BaseSetup {
     event PriceUpdated(uint256 indexed latestPHOUSDPrice, uint256 indexed blockTimestampLast);
     event PriceSourceUpdated(address indexed priceSource); 
     event PriceUpdateThresholdChanged(uint256 priceUpdateThreshold);
+    event PriceThresholdExceeded(bool priceThresholdChangeExceeded);
 
     uint256 poolMintAmount = 99750000;
     uint256 shareBurnAmount = 25 * 10 ** 16;
@@ -37,10 +38,31 @@ contract PHOTWAPOracleTest is BaseSetup {
         priceFeed.addFeed(USDC_ADDRESS, PriceFeed_USDCUSD); // https://data.chain.link/ethereum/mainnet/stablecoins/usdc-usd
         priceFeed.addFeed(ethNullAddress, PriceFeed_ETHUSD); // https://data.chain.link/ethereum/mainnet/crypto-usd/eth-usd
         vm.stopPrank();
-        fraxBPPhoMetapool = ICurvePool(_deployFraxBPPHOPoolOneMillion()); // deploy FRAXBP-PHO metapool
-        fraxBPPhoMetapoolAddress = address(fraxBPPhoMetapool);
+
+        fraxBPPhoMetapoolAddress = (_deployFraxBPPHOPool()); // deploy FRAXBP-PHO metapool
+
+        vm.prank(address(teller));
+        pho.mint(owner, five_m_d18);
+
+        _fundAndApproveUSDC(owner, address(fraxBP), one_m_d6, one_m_d6);
+        _fundAndApproveFRAX(owner, address(fraxBP), one_m_d18, one_m_d18);
 
         vm.startPrank(owner);
+        uint256[2] memory fraxBPmetaLiquidity;
+        fraxBPmetaLiquidity[0] = one_m_d18; // frax
+        fraxBPmetaLiquidity[1] = one_m_d6; // usdc
+        
+        fraxBP.add_liquidity(fraxBPmetaLiquidity, 0);
+
+        pho.approve(address(fraxBPPhoMetapool), one_m_d18);
+        fraxBPLP.approve(address(fraxBPPhoMetapool), one_m_d18);
+        uint256[2] memory metaLiquidity;
+        metaLiquidity[0] = one_m_d18;
+        metaLiquidity[1] = one_m_d18;
+        fraxBPPhoMetapool.add_liquidity(metaLiquidity, 0); // FraxBP-PHO metapool now at 66/33 split, respectively. Meaning 33/33/33 for underlying assets: USDC/Frax/PHO
+        
+        // fraxBPPhoMetapoolAddress = (_deployFraxBPPHOPoolOneMillion()); // deploy FRAXBP-PHO metapool
+
         phoTwapOracle = new PHOTWAPOracle(address(pho), metaPoolFactoryAddress, fraxBPPool, fraxBPLPToken, fraxAddress, USDC_ADDRESS, address(priceFeed), period, fraxBPPhoMetapoolAddress, PRICE_THRESHOLD); // deploy PHOTWAPOracle
         fraxBPPhoMetapool = phoTwapOracle.dexPool();
         pho.approve(fraxBPPhoMetapoolAddress, fiveHundredThousand_d18);
@@ -106,10 +128,13 @@ contract PHOTWAPOracleTest is BaseSetup {
     /// @notice test revert in getPrice() after doing the first significant swap in the metapool where a user swaps token 0 for token 1 but with high price effects
     function testCannotGetPricePastThreshold() public {    
         twapFixture(); // getPrice() called for first time, and we've fast forwarded 1 period
+        uint256 oldUSDPHOPrice = phoTwapOracle.latestUSDPHOPrice();
         vm.startPrank(owner); 
         fraxBPPhoMetapool.exchange(0, 1, twoHundredFiftyThousand_d18, 0);
-        vm.expectRevert("PHOTWAPOracle: new twap !> priceUpdateThreshold");
+        vm.expectEmit(false, false, false, true);
+        emit PriceThresholdExceeded(true);
         phoTwapOracle.getPrice();
+        assertEq(oldUSDPHOPrice, phoTwapOracle.latestUSDPHOPrice());
         vm.stopPrank();
     }
 
@@ -195,6 +220,16 @@ contract PHOTWAPOracleTest is BaseSetup {
         vm.stopPrank();
     }
 
+    // TODO - get this reversion test working when working with adding and removing liquidity from pool to see if it affects price
+    function testCannotGetPrice() public {
+        vm.startPrank(owner);
+        uint256[2] memory min_amounts = [uint256(0), uint256(0)];
+        fraxBPPhoMetapool.remove_liquidity(fraxBPPhoMetapool.balanceOf(owner), min_amounts, owner); // remove all liquidity
+        vm.expectRevert("PHOTWAPOracle: metapool balance(s) cannot be 0");
+        phoTwapOracle.getPrice();
+        vm.stopPrank();
+    }
+
     /// consult() tests
 
     /// @notice test revert on consult()
@@ -257,11 +292,14 @@ contract PHOTWAPOracleTest is BaseSetup {
 
     /// @notice tests basic setPriceSource() functionality
     function testSetPriceSource() public {
+        twapFixture();
+        assertEq(phoTwapOracle.initOracle(), true);
         address newSource = _deployFraxBPPHOPool();
         vm.expectEmit(true, false, false, true);
         emit PriceSourceUpdated(newSource);
         vm.prank(owner);
         phoTwapOracle.setPriceSource(newSource);
+        assertEq(phoTwapOracle.initOracle(), false);
     }
 
     /// setPriceUpdateThreshold() tests
@@ -285,17 +323,6 @@ contract PHOTWAPOracleTest is BaseSetup {
         assertEq(phoTwapOracle.priceUpdateThreshold(), 999999);
         vm.stopPrank();
     }
-
-    // TODO - add tests for: checking price when someone adds liquidity, and removes liquidity
-
-    // TODO - get this reversion test working when working with adding and removing liquidity from pool to see if it affects price
-    // function testCannotGetPrice() public {
-    //     vm.startPrank(owner);
-    //     fraxBPPhoMetapool.remove_liquidity(fraxBPPhoMetapool.balanceOf(owner), [0,0]); // remove all liquidity
-    //     vm.expectRevert("PHOTWAPOracle: metapool balance(s) cannot be 0");
-    //     phoTwapOracle.getPrice();
-    //     vm.stopPrank();
-    // }
 
     /// Helpers
 

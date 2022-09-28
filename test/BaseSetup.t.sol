@@ -74,6 +74,8 @@ abstract contract BaseSetup is Test {
     uint256 public constant fiveHundredThousand_d18 = 500000 * 10 ** 18;
     uint256 public constant one_m_d6 = 1000000 * 10 ** 6;
     uint256 public constant one_m_d18 = 1000000 * 10 ** 18;
+    uint256 public constant two_m_d6 = 2000000 * 10 ** 6;
+    uint256 public constant two_m_d18 = 2000000 * 10 ** 18;
     uint256 public constant five_m_d6 = 5000000 * 10 ** 6;
     uint256 public constant five_m_d18 = 5000000 * 10 ** 18;
     uint256 public constant six_m_d6 = 6000000 * 10 ** 6;
@@ -262,39 +264,5 @@ abstract contract BaseSetup is Test {
 
         return fraxBPPhoMetapoolAddress;
     }
-
-    function _deployFraxBPPHOPoolOneMillion() internal returns (address) {
-        vm.prank(address(teller));
-        pho.mint(owner, five_m_d18);
-        frax = IERC20(fraxAddress);
-        fraxBPLP = IERC20(fraxBPLPToken);
-        fraxBP = ICurvePool(fraxBPAddress);
-        curveFactory = ICurveFactory(metaPoolFactoryAddress);
-
-        _fundAndApproveUSDC(owner, address(fraxBP), one_m_d6, one_m_d6);
-
-        uint256[2] memory fraxBPmetaLiquidity;
-        fraxBPmetaLiquidity[0] = one_m_d18; // frax
-        fraxBPmetaLiquidity[1] = one_m_d6; // usdc
-
-        vm.prank(fraxRichGuy);
-        frax.transfer(owner, one_m_d18);
-
-        vm.startPrank(owner);
-        usdc.approve(address(fraxBP), one_m_d6);
-        frax.approve(address(fraxBP), one_m_d18);
-        fraxBP.add_liquidity(fraxBPmetaLiquidity, 0);
-        address fraxBPPhoMetapoolAddress = curveFactory.deploy_metapool(
-            address(fraxBP), "FRAXBP/PHO", "FRAXBPPHO", address(pho), 200, 4000000, 0
-        );
-        fraxBPPhoMetapool = ICurvePool(fraxBPPhoMetapoolAddress);
-        pho.approve(address(fraxBPPhoMetapool), one_m_d18);
-        fraxBPLP.approve(address(fraxBPPhoMetapool), one_m_d18);
-        uint256[2] memory metaLiquidity;
-        metaLiquidity[0] = one_m_d18;
-        metaLiquidity[1] = one_m_d18;
-        fraxBPPhoMetapool.add_liquidity(metaLiquidity, 0); // FraxBP-PHO metapool now at 66/33 split, respectively. Meaning 33/33/33 for underlying assets: USDC/Frax/PHO
-        vm.stopPrank();
-        return fraxBPPhoMetapoolAddress;
-    }
+    
 }

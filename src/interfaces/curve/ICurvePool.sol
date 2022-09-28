@@ -24,4 +24,5 @@ interface ICurvePool is IERC20 {
         external;
     function balances(uint256 _index) external returns (uint256);
     function lp_token() external view returns (address);
+    function remove_liquidity(uint256 _burn_amount, uint256[2] memory _min_amounts, address _receiver) external returns (uint256[2] memory);
 }
