@@ -25,39 +25,39 @@ contract PHOTWAPOracleTest is BaseSetup {
     function setUp() public {
         vm.startPrank(owner);
         // set base pricefeeds needed for PHOTWAPOracle
-        priceFeed.addFeed(fraxAddress, PriceFeed_FRAXUSD); // https://data.chain.link/ethereum/mainnet/stablecoins/frax-usd
-        priceFeed.addFeed(USDC_ADDRESS, PriceFeed_USDCUSD); // https://data.chain.link/ethereum/mainnet/stablecoins/usdc-usd
-        priceFeed.addFeed(ethNullAddress, PriceFeed_ETHUSD); // https://data.chain.link/ethereum/mainnet/crypto-usd/eth-usd
+        priceFeed.addFeed(FRAX_ADDRESS, PRICEFEED_FRAXUSD); // https://data.chain.link/ethereum/mainnet/stablecoins/frax-usd
+        priceFeed.addFeed(USDC_ADDRESS, PRICEFEED_USDCUSD); // https://data.chain.link/ethereum/mainnet/stablecoins/usdc-usd
+        priceFeed.addFeed(ETH_NULL_ADDRESS, PRICEFEED_ETHUSD); // https://data.chain.link/ethereum/mainnet/crypto-usd/eth-usd
         vm.stopPrank();
 
         fraxBPPhoMetapoolAddress = (_deployFraxBPPHOPool()); // deploy FRAXBP-PHO metapool
 
         vm.prank(address(teller));
-        pho.mint(owner, one_m_d18 * 5);
+        pho.mint(owner, ONE_MILLION_D18 * 5);
 
-        _fundAndApproveUSDC(owner, address(fraxBP), one_m_d6 * 2, one_m_d6 * 2);
-        _fundAndApproveFRAX(owner, address(fraxBP), one_m_d18 * 2, one_m_d18 * 2);
+        _fundAndApproveUSDC(owner, address(fraxBP), ONE_MILLION_D6 * 2, ONE_MILLION_D6 * 2);
+        _fundAndApproveFRAX(owner, address(fraxBP), ONE_MILLION_D18 * 2, ONE_MILLION_D18 * 2);
 
         vm.startPrank(owner);
         uint256[2] memory fraxBPmetaLiquidity;
-        fraxBPmetaLiquidity[0] = one_m_d18 * 2; // frax
-        fraxBPmetaLiquidity[1] = one_m_d6 * 2; // usdc
+        fraxBPmetaLiquidity[0] = ONE_MILLION_D18 * 2; // frax
+        fraxBPmetaLiquidity[1] = ONE_MILLION_D6 * 2; // usdc
 
         fraxBP.add_liquidity(fraxBPmetaLiquidity, 0);
 
-        pho.approve(address(fraxBPPhoMetapool), one_m_d18 * 5);
-        fraxBPLP.approve(address(fraxBPPhoMetapool), one_m_d18 * 5);
+        pho.approve(address(fraxBPPhoMetapool), ONE_MILLION_D18 * 5);
+        fraxBPLP.approve(address(fraxBPPhoMetapool), ONE_MILLION_D18 * 5);
         uint256[2] memory metaLiquidity;
-        metaLiquidity[0] = one_m_d18;
-        metaLiquidity[1] = one_m_d18;
+        metaLiquidity[0] = ONE_MILLION_D18;
+        metaLiquidity[1] = ONE_MILLION_D18;
         fraxBPPhoMetapool.add_liquidity(metaLiquidity, 0); // FraxBP-PHO metapool now at 66/33 split, respectively. Meaning 33/33/33 for underlying assets: USDC/Frax/PHO
 
         phoTwapOracle =
-        new PHOTWAPOracle(address(pho), fraxBPPool, fraxBPLPToken, fraxAddress, USDC_ADDRESS, address(priceFeed), period, fraxBPPhoMetapoolAddress, PRICE_THRESHOLD); // deploy PHOTWAPOracle
+        new PHOTWAPOracle(address(pho), FRAXBP_POOL, FRAXBP_LP_TOKEN, FRAX_ADDRESS, USDC_ADDRESS, address(priceFeed), period, fraxBPPhoMetapoolAddress, PRICE_THRESHOLD); // deploy PHOTWAPOracle
         fraxBPPhoMetapool = phoTwapOracle.dexPool();
-        pho.approve(fraxBPPhoMetapoolAddress, fiveHundredThousand_d18);
-        fraxBPLP.approve(fraxBPPhoMetapoolAddress, fiveHundredThousand_d18);
-        usdc.approve(fraxBPPhoMetapoolAddress, one_m_d6);
+        pho.approve(fraxBPPhoMetapoolAddress, ONE_HUNDRED_THOUSAND_D18 * 5);
+        fraxBPLP.approve(fraxBPPhoMetapoolAddress, ONE_HUNDRED_THOUSAND_D18 * 5);
+        usdc.approve(fraxBPPhoMetapoolAddress, ONE_MILLION_D6);
 
         vm.stopPrank();
     }
@@ -67,9 +67,9 @@ contract PHOTWAPOracleTest is BaseSetup {
     /// @notice test constructor setup
     function testPHOTWAPOracleConstructor() public {
         assertEq(address(phoTwapOracle.pho()), address(pho));
-        assertEq(address(phoTwapOracle.fraxBPPool()), fraxBPPool);
-        assertEq(address(phoTwapOracle.fraxBPLP()), fraxBPLPToken);
-        assertEq(phoTwapOracle.fraxAddress(), fraxAddress);
+        assertEq(address(phoTwapOracle.fraxBPPool()), FRAXBP_POOL);
+        assertEq(address(phoTwapOracle.fraxBPLP()), FRAXBP_LP_TOKEN);
+        assertEq(phoTwapOracle.fraxAddress(), FRAX_ADDRESS);
         assertEq(phoTwapOracle.usdcAddress(), USDC_ADDRESS);
         assertEq(address(phoTwapOracle.priceFeeds()), address(priceFeed));
         assertEq(phoTwapOracle.period(), period);
@@ -113,7 +113,7 @@ contract PHOTWAPOracleTest is BaseSetup {
         twapFixture();
         uint256 oldUSDPHOPrice = phoTwapOracle.latestUSDPHOPrice();
         vm.startPrank(owner);
-        fraxBPPhoMetapool.exchange(0, 1, twoHundredFiftyThousand_d18, 0);
+        fraxBPPhoMetapool.exchange(0, 1, TEN_THOUSAND_D18 * 25, 0);
         phoTwapOracle.updatePrice();
         assertEq(oldUSDPHOPrice, phoTwapOracle.latestUSDPHOPrice());
         vm.stopPrank();
@@ -123,7 +123,7 @@ contract PHOTWAPOracleTest is BaseSetup {
     function testUpdatePriceSwapToken0() public {
         twapFixture(); // updatePrice() called for first time, and we've fast forwarded 1 period
         vm.startPrank(owner);
-        fraxBPPhoMetapool.exchange(0, 1, tenThousand_d18, 0);
+        fraxBPPhoMetapool.exchange(0, 1, TEN_THOUSAND_D18, 0);
         uint256 expectedNewUSDPHOPrice = _getNewUSDPHOPrice();
         vm.expectEmit(true, true, false, true);
         emit PriceUpdated(expectedNewUSDPHOPrice, block.timestamp);
@@ -137,7 +137,7 @@ contract PHOTWAPOracleTest is BaseSetup {
     function testUpdatePriceSwapToken1() public {
         twapFixture();
         vm.startPrank(owner);
-        fraxBPPhoMetapool.exchange(1, 0, tenThousand_d18, 0);
+        fraxBPPhoMetapool.exchange(1, 0, TEN_THOUSAND_D18, 0);
         uint256 expectedNewUSDPHOPrice = _getNewUSDPHOPrice();
         vm.expectEmit(true, true, false, true);
         emit PriceUpdated(expectedNewUSDPHOPrice, block.timestamp);
@@ -150,12 +150,12 @@ contract PHOTWAPOracleTest is BaseSetup {
     /// @notice test updatePrice() after doing swapping of underlying tokens PHO for FRAX
     function testUpdatePriceSwapUnderlyingPhoFrax() public {
         (int128 fromIndexPho, int128 toIndexFrax, bool underlying) =
-            curveFactory.get_coin_indices(fraxBPPhoMetapoolAddress, address(pho), fraxAddress);
+            curveFactory.get_coin_indices(fraxBPPhoMetapoolAddress, address(pho), FRAX_ADDRESS);
         twapFixture();
         assertEq(underlying, true);
 
         vm.startPrank(owner);
-        fraxBPPhoMetapool.exchange_underlying(fromIndexPho, toIndexFrax, tenThousand_d18, 0); // TODO - confirm that underlying asset exchanges atomically convert to base tokens through `exchange_underlying()`
+        fraxBPPhoMetapool.exchange_underlying(fromIndexPho, toIndexFrax, TEN_THOUSAND_D18, 0); // TODO - confirm that underlying asset exchanges atomically convert to base tokens through `exchange_underlying()`
 
         uint256 expectedNewUSDPHOPrice = _getNewUSDPHOPrice();
         vm.expectEmit(true, true, false, true);
@@ -169,12 +169,12 @@ contract PHOTWAPOracleTest is BaseSetup {
     /// @notice test updatePrice() after doing swapping of underlying tokens FRAX for PHO
     function testUpdatePriceSwapUnderlyingFraxPho() public {
         (int128 fromIndexFrax, int128 toIndexPHO, bool underlying) =
-            curveFactory.get_coin_indices(fraxBPPhoMetapoolAddress, address(pho), fraxAddress);
+            curveFactory.get_coin_indices(fraxBPPhoMetapoolAddress, address(pho), FRAX_ADDRESS);
         twapFixture();
         assertEq(underlying, true);
 
         vm.startPrank(owner);
-        fraxBPPhoMetapool.exchange_underlying(fromIndexFrax, toIndexPHO, tenThousand_d18, 0); // TODO - confirm that underlying asset exchanges atomically convert to base tokens through `exchange_underlying()`
+        fraxBPPhoMetapool.exchange_underlying(fromIndexFrax, toIndexPHO, TEN_THOUSAND_D18, 0); // TODO - confirm that underlying asset exchanges atomically convert to base tokens through `exchange_underlying()`
 
         uint256 expectedNewUSDPHOPrice = _getNewUSDPHOPrice();
         vm.expectEmit(true, true, false, true);
@@ -188,12 +188,12 @@ contract PHOTWAPOracleTest is BaseSetup {
     /// @notice test updatePrice() after doing swapping of underlying tokens USDC for FRAX
     function testUpdatePriceSwapUnderlyingUsdcFrax() public {
         (int128 fromIndexUsdc, int128 toIndexFrax, bool underlying) =
-            curveFactory.get_coin_indices(fraxBPPhoMetapoolAddress, USDC_ADDRESS, fraxAddress);
+            curveFactory.get_coin_indices(fraxBPPhoMetapoolAddress, USDC_ADDRESS, FRAX_ADDRESS);
         twapFixture();
         assertEq(underlying, true);
 
         vm.startPrank(owner);
-        fraxBPPhoMetapool.exchange_underlying(fromIndexUsdc, toIndexFrax, tenThousand_d6, 0); // TODO - confirm that underlying asset exchanges atomically convert to base tokens through `exchange_underlying()`
+        fraxBPPhoMetapool.exchange_underlying(fromIndexUsdc, toIndexFrax, TEN_THOUSAND_D6, 0); // TODO - confirm that underlying asset exchanges atomically convert to base tokens through `exchange_underlying()`
 
         uint256 expectedNewUSDPHOPrice = _getNewUSDPHOPrice();
         vm.expectEmit(true, true, false, true);
@@ -212,8 +212,8 @@ contract PHOTWAPOracleTest is BaseSetup {
         twapFixture();
         vm.startPrank(owner);
         uint256[2] memory metaLiquidity;
-        metaLiquidity[0] = twoHundredFiftyThousand_d18;
-        metaLiquidity[1] = twoHundredFiftyThousand_d18;
+        metaLiquidity[0] = TEN_THOUSAND_D18 * 25;
+        metaLiquidity[1] = TEN_THOUSAND_D18 * 25;
         fraxBPPhoMetapool.add_liquidity(metaLiquidity, 0);
         uint256 expectedNewUSDPHOPrice = _getNewUSDPHOPrice();
         uint256 oldUSDPHOPrice = phoTwapOracle.latestUSDPHOPrice();
@@ -281,7 +281,7 @@ contract PHOTWAPOracleTest is BaseSetup {
 
     /// @notice carry out initial call for `updatePrice()`, fast forward one period
     function twapFixture() public {
-        _fundAndApproveFRAX(owner, fraxBPPhoMetapoolAddress, fiveHundredThousand_d18, 0);
+        _fundAndApproveFRAX(owner, fraxBPPhoMetapoolAddress, ONE_HUNDRED_THOUSAND_D18 * 5, 0);
         vm.startPrank(owner);
         phoTwapOracle.updatePrice();
         vm.warp(phoTwapOracle.latestBlockTimestamp() + period + 1);
@@ -298,7 +298,7 @@ contract PHOTWAPOracleTest is BaseSetup {
         uint256 usdcPerFraxBP =
             usdcInFraxBP * PHO_PRICE_PRECISION * DECIMALS_DIFFERENCE / fraxBPLPTotal; // UNITS: (USDC/FraxBP) - normalized by d18
         uint256 usdPerFraxBP = (
-            ((fraxPerFraxBP * PHO_PRICE_PRECISION / priceFeed.getPrice(fraxAddress)))
+            ((fraxPerFraxBP * PHO_PRICE_PRECISION / priceFeed.getPrice(FRAX_ADDRESS)))
                 + (usdcPerFraxBP * PHO_PRICE_PRECISION / priceFeed.getPrice(USDC_ADDRESS))
         ); // UNITS: (USD/FraxBP) - normalized by d18
         return usdPerFraxBP;

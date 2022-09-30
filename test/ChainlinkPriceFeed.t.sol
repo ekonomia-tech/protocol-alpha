@@ -10,16 +10,16 @@ contract ChainlinkPriceFeedTest is BaseSetup {
     event FeedRemoved(address indexed removedToken, address indexed removedFeed);
 
     function testConstructor() public {
-        assertEq(priceFeed.precisionDifference(), precisionDifference);
+        assertEq(priceFeed.precisionDifference(), PRECISION_DIFFERENCE);
     }
 
     /// getPrice()
 
     function testGetPriceUSDC() public {
-        AggregatorV3Interface USDCPriceFeed = AggregatorV3Interface(PriceFeed_USDCUSD);
+        AggregatorV3Interface USDCPriceFeed = AggregatorV3Interface(PRICEFEED_USDCUSD);
 
         vm.prank(owner);
-        priceFeed.addFeed(USDC_ADDRESS, PriceFeed_USDCUSD);
+        priceFeed.addFeed(USDC_ADDRESS, PRICEFEED_USDCUSD);
 
         uint256 internalPrice = priceFeed.getPrice(USDC_ADDRESS);
         (, int256 externalPrice,,,) = USDCPriceFeed.latestRoundData();
@@ -28,24 +28,24 @@ contract ChainlinkPriceFeedTest is BaseSetup {
     }
 
     function testGetPriceFRAX() public {
-        AggregatorV3Interface FRAXPriceFeed = AggregatorV3Interface(PriceFeed_FRAXUSD);
+        AggregatorV3Interface FRAXPriceFeed = AggregatorV3Interface(PRICEFEED_FRAXUSD);
 
         vm.prank(owner);
-        priceFeed.addFeed(fraxAddress, PriceFeed_FRAXUSD);
+        priceFeed.addFeed(FRAX_ADDRESS, PRICEFEED_FRAXUSD);
 
-        uint256 internalPrice = priceFeed.getPrice(fraxAddress);
+        uint256 internalPrice = priceFeed.getPrice(FRAX_ADDRESS);
         (, int256 externalPrice,,,) = FRAXPriceFeed.latestRoundData();
 
         assertEq(internalPrice, uint256(externalPrice) * (10 ** priceFeed.precisionDifference()));
     }
 
     function testGetPriceETH() public {
-        AggregatorV3Interface ETHPriceFeed = AggregatorV3Interface(PriceFeed_ETHUSD);
+        AggregatorV3Interface ETHPriceFeed = AggregatorV3Interface(PRICEFEED_ETHUSD);
 
         vm.prank(owner);
-        priceFeed.addFeed(ethNullAddress, PriceFeed_ETHUSD);
+        priceFeed.addFeed(ETH_NULL_ADDRESS, PRICEFEED_ETHUSD);
 
-        uint256 internalPrice = priceFeed.getPrice(ethNullAddress);
+        uint256 internalPrice = priceFeed.getPrice(ETH_NULL_ADDRESS);
         (, int256 externalPrice,,,) = ETHPriceFeed.latestRoundData();
 
         assertEq(internalPrice, uint256(externalPrice) * (10 ** priceFeed.precisionDifference()));
@@ -58,7 +58,7 @@ contract ChainlinkPriceFeedTest is BaseSetup {
 
     function testCannotGetPriceFeedNotRegistered() public {
         vm.expectRevert("Price Feed: feed not registered");
-        priceFeed.getPrice(fraxBPLPToken);
+        priceFeed.getPrice(FRAXBP_LP_TOKEN);
     }
 
     /// addFeed()
@@ -68,16 +68,16 @@ contract ChainlinkPriceFeedTest is BaseSetup {
         assertTrue(USDCFeedAddress == address(0));
 
         vm.expectEmit(true, true, false, true);
-        emit FeedAdded(USDC_ADDRESS, PriceFeed_USDCUSD);
+        emit FeedAdded(USDC_ADDRESS, PRICEFEED_USDCUSD);
         _addUSDCFeed();
 
-        assertEq(priceFeed.priceFeeds(USDC_ADDRESS), PriceFeed_USDCUSD);
+        assertEq(priceFeed.priceFeeds(USDC_ADDRESS), PRICEFEED_USDCUSD);
     }
 
     function testCannotAddPriceFeedZeroAddress() public {
         vm.expectRevert("Price Feed: zero address detected");
         vm.prank(owner);
-        priceFeed.addFeed(address(0), PriceFeed_USDCUSD);
+        priceFeed.addFeed(address(0), PRICEFEED_USDCUSD);
 
         vm.expectRevert("Price Feed: zero address detected");
         vm.prank(owner);
@@ -96,7 +96,7 @@ contract ChainlinkPriceFeedTest is BaseSetup {
         _addUSDCFeed();
 
         vm.expectEmit(true, true, false, true);
-        emit FeedRemoved(USDC_ADDRESS, PriceFeed_USDCUSD);
+        emit FeedRemoved(USDC_ADDRESS, PRICEFEED_USDCUSD);
         vm.prank(owner);
         priceFeed.removeFeed(USDC_ADDRESS);
 
@@ -118,6 +118,6 @@ contract ChainlinkPriceFeedTest is BaseSetup {
 
     function _addUSDCFeed() private {
         vm.prank(owner);
-        priceFeed.addFeed(USDC_ADDRESS, PriceFeed_USDCUSD);
+        priceFeed.addFeed(USDC_ADDRESS, PRICEFEED_USDCUSD);
     }
 }
