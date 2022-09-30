@@ -74,12 +74,6 @@ abstract contract BaseSetup is Test {
     uint256 public constant fiveHundredThousand_d18 = 500000 * 10 ** 18;
     uint256 public constant one_m_d6 = 1000000 * 10 ** 6;
     uint256 public constant one_m_d18 = 1000000 * 10 ** 18;
-    uint256 public constant two_m_d6 = 2000000 * 10 ** 6;
-    uint256 public constant two_m_d18 = 2000000 * 10 ** 18;
-    uint256 public constant five_m_d6 = 5000000 * 10 ** 6;
-    uint256 public constant five_m_d18 = 5000000 * 10 ** 18;
-    uint256 public constant six_m_d6 = 6000000 * 10 ** 6;
-    uint256 public constant six_m_d18 = 6000000 * 10 ** 18;
 
     uint256 public constant overPeg = (10 ** 6) + 6000;
     uint256 public constant underPeg = (10 ** 6) - (6000);
@@ -88,7 +82,7 @@ abstract contract BaseSetup is Test {
     uint256 public constant GENESIS_SUPPLY_d6 = 100000 * 10 ** 6;
 
     uint256 public constant PRICE_PRECISION = 10 ** 6;
-    uint256 public constant missing_decimals = 10 ** 12;
+    uint256 public constant DECIMALS_DIFFERENCE = 10 ** 12;
     uint256 public constant PHO_PRICE_PRECISION = 10 ** 18;
     uint256 public constant FEED_PRECISION = 10 ** 10;
 
@@ -97,7 +91,7 @@ abstract contract BaseSetup is Test {
 
     // phoOracle specific
     uint256 public constant PRICE_THRESHOLD = 100000; // 10%, since 10 ** 6 (1000000) = 100%
-    uint256 public period = 604800; // 1 week in seconds
+    uint256 public period = 1 weeks;
 
     uint256 public constant precisionDifference = 10;
 
