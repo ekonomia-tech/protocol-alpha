@@ -18,11 +18,11 @@ contract DispatcherTest is BaseSetup {
     /// dispatchCollateral()
 
     function testDispatchCollateralUSDC() public {
-        _fundAndApproveUSDC(user1, address(dispatcher), tenThousand_d6 * 2, tenThousand_d6);
+        _fundAndApproveUSDC(user1, address(dispatcher), TEN_THOUSAND_D6 * 2, TEN_THOUSAND_D6);
 
         address tokenIn = USDC_ADDRESS;
-        uint256 amountIn = tenThousand_d6;
-        uint256 minPHOOut = tenThousand_d18 * 99 / 100;
+        uint256 amountIn = TEN_THOUSAND_D6;
+        uint256 minPHOOut = TEN_THOUSAND_D18 * 99 / 100;
 
         uint256 usdcVaultBalanceBefore = usdc.balanceOf(address(usdcVault));
         uint256 user1USDCBalanceBefore = usdc.balanceOf(user1);
@@ -30,7 +30,7 @@ contract DispatcherTest is BaseSetup {
         uint256 tellerDispatcherMintBalanceBefore = teller.mintingBalances(address(dispatcher));
 
         vm.expectEmit(true, true, false, true);
-        emit Dispatched(user1, USDC_ADDRESS, amountIn, tenThousand_d18);
+        emit Dispatched(user1, USDC_ADDRESS, amountIn, TEN_THOUSAND_D18);
         vm.prank(user1);
         dispatcher.dispatchCollateral(USDC_ADDRESS, amountIn, minPHOOut);
 
@@ -41,22 +41,22 @@ contract DispatcherTest is BaseSetup {
 
         assertEq(usdcVaultBalanceAfter, usdcVaultBalanceBefore + amountIn);
         assertEq(user1USDCBalanceAfter, user1USDCBalanceBefore - amountIn);
-        assertEq(user1PHOBalanceAfter, user1PHOBalanceBefore + tenThousand_d18);
+        assertEq(user1PHOBalanceAfter, user1PHOBalanceBefore + TEN_THOUSAND_D18);
         assertEq(
-            tellerDispatcherMintBalanceAfter, tellerDispatcherMintBalanceBefore + tenThousand_d18
+            tellerDispatcherMintBalanceAfter, tellerDispatcherMintBalanceBefore + TEN_THOUSAND_D18
         );
     }
 
     function testDispatchCollateralFRAX() public {
         vm.prank(fraxRichGuy);
-        frax.transfer(user1, tenThousand_d18);
+        frax.transfer(user1, TEN_THOUSAND_D18);
 
         vm.prank(user1);
-        frax.approve(address(dispatcher), tenThousand_d18);
+        frax.approve(address(dispatcher), TEN_THOUSAND_D18);
 
-        address tokenIn = fraxAddress;
-        uint256 amountIn = tenThousand_d18;
-        uint256 minPHOOut = tenThousand_d18 * 99 / 100;
+        address tokenIn = FRAX_ADDRESS;
+        uint256 amountIn = TEN_THOUSAND_D18;
+        uint256 minPHOOut = TEN_THOUSAND_D18 * 99 / 100;
 
         uint256 fraxVaultBalanceBefore = frax.balanceOf(address(fraxVault));
         uint256 user1FRAXBalanceBefore = frax.balanceOf(user1);
@@ -64,9 +64,9 @@ contract DispatcherTest is BaseSetup {
         uint256 tellerDispatcherMintBalanceBefore = teller.mintingBalances(address(dispatcher));
 
         vm.expectEmit(true, true, false, true);
-        emit Dispatched(user1, fraxAddress, amountIn, tenThousand_d18);
+        emit Dispatched(user1, FRAX_ADDRESS, amountIn, TEN_THOUSAND_D18);
         vm.prank(user1);
-        dispatcher.dispatchCollateral(fraxAddress, amountIn, minPHOOut);
+        dispatcher.dispatchCollateral(FRAX_ADDRESS, amountIn, minPHOOut);
 
         uint256 fraxVaultBalanceAfter = frax.balanceOf(address(fraxVault));
         uint256 user1FRAXBalanceAfter = frax.balanceOf(user1);
@@ -75,15 +75,15 @@ contract DispatcherTest is BaseSetup {
 
         assertEq(fraxVaultBalanceAfter, fraxVaultBalanceBefore + amountIn);
         assertEq(user1FRAXBalanceAfter, user1FRAXBalanceBefore - amountIn);
-        assertEq(user1PHOBalanceAfter, user1PHOBalanceBefore + tenThousand_d18);
+        assertEq(user1PHOBalanceAfter, user1PHOBalanceBefore + TEN_THOUSAND_D18);
         assertEq(
-            tellerDispatcherMintBalanceAfter, tellerDispatcherMintBalanceBefore + tenThousand_d18
+            tellerDispatcherMintBalanceAfter, tellerDispatcherMintBalanceBefore + TEN_THOUSAND_D18
         );
     }
 
     function testCannotDispatchCollateralZeroAddress() public {
         vm.expectRevert("Dispatcher: zero address detected");
-        dispatcher.dispatchCollateral(address(0), tenThousand_d18, tenThousand_d18);
+        dispatcher.dispatchCollateral(address(0), TEN_THOUSAND_D18, TEN_THOUSAND_D18);
     }
 
     function testCannotDispatchCollateralZeroValue() public {
@@ -93,7 +93,7 @@ contract DispatcherTest is BaseSetup {
 
     function testCannotDispatchCollateralTokenNotAccepted() public {
         vm.expectRevert("Dispatcher: token not accepted");
-        dispatcher.dispatchCollateral(fraxBPLPToken, tenThousand_d18, tenThousand_d18);
+        dispatcher.dispatchCollateral(FRAXBP_LP_TOKEN, TEN_THOUSAND_D18, TEN_THOUSAND_D18);
     }
 
     function testCannotDispatchCollateralSlippageReached() public {
@@ -101,7 +101,7 @@ contract DispatcherTest is BaseSetup {
         vm.expectRevert("Dispatcher: max slippage reached");
 
         vm.prank(user1);
-        dispatcher.dispatchCollateral(USDC_ADDRESS, tenThousand_d6, tenThousand_d18);
+        dispatcher.dispatchCollateral(USDC_ADDRESS, TEN_THOUSAND_D6, TEN_THOUSAND_D18);
     }
 
     /// redeemPHO()
@@ -110,61 +110,61 @@ contract DispatcherTest is BaseSetup {
         // mint PHO for USDC for user1
         testDispatchCollateralUSDC();
 
-        uint256 phoIn = tenThousand_d18;
-        uint256 minCollateralOut = tenThousand_d6 * 99 / 100;
+        uint256 phoIn = TEN_THOUSAND_D18;
+        uint256 minCollateralOut = TEN_THOUSAND_D6 * 99 / 100;
 
         vm.prank(user1);
-        pho.approve(address(dispatcher), tenThousand_d18);
+        pho.approve(address(dispatcher), TEN_THOUSAND_D18);
 
         uint256 usdcVaultBalanceBefore = usdc.balanceOf(address(usdcVault));
         uint256 user1USDCBalanceBefore = usdc.balanceOf(user1);
         uint256 user1PHOBalanceBefore = pho.balanceOf(user1);
 
         vm.expectEmit(true, true, false, true);
-        emit Redeemed(user1, USDC_ADDRESS, phoIn, tenThousand_d6);
+        emit Redeemed(user1, USDC_ADDRESS, phoIn, TEN_THOUSAND_D6);
         vm.prank(user1);
-        dispatcher.redeemPHO(USDC_ADDRESS, tenThousand_d18, minCollateralOut);
+        dispatcher.redeemPHO(USDC_ADDRESS, TEN_THOUSAND_D18, minCollateralOut);
 
         uint256 usdcVaultBalanceAfter = usdc.balanceOf(address(usdcVault));
         uint256 user1USDCBalanceAfter = usdc.balanceOf(user1);
         uint256 user1PHOBalanceAfter = pho.balanceOf(user1);
 
-        assertEq(usdcVaultBalanceAfter, usdcVaultBalanceBefore - tenThousand_d6);
-        assertEq(user1USDCBalanceAfter, user1USDCBalanceBefore + tenThousand_d6);
-        assertEq(user1PHOBalanceAfter, user1PHOBalanceBefore - tenThousand_d18);
+        assertEq(usdcVaultBalanceAfter, usdcVaultBalanceBefore - TEN_THOUSAND_D6);
+        assertEq(user1USDCBalanceAfter, user1USDCBalanceBefore + TEN_THOUSAND_D6);
+        assertEq(user1PHOBalanceAfter, user1PHOBalanceBefore - TEN_THOUSAND_D18);
     }
 
     function testRedeemPHOForFRAX() public {
         // mint PHO for USDC for user1
         testDispatchCollateralFRAX();
 
-        uint256 phoIn = tenThousand_d18;
-        uint256 minCollateralOut = tenThousand_d18 * 99 / 100;
+        uint256 phoIn = TEN_THOUSAND_D18;
+        uint256 minCollateralOut = TEN_THOUSAND_D18 * 99 / 100;
 
         vm.prank(user1);
-        pho.approve(address(dispatcher), tenThousand_d18);
+        pho.approve(address(dispatcher), TEN_THOUSAND_D18);
 
         uint256 fraxVaultBalanceBefore = frax.balanceOf(address(fraxVault));
         uint256 user1FRAXBalanceBefore = frax.balanceOf(user1);
         uint256 user1PHOBalanceBefore = pho.balanceOf(user1);
 
         vm.expectEmit(true, true, false, true);
-        emit Redeemed(user1, fraxAddress, phoIn, tenThousand_d18);
+        emit Redeemed(user1, FRAX_ADDRESS, phoIn, TEN_THOUSAND_D18);
         vm.prank(user1);
-        dispatcher.redeemPHO(fraxAddress, tenThousand_d18, minCollateralOut);
+        dispatcher.redeemPHO(FRAX_ADDRESS, TEN_THOUSAND_D18, minCollateralOut);
 
         uint256 fraxVaultBalanceAfter = frax.balanceOf(address(fraxVault));
         uint256 user1FRAXBalanceAfter = frax.balanceOf(user1);
         uint256 user1PHOBalanceAfter = pho.balanceOf(user1);
 
-        assertEq(fraxVaultBalanceAfter, fraxVaultBalanceBefore - tenThousand_d18);
-        assertEq(user1FRAXBalanceAfter, user1FRAXBalanceBefore + tenThousand_d18);
-        assertEq(user1PHOBalanceAfter, user1PHOBalanceBefore - tenThousand_d18);
+        assertEq(fraxVaultBalanceAfter, fraxVaultBalanceBefore - TEN_THOUSAND_D18);
+        assertEq(user1FRAXBalanceAfter, user1FRAXBalanceBefore + TEN_THOUSAND_D18);
+        assertEq(user1PHOBalanceAfter, user1PHOBalanceBefore - TEN_THOUSAND_D18);
     }
 
     function testCannotRedeemPHOZeroAddress() public {
         vm.expectRevert("Dispatcher: zero address detected");
-        dispatcher.redeemPHO(address(0), tenThousand_d18, tenThousand_d6);
+        dispatcher.redeemPHO(address(0), TEN_THOUSAND_D18, TEN_THOUSAND_D6);
     }
 
     function testCannotRedeemPHOZeroValue() public {
@@ -174,13 +174,13 @@ contract DispatcherTest is BaseSetup {
 
     function testCannotRedeemPHOTokenNotAccepted() public {
         vm.expectRevert("Dispatcher: token not accepted");
-        dispatcher.redeemPHO(fraxBPLPToken, tenThousand_d18, tenThousand_d18);
+        dispatcher.redeemPHO(FRAXBP_LP_TOKEN, TEN_THOUSAND_D18, TEN_THOUSAND_D18);
     }
 
     function testCannotRedeemPHOVaultTooLow() public {
         vm.expectRevert("Dispatcher: vault too low");
         vm.prank(user1);
-        dispatcher.redeemPHO(USDC_ADDRESS, tenThousand_d18, tenThousand_d6);
+        dispatcher.redeemPHO(USDC_ADDRESS, TEN_THOUSAND_D18, TEN_THOUSAND_D6);
     }
 
     function testCannotRedeemPHOSlippageReached() public {
@@ -190,7 +190,7 @@ contract DispatcherTest is BaseSetup {
         vm.expectRevert("Dispatcher: max slippage reached");
 
         vm.prank(user1);
-        dispatcher.redeemPHO(USDC_ADDRESS, tenThousand_d18, tenThousand_d6);
+        dispatcher.redeemPHO(USDC_ADDRESS, TEN_THOUSAND_D18, TEN_THOUSAND_D6);
     }
 
     /// addVault()
@@ -198,14 +198,14 @@ contract DispatcherTest is BaseSetup {
     function testAddVault() public {
         vm.prank(owner);
         dispatcher.removeVault(address(fraxVault));
-        assertTrue(dispatcher.vaults(fraxAddress) == address(0));
+        assertTrue(dispatcher.vaults(FRAX_ADDRESS) == address(0));
 
         vm.expectEmit(true, false, false, true);
         emit VaultAdded(address(fraxVault));
         vm.prank(owner);
         dispatcher.addVault(address(fraxVault));
 
-        assertTrue(dispatcher.vaults(fraxAddress) == address(fraxVault));
+        assertTrue(dispatcher.vaults(FRAX_ADDRESS) == address(fraxVault));
     }
 
     function testCannotAddVaultZeroAddress() public {
