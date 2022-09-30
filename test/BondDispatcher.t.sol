@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 
 import "./BaseSetup.t.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 import "src/contracts/BondBaseDispatcher.sol";
 import "src/contracts/BondFixedExpiryDispatcher.sol";
 import "src/contracts/BondFixedExpiryController.sol";
@@ -34,6 +35,7 @@ contract BondDispatcherTest is BaseSetup {
             controller
         );
 
+        // Payout token: PHO, quote token: USDC
         vm.prank(owner);
         bondFixedExpiryController = new BondFixedExpiryController(
             address(bondFixedExpiryDispatcher),
@@ -41,6 +43,22 @@ contract BondDispatcherTest is BaseSetup {
             address(pho),
             address(ton)
         );
+
+        // User -> sends USDC to dispatcher (who sends to controller)
+        // Bond controller sends PHO to dispatcher
+        vm.prank(owner);
+        teller.whitelistCaller(address(bondFixedExpiryController), 200 * tenThousand_d18);
+        vm.prank(address(bondFixedExpiryController));
+        teller.mintPHO(address(bondFixedExpiryController), tenThousand_d18);
+
+        // User1 gets TON and approves sending to BondDispatcher
+        _getTON(user1, tenThousand_d18);
+        vm.prank(user1);
+        ton.approve(address(bondFixedExpiryDispatcher), 100 * tenThousand_d18);
+
+        // Approval for bondController sending PHO to BondDispatcher
+        vm.prank(address(bondFixedExpiryController));
+        pho.approve(address(bondFixedExpiryDispatcher), 100 * tenThousand_d18);
     }
 
     /// Setting protocol fees
@@ -137,8 +155,8 @@ contract BondDispatcherTest is BaseSetup {
     function testPurchase() public {
         address recipient = user1;
         uint256 marketId = 0;
-        uint256 amount = 100000;
-        uint256 minAmountOut = 50000;
+        uint256 amount = 10000;
+        uint256 minAmountOut = 5000;
 
         vm.prank(owner);
         bondFixedExpiryDispatcher.setBondController(address(bondFixedExpiryController));
@@ -160,4 +178,21 @@ contract BondDispatcherTest is BaseSetup {
         vm.prank(user1);
         bondFixedExpiryDispatcher.purchase(recipient, marketId, amount, minAmountOut);
     }
+
+    /// Specific to BondFixedExpiryDispatcher
+
+    /// Basic example for deploy
+    function testDeploy() public {
+        uint48 expiry = uint48(block.timestamp + 100000);
+        vm.prank(owner);
+        bondFixedExpiryDispatcher.deploy(ton, expiry);
+
+        ERC20BondToken bond = bondFixedExpiryDispatcher.bondTokens(ton, expiry);
+        assertEq(address(bond.underlying()), address(ton));
+        assertEq(bond.expiry(), expiry);
+    }
+
+    /// create()
+
+    /// deploy()
 }

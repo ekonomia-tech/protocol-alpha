@@ -16,7 +16,6 @@ interface IBondFixedExpiryDispatcher {
     /// @param expiry_ timestamp at which the bond token can be redeemed for the underlying token
     /// @param amount_ amount of underlying tokens to deposit
     /// @return address of the ERC20 bond token received
-    /// @return address of the ERC20 bond token received
     function create(ERC20 underlying_, uint48 expiry_, uint256 amount_)
         external
         returns (ERC20BondToken, uint256);

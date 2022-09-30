@@ -9,7 +9,6 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {IBondDispatcher} from "../interfaces/IBondDispatcher.sol";
 import {IBondController} from "../interfaces/IBondController.sol";
-import {TransferHelper} from "../libraries/TransferHelper.sol";
 import {FullMath} from "../libraries/FullMath.sol";
 
 /// @title Bond Dispatcher
@@ -18,11 +17,6 @@ import {FullMath} from "../libraries/FullMath.sol";
 abstract contract BondBaseDispatcher is IBondDispatcher, Ownable, ReentrancyGuard {
     using SafeERC20 for ERC20;
     using FullMath for uint256;
-
-    /// Errors
-    error Dispatcher_NotAuthorized();
-    error Dispatcher_TokenDoesNotExist(ERC20 underlying, uint48 expiry);
-    error Dispatcher_UnsupportedToken();
 
     /// State vars
     uint48 public protocolFee; // fees paid to protocol, configureable by policy, must be > 30bps
@@ -125,12 +119,11 @@ abstract contract BondBaseDispatcher is IBondDispatcher, Ownable, ReentrancyGuar
         rewards[_protocol][quoteToken] += toProtocol;
 
         // TODO: handle transfers and ensure enough payout tokens are available
-        // _handleTransfers(marketId, amount_, payout, toProtocol);
-        // handle payout to user (either transfer tokens if instant swap or issue bond token)
+        _handleTransfers(marketId, amount_, payout, toProtocol);
+        // TODO: handle payout to user
         uint48 expiry = 0; // _handlePayout(recipient_, payout, payoutToken, vesting);
 
         emit Bonded(marketId, amount_, payout);
-
         return (payout, expiry);
     }
 
@@ -144,34 +137,27 @@ abstract contract BondBaseDispatcher is IBondDispatcher, Ownable, ReentrancyGuar
         internal
     {
         require(bondController != address(0), "BondDispatcher: zero address detected");
-        // get info from controller
         (ERC20 payoutToken, ERC20 quoteToken,,) =
             IBondController(bondController).getMarketInfoForPurchase(marketId);
 
         // calculate amount net of fees
         uint256 amountLessFee = amount_ - feePamarketId;
 
-        // note: currently dispatcher holding funds
-        // transfer from msg sender to bond controller
+        // note: currently dispatcher holding funds - transfer from msg sender to bond controller
         uint256 quoteBalance = quoteToken.balanceOf(address(this));
         quoteToken.safeTransferFrom(msg.sender, address(this), amount_);
-        // check whether full amount recieved
-        if (quoteToken.balanceOf(address(this)) < quoteBalance + amount_) {
-            revert Dispatcher_UnsupportedToken();
-        }
-
         // transfer tokens from bond controller -> dispatcher
         uint256 payoutBalance = payoutToken.balanceOf(address(this));
         payoutToken.safeTransferFrom(bondController, address(this), payout_);
-        if (payoutToken.balanceOf(address(this)) < (payoutBalance + payout_)) {
-            revert Dispatcher_UnsupportedToken();
-        }
-
+        require(
+            (quoteToken.balanceOf(address(this)) >= quoteBalance + amount_)
+                && (payoutToken.balanceOf(address(this)) >= (payoutBalance + payout_)),
+            "BondDispatcher: handleTransfers amounts not full"
+        ); // check whether full amount recieved
         quoteToken.safeTransfer(bondController, amountLessFee);
     }
 
-    /// @notice handle payout to recipient
-    /// @dev must be implemented by inheriting contract
+    /// @notice handle payout to recipient - must be implemented by inheriting contract
     /// @param recipient_ recipient of payout
     /// @param payout_ payout
     /// @param underlying_ token to be paid out
@@ -180,5 +166,5 @@ abstract contract BondBaseDispatcher is IBondDispatcher, Ownable, ReentrancyGuar
     function _handlePayout(address recipient_, uint256 payout_, ERC20 underlying_, uint48 vesting_)
         internal
         virtual
-        returns (uint48 expiry);
+        returns (uint48);
 }

@@ -19,20 +19,13 @@ contract BondFixedExpiryDispatcher is BondBaseDispatcher, IBondFixedExpiryDispat
     using TransferHelper for ERC20;
     using FullMath for uint256;
 
-    /// Errors
-    error Dispatcher_TokenNotMatured(uint48 maturesOn);
-
     /// Events
     event ERC20BondTokenCreated(
         ERC20BondToken bondToken, ERC20 indexed underlying, uint48 indexed expiry
     );
 
     /// State vars
-    /// @notice ERC20 bond tokens (unique to a underlying and expiry)
-    mapping(ERC20 => mapping(uint48 => ERC20BondToken)) public bondTokens;
-
-    /// @notice ERC20BondToken - can modify later for cloning
-    // ERC20BondToken public immutable bondTokenImplementation;
+    mapping(ERC20 => mapping(uint48 => ERC20BondToken)) public bondTokens; // ERC20 bond tokens
 
     /// Constructor
     constructor(address protocol_, address _controllerAddress)
@@ -55,11 +48,9 @@ contract BondFixedExpiryDispatcher is BondBaseDispatcher, IBondFixedExpiryDispat
         uint48 expiry;
         if (vesting_ > uint48(block.timestamp)) {
             expiry = vesting_;
-            // fixed-expiry bonds mint ERC-20 tokens
-            bondTokens[underlying_][expiry].mint(recipient_, payout_);
+            bondTokens[underlying_][expiry].mint(recipient_, payout_); // mint ERC20 for fixed expiry
         } else {
-            // if no expiry, then transfer payout directly to user
-            underlying_.transfer(recipient_, payout_);
+            underlying_.transfer(recipient_, payout_); // transfer payout to user
         }
         return expiry;
     }
@@ -74,29 +65,24 @@ contract BondFixedExpiryDispatcher is BondBaseDispatcher, IBondFixedExpiryDispat
         returns (ERC20BondToken, uint256)
     {
         ERC20BondToken bondToken = bondTokens[underlying_][expiry_];
-
-        // revert if no token exists, must call deploy first
-        if (bondToken == ERC20BondToken(address(0x00))) {
-            revert Dispatcher_TokenDoesNotExist(underlying_, expiry_);
-        }
-
-        // transfer in underlying
-        uint256 oldBalance = underlying_.balanceOf(address(this));
+        require(
+            bondToken == ERC20BondToken(address(0x00)),
+            "BondFixedExpiryDispatcher: Token does not exist"
+        ); // token must exist, must call deploy first
+        uint256 oldBalance = underlying_.balanceOf(address(this)); // transfer underlying
         underlying_.transferFrom(msg.sender, address(this), amount_);
-        if (underlying_.balanceOf(address(this)) < oldBalance + amount_) {
-            revert Dispatcher_UnsupportedToken();
-        }
+        require(
+            underlying_.balanceOf(address(this)) < oldBalance + amount_,
+            "BondFixedExpiryDispatcher: transfer not full"
+        );
 
-        // calculate fee and store it
+        // calculate fee and then mint bond tokens
         if (protocolFee > 0) {
             uint256 feeAmount = amount_.mulDiv(protocolFee, FEE_DECIMALS);
             rewards[_protocol][underlying_] += feeAmount;
-
-            // mint new bond tokens
             bondToken.mint(msg.sender, amount_ - feeAmount);
             return (bondToken, amount_ - feeAmount);
         } else {
-            // mint new bond tokens
             bondToken.mint(msg.sender, amount_);
             return (bondToken, amount_);
         }
@@ -106,9 +92,10 @@ contract BondFixedExpiryDispatcher is BondBaseDispatcher, IBondFixedExpiryDispat
 
     /// @inheritdoc IBondFixedExpiryDispatcher
     function redeem(ERC20BondToken token_, uint256 amount_) external override nonReentrant {
-        if (uint48(block.timestamp) < token_.expiry()) {
-            revert Dispatcher_TokenNotMatured(token_.expiry());
-        }
+        require(
+            uint48(block.timestamp) >= token_.expiry(),
+            "BondFixedExpiryDispatcher: cannot redeem before expiry"
+        );
         token_.burn(msg.sender, amount_);
         token_.underlying().transfer(msg.sender, amount_);
     }

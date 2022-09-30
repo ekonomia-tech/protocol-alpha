@@ -7,8 +7,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IBondDispatcher} from "../interfaces/IBondDispatcher.sol";
 
 interface IBondController {
-    /// @notice Main information pertaining to bond market
-
     /// Events
     event MarketCreated(
         uint256 indexed id,
@@ -22,8 +20,7 @@ interface IBondController {
 
     /// State vars
 
-    /// @notice bond market info
-    /// @dev bond controller sends payout tokens and recieves quote tokens
+    /// @notice bond market info - bond controller sends payout tokens and recieves quote tokens
     struct BondMarket {
         ERC20 payoutToken; // payout token that bonders receive - PHO or TON
         ERC20 quoteToken; // quote token that bonders deposit
@@ -154,14 +151,12 @@ interface IBondController {
     /// @return price for market in configured decimals
     function marketPrice(uint256 marketId) external view returns (uint256);
 
-    /// @notice calculate debt factoring in decay
-    /// @dev accounts for debt decay since last deposit
+    /// @notice accounts for debt decay since last deposit
     /// @param marketId bond market id
     /// @return current debt for market in payout token decimals
     function currentDebt(uint256 marketId) external view returns (uint256);
 
-    /// @notice up to date control variable
-    /// @dev accounts for control variable adjustment
+    /// @notice accounts for control variable adjustment
     /// @param marketId bond market id
     /// @return cv control variable for market in payout token decimals
     function currentControlVariable(uint256 marketId) external view returns (uint256);
