@@ -161,9 +161,7 @@ abstract contract BaseSetup is Test {
         address _spender,
         uint256 _amountIn,
         uint256 _amountOut
-    )
-        internal
-    {
+    ) internal {
         _getUSDC(_owner, _amountIn);
         _approveUSDC(_owner, _spender, _amountOut);
     }
@@ -183,9 +181,7 @@ abstract contract BaseSetup is Test {
         address _spender,
         uint256 _amountIn,
         uint256 _amountOut
-    )
-        internal
-    {
+    ) internal {
         _getDAI(_owner, _amountIn);
         _approveDAI(_owner, _spender, _amountOut);
     }
@@ -205,9 +201,7 @@ abstract contract BaseSetup is Test {
         address _spender,
         uint256 _amountIn,
         uint256 _amountOut
-    )
-        internal
-    {
+    ) internal {
         _getTON(_owner, _amountIn);
         _approveTON(_owner, _spender, _amountOut);
     }
@@ -227,9 +221,7 @@ abstract contract BaseSetup is Test {
         address _spender,
         uint256 _amountIn,
         uint256 _amountOut
-    )
-        internal
-    {
+    ) internal {
         _getFRAX(_owner, _amountIn);
         _approveFRAX(_owner, _spender, _amountOut);
     }

@@ -50,9 +50,7 @@ contract ZeroCouponBond is ERC20, Ownable, ReentrancyGuard {
         uint256 _interestRate,
         uint256 _depositWindowEnd,
         uint256 _maturityTimestamp
-    )
-        ERC20(_bondTokenName, _bondTokenSymbol)
-    {
+    ) ERC20(_bondTokenName, _bondTokenSymbol) {
         require(
             _controller != address(0) && _pho != address(0) && _depositToken != address(0),
             "ZeroCouponBond: zero address detected"
