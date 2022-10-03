@@ -167,7 +167,7 @@ contract PHOTWAPOracle is IPHOOracle, Ownable {
 
     /// @notice helper to get USD per FraxBP by checking underlying asset composition (FRAX and USDC)
     /// @return newest USD/FraxBP (normalized by d18) price answer derived from fraxBP balances and USD/Frax && USD/USDC priceFeeds
-    function _getUSDPerFraxBP() internal returns (uint256) {
+    function _getUSDPerFraxBP() internal view returns (uint256) {
         uint256 fraxInFraxBP = fraxBPPool.balances(0); // FRAX - decimals: 18
         uint256 usdcInFraxBP = fraxBPPool.balances(1); // USDC - decimals: 6
         uint256 fraxPerFraxBP = fraxInFraxBP * PRICE_PRECISION / fraxBPLP.totalSupply(); // UNITS: (FRAX/FraxBP) - normalized by d18
