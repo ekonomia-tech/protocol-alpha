@@ -16,9 +16,7 @@ contract BondFixedExpiryController is BondBaseController {
         address _controllerAddress,
         address _phoAddress,
         address _tonAddress
-    )
-        BondBaseController(_bondDispatcher, _controllerAddress, _phoAddress, _tonAddress)
-    {}
+    ) BondBaseController(_bondDispatcher, _controllerAddress, _phoAddress, _tonAddress) {}
 
     /// @inheritdoc BondBaseController
     function createMarket(bytes calldata params_) external override returns (uint256) {

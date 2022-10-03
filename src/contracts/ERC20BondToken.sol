@@ -27,9 +27,7 @@ contract ERC20BondToken is ERC20, Ownable {
         ERC20 _underlying,
         uint48 _expiry,
         address _dispatcher
-    )
-        ERC20(_name, _symbol)
-    {
+    ) ERC20(_name, _symbol) {
         _decimals = __decimals;
         underlying = _underlying;
         expiry = _expiry;

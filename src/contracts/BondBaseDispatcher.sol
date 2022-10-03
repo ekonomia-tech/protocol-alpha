@@ -133,9 +133,7 @@ abstract contract BondBaseDispatcher is IBondDispatcher, Ownable, ReentrancyGuar
         uint256 amount_,
         uint256 payout_,
         uint256 feePamarketId
-    )
-        internal
-    {
+    ) internal {
         require(bondController != address(0), "BondDispatcher: zero address detected");
         (ERC20 payoutToken, ERC20 quoteToken,,) =
             IBondController(bondController).getMarketInfoForPurchase(marketId);

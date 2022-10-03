@@ -321,8 +321,7 @@ abstract contract BondBaseController is IBondController, Ownable {
         uint256 lastDecay = uint256(meta.lastDecay);
         uint256 currentTime = block.timestamp;
         uint256 secondsSince = currentTime > lastDecay ? currentTime - lastDecay : 0;
-        return
-            secondsSince > meta.debtDecayInterval
+        return secondsSince > meta.debtDecayInterval
             ? markets[marketId].totalDebt
             : (markets[marketId].totalDebt * secondsSince) / uint256(meta.debtDecayInterval);
     }
@@ -340,8 +339,7 @@ abstract contract BondBaseController is IBondController, Ownable {
 
         uint48 secondsSince = uint48(block.timestamp) - info.lastAdjustment;
         bool active = secondsSince < info.timeToAdjusted;
-        uint256 decay =
-            active
+        uint256 decay = active
             ? (info.change * uint256(secondsSince)) / uint256(info.timeToAdjusted)
             : info.change;
         return (decay, secondsSince, active);
