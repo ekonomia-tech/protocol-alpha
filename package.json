@@ -1,4 +1,24 @@
 {
+  "name": "@ekonomia/photon-contracts",
+  "version": "0.0.3",
+  "description": "Alpha version of a DeFi stablecoin protocol",
+  "files": [
+    "/src",
+    "LICENSE",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ekonomia-tech/protocol-alpha.git"
+  },
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/ekonomia-tech/protocol-alpha/issues"
+  },
+  "homepage": "https://github.com/ekonomia-tech/protocol-alpha#readme",
+  "peerDependencies": {
+    "@openzeppelin/contracts": "^4.7.3"
+  },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.1.1",
     "@nomiclabs/hardhat-vyper": "^3.0.1",

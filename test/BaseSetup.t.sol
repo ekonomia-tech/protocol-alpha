@@ -9,6 +9,11 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "src/interfaces/curve/ICurvePool.sol";
 import "src/interfaces/curve/ICurveFactory.sol";
 import "src/contracts/Teller.sol";
+import "src/contracts/Dispatcher.sol";
+import "src/contracts/Vault.sol";
+import "src/oracle/ChainlinkPriceFeed.sol";
+import "src/oracle/PHOTWAPOracle.sol";
+import "src/interfaces/IPHOOracle.sol";
 
 abstract contract BaseSetup is Test {
     struct Balance {
@@ -21,11 +26,19 @@ abstract contract BaseSetup is Test {
     TON public ton;
     Teller public teller;
     DummyOracle public priceOracle;
-
+    ChainlinkPriceFeed public priceFeed;
+    Dispatcher dispatcher;
+    Vault usdcVault;
+    Vault fraxVault;
     IERC20 usdc;
     IERC20 dai;
+    IERC20 frax;
+    IERC20 fraxBPLP;
+    ICurvePool fraxBP;
+    ICurveFactory curveFactory;
+    ICurvePool fraxBPPhoMetapool;
 
-    address public owner = 0xed320Bf569E5F3c4e9313391708ddBFc58e296bb; // NOTE - vitalik.eth for tests but we may need a different address to supply USDC depending on our tests - vitalik only has 30k USDC
+    address public owner = 0xed320Bf569E5F3c4e9313391708ddBFc58e296bb;
     address public timelock_address = address(100);
     address public controller = address(101);
     address public user1 = address(1);
@@ -36,43 +49,65 @@ abstract contract BaseSetup is Test {
     address public daiWhale = 0xc08a8a9f809107c5A7Be6d90e315e4012c99F39a;
     address public fraxBPLPToken = 0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC;
     address public fraxBPAddress = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
-    address public metaPoolFactoryAddress = 0xB9fC157394Af804a3578134A6585C0dc9cc990d4;
+    address public metaPoolFactoryAddress =
+        0xB9fC157394Af804a3578134A6585C0dc9cc990d4;
     address public fraxRichGuy = 0xd3d176F7e4b43C70a68466949F6C64F06Ce75BB9;
-    address public fraxAddress = 0x853d955aCEf822Db058eb8505911ED77F175b99e;
-    address public fraxBPLUSD = 0x497CE58F34605B9944E6b15EcafE6b001206fd25;
 
-    uint256 public constant one_d18 = 10 ** 18;
-    uint256 public constant one_d6 = 10 ** 6;
-    uint256 public constant ten_d18 = 10 * 10 ** 18;
-    uint256 public constant ten_d6 = 10 * 10 ** 6;
-    uint256 public constant fifty_d18 = 50 * 10 ** 18;
-    uint256 public constant fifty_d6 = 50 * 10 ** 6;
-    uint256 public constant oneHundred_d18 = 100 * 10 ** 18;
-    uint256 public constant oneHundred_d6 = 100 * 10 ** 6;
-    uint256 public constant twoHundred_d18 = 200 * 10 ** 18;
-    uint256 public constant twoHundred_d6 = 200 * 10 ** 6;
-    uint256 public constant fiveHundred_d18 = 500 * 10 ** 18;
-    uint256 public constant fiveHundred_d6 = 500 * 10 ** 6;
-    uint256 public constant oneThousand_d18 = 1000 * 10 ** 18;
-    uint256 public constant oneThousand_d6 = 1000 * 10 ** 6;
-    uint256 public constant tenThousand_d18 = 10000 * 10 ** 18;
-    uint256 public constant tenThousand_d6 = 10000 * 10 ** 6;
-
-    uint256 public constant overPeg = (10 ** 6) + 6000;
-    uint256 public constant underPeg = (10 ** 6) - (6000);
-
-    uint256 public constant GENESIS_SUPPLY_d18 = 100000000 * 10 ** 18;
-    uint256 public constant GENESIS_SUPPLY_d6 = 100000 * 10 ** 6;
-
-    uint256 public constant PRICE_PRECISION = 10 ** 6;
-    uint256 public constant missing_decimals = 10 ** 12;
-
+    address public constant USDC_ADDRESS =
+        0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address public constant FRAX_ADDRESS =
+        0x853d955aCEf822Db058eb8505911ED77F175b99e;
+    address public constant FRAXBP_ADDRESS =
+        0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
+    address public constant FRAXBP_LP_TOKEN =
+        0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC;
+    address public constant FRAXBP_POOL =
+        0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
+    address public constant FRAXBP_LUSD =
+        0x497CE58F34605B9944E6b15EcafE6b001206fd25;
     address public constant weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    address public constant USDC_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-    address public constant DAI_ADDRESS = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
-    uint256 public constant POOL_CEILING = (2 ** 256) - 1;
+    address public constant DAI_ADDRESS =
+        0x6B175474E89094C44Da98b954EedeAC495271d0F;
 
-    uint256 tellerCeiling = 2 * 100 * tenThousand_d18; // set to 2 million
+    address public constant ETH_NULL_ADDRESS =
+        0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    address public constant PRICEFEED_ETHUSD =
+        0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+    address public constant PRICEFEED_USDCUSD =
+        0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
+    address public constant PRICEFEED_FRAXUSD =
+        0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD;
+
+    uint256 public constant ONE_D6 = 10**6;
+    uint256 public constant ONE_HUNDRED_D18 = 100 * 10**18;
+    uint256 public constant ONE_THOUSAND_D18 = 1000 * 10**18;
+    uint256 public constant ONE_HUNDRED_D6 = 100 * 10**6;
+    uint256 public constant ONE_THOUSAND_D6 = 1000 * 10**6;
+    uint256 public constant TEN_THOUSAND_D18 = 10000 * 10**18;
+    uint256 public constant TEN_THOUSAND_D6 = 10000 * 10**6;
+
+    uint256 public constant ONE_HUNDRED_THOUSAND_D18 = 100000 * 10**18;
+    uint256 public constant ONE_MILLION_D6 = 1000000 * 10**6;
+    uint256 public constant ONE_MILLION_D18 = 1000000 * 10**18;
+
+    uint256 public constant OVERPEG = (10**6) + 6000;
+    uint256 public constant UNDERPEG = (10**6) - (6000);
+
+    uint256 public constant GENESIS_SUPPLY_D18 = 100000000 * 10**18;
+
+    uint256 public constant PRICE_PRECISION = 10**6;
+    uint256 public constant DECIMALS_DIFFERENCE = 10**12;
+    uint256 public constant PHO_PRICE_PRECISION = 10**18;
+    uint256 public constant FEED_PRECISION = 10**10;
+
+    // phoOracle specific
+    uint256 public constant PRICE_THRESHOLD = 100000; // 10%, since 10 ** 6 (1000000) = 100%
+    uint256 public constant PRECISION_DIFFERENCE = 10;
+    uint256 public period = 1 weeks;
+
+    uint256 public constant POOL_CEILING = (2**256) - 1;
+
+    uint256 tellerCeiling = 2 * 100 * TEN_THOUSAND_D18; // set to 2 million
 
     constructor() {
         string memory RPC_URL = vm.envString("RPC_URL");
@@ -90,15 +125,36 @@ abstract contract BaseSetup is Test {
         teller = new Teller(address(pho), tellerCeiling);
         pho.setTeller(address(teller));
 
+        dispatcher = new Dispatcher(address(pho), address(teller));
+        teller.whitelistCaller(address(dispatcher), 2000 * TEN_THOUSAND_D18);
+
+        usdcVault = new Vault(address(pho), USDC_ADDRESS, address(priceOracle));
+        fraxVault = new Vault(address(pho), FRAX_ADDRESS, address(priceOracle));
+
+        dispatcher.addVault(address(usdcVault));
+        dispatcher.addVault(address(fraxVault));
+
+        usdcVault.whitelistCaller(address(dispatcher));
+        fraxVault.whitelistCaller(address(dispatcher));
+
         usdc = IERC20(USDC_ADDRESS);
         dai = IERC20(DAI_ADDRESS);
+        frax = IERC20(FRAX_ADDRESS);
 
+        priceFeed = new ChainlinkPriceFeed(PRECISION_DIFFERENCE);
+
+        curveFactory = ICurveFactory(metaPoolFactoryAddress);
+        fraxBP = ICurvePool(FRAXBP_ADDRESS);
         vm.stopPrank();
     }
 
     /// Helpers
 
-    function _getAccountBalance(address _account) internal returns (Balance memory) {
+    function _getAccountBalance(address _account)
+        internal
+        view
+        returns (Balance memory)
+    {
         uint256 usdcBalance = usdc.balanceOf(_account);
         uint256 phoBalance = pho.balanceOf(_account);
         uint256 tonBalance = ton.balanceOf(_account);
@@ -111,7 +167,11 @@ abstract contract BaseSetup is Test {
         usdc.transfer(to, _amount);
     }
 
-    function _approveUSDC(address _owner, address _spender, uint256 _amount) internal {
+    function _approveUSDC(
+        address _owner,
+        address _spender,
+        uint256 _amount
+    ) internal {
         vm.prank(_owner);
         usdc.approve(_spender, _amount);
     }
@@ -121,9 +181,7 @@ abstract contract BaseSetup is Test {
         address _spender,
         uint256 _amountIn,
         uint256 _amountOut
-    )
-        internal
-    {
+    ) internal {
         _getUSDC(_owner, _amountIn);
         _approveUSDC(_owner, _spender, _amountOut);
     }
@@ -133,7 +191,11 @@ abstract contract BaseSetup is Test {
         dai.transfer(to, _amount);
     }
 
-    function _approveDAI(address _owner, address _spender, uint256 _amount) internal {
+    function _approveDAI(
+        address _owner,
+        address _spender,
+        uint256 _amount
+    ) internal {
         vm.prank(_owner);
         dai.approve(_spender, _amount);
     }
@@ -143,9 +205,7 @@ abstract contract BaseSetup is Test {
         address _spender,
         uint256 _amountIn,
         uint256 _amountOut
-    )
-        internal
-    {
+    ) internal {
         _getDAI(_owner, _amountIn);
         _approveDAI(_owner, _spender, _amountOut);
     }
@@ -155,7 +215,11 @@ abstract contract BaseSetup is Test {
         ton.transfer(_to, _amount);
     }
 
-    function _approveTON(address _owner, address _spender, uint256 _amount) internal {
+    function _approveTON(
+        address _owner,
+        address _spender,
+        uint256 _amount
+    ) internal {
         vm.prank(_owner);
         ton.approve(_spender, _amount);
     }
@@ -165,50 +229,80 @@ abstract contract BaseSetup is Test {
         address _spender,
         uint256 _amountIn,
         uint256 _amountOut
-    )
-        internal
-    {
+    ) internal {
         _getTON(_owner, _amountIn);
         _approveTON(_owner, _spender, _amountOut);
     }
 
+    function _getFRAX(address _to, uint256 _amount) internal {
+        vm.prank(fraxRichGuy);
+        frax.transfer(_to, _amount);
+    }
+
+    function _approveFRAX(
+        address _owner,
+        address _spender,
+        uint256 _amount
+    ) internal {
+        vm.prank(_owner);
+        frax.approve(_spender, _amount);
+    }
+
+    function _fundAndApproveFRAX(
+        address _owner,
+        address _spender,
+        uint256 _amountIn,
+        uint256 _amountOut
+    ) internal {
+        _getFRAX(_owner, _amountIn);
+        _approveFRAX(_owner, _spender, _amountOut);
+    }
+
     function _deployFraxBPPHOPool() internal returns (address) {
         vm.prank(address(teller));
-        pho.mint(owner, tenThousand_d18);
+        pho.mint(owner, TEN_THOUSAND_D18);
 
-        IERC20 frax = IERC20(fraxAddress);
-        IERC20 fraxBPLP = IERC20(fraxBPLPToken);
-        ICurvePool fraxBP = ICurvePool(fraxBPAddress);
-        ICurveFactory curveFactory = ICurveFactory(metaPoolFactoryAddress);
+        frax = IERC20(FRAX_ADDRESS);
+        fraxBPLP = IERC20(FRAXBP_LP_TOKEN);
 
-        _fundAndApproveUSDC(owner, address(fraxBP), tenThousand_d6, tenThousand_d6);
+        _fundAndApproveUSDC(
+            owner,
+            address(fraxBP),
+            TEN_THOUSAND_D6,
+            TEN_THOUSAND_D6
+        );
 
         uint256[2] memory fraxBPmetaLiquidity;
-        fraxBPmetaLiquidity[0] = tenThousand_d18; // frax
-        fraxBPmetaLiquidity[1] = tenThousand_d6; // usdc
-        uint256 minLPOut = tenThousand_d18;
+        fraxBPmetaLiquidity[0] = TEN_THOUSAND_D18; // frax
+        fraxBPmetaLiquidity[1] = TEN_THOUSAND_D6; // usdc
 
         vm.prank(fraxRichGuy);
-        frax.transfer(owner, tenThousand_d18 * 5);
+        frax.transfer(owner, TEN_THOUSAND_D18 * 5);
 
         vm.startPrank(owner);
 
-        usdc.approve(address(fraxBP), tenThousand_d6);
-        frax.approve(address(fraxBP), tenThousand_d18);
+        usdc.approve(address(fraxBP), TEN_THOUSAND_D6);
+        frax.approve(address(fraxBP), TEN_THOUSAND_D18);
 
         fraxBP.add_liquidity(fraxBPmetaLiquidity, 0);
 
         address fraxBPPhoMetapoolAddress = curveFactory.deploy_metapool(
-            address(fraxBP), "FRAXBP/PHO", "FRAXBPPHO", address(pho), 200, 4000000, 0
+            address(fraxBP),
+            "FRAXBP/PHO",
+            "FRAXBPPHO",
+            address(pho),
+            200,
+            4000000,
+            0
         );
 
-        ICurvePool fraxBPPhoMetapool = ICurvePool(fraxBPPhoMetapoolAddress);
-        pho.approve(address(fraxBPPhoMetapool), tenThousand_d18);
-        fraxBPLP.approve(address(fraxBPPhoMetapool), tenThousand_d18);
+        fraxBPPhoMetapool = ICurvePool(fraxBPPhoMetapoolAddress);
+        pho.approve(address(fraxBPPhoMetapool), TEN_THOUSAND_D18);
+        fraxBPLP.approve(address(fraxBPPhoMetapool), TEN_THOUSAND_D18);
 
         uint256[2] memory metaLiquidity;
-        metaLiquidity[0] = tenThousand_d18;
-        metaLiquidity[1] = tenThousand_d18;
+        metaLiquidity[0] = TEN_THOUSAND_D18;
+        metaLiquidity[1] = TEN_THOUSAND_D18;
 
         fraxBPPhoMetapool.add_liquidity(metaLiquidity, 0);
 

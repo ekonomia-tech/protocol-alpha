@@ -9,29 +9,27 @@ import "src/contracts/PriceController.sol";
 
 contract PriceControllerTest is BaseSetup {
     ICurvePool public curvePool;
-    ICurvePool public fraxBP;
-    ICurvePool public fraxBPPhoMetapool;
-    IERC20 public fraxBPLP;
-    IERC20 public frax;
-    ICurveFactory public curveFactory;
+    // ICurvePool public fraxBP;
+    // ICurvePool public fraxBPPhoMetapool;
+    // IERC20 public fraxBPLP;
+    // ICurveFactory public curveFactory;
     PriceController public priceController;
 
     /// Contract relevant test constants
 
-    uint256 public constant overPegOutBand = 103 * (10 ** 4);
-    uint256 public constant overPegInBand = 1005 * (10 ** 3);
-    uint256 public constant underPegOutBand = 98 * (10 ** 4);
-    uint256 public constant underPegInBand = 995 * (10 ** 3);
+    uint256 public constant OVERPEGOutBand = 103 * (10 ** 4);
+    uint256 public constant OVERPEGInBand = 1005 * (10 ** 3);
+    uint256 public constant UNDERPEGOutBand = 98 * (10 ** 4);
+    uint256 public constant UNDERPEGInBand = 995 * (10 ** 3);
     uint256 public constant priceTarget = 10 ** 6;
     uint256 public constant fractionPrecision = 10 ** 5;
 
     function setUp() public {
-        frax = IERC20(fraxAddress);
-        fraxBPLP = IERC20(fraxBPLPToken);
-        fraxBP = ICurvePool(fraxBPAddress);
+        fraxBPLP = IERC20(FRAXBP_LP_TOKEN);
+        fraxBP = ICurvePool(FRAXBP_ADDRESS);
         curveFactory = ICurveFactory(metaPoolFactoryAddress);
 
-        _fundAndApproveUSDC(owner, address(fraxBP), tenThousand_d6, tenThousand_d6);
+        _fundAndApproveUSDC(owner, address(fraxBP), TEN_THOUSAND_D6, TEN_THOUSAND_D6);
 
         fraxBPPhoMetapool = ICurvePool(_deployFraxBPPHOPool());
 
@@ -39,18 +37,18 @@ contract PriceControllerTest is BaseSetup {
         new PriceController(address(pho), address(teller), address(priceOracle), address(fraxBPPhoMetapool), USDC_ADDRESS, address(curveFactory), owner, 3600, 10 ** 4, 50000,99000);
 
         vm.prank(owner);
-        teller.whitelistCaller(address(priceController), 200 * tenThousand_d18);
+        teller.whitelistCaller(address(priceController), 200 * TEN_THOUSAND_D18);
 
         vm.prank(address(priceController));
-        teller.mintPHO(address(priceController), tenThousand_d18);
+        teller.mintPHO(address(priceController), TEN_THOUSAND_D18);
         _fundAndApproveUSDC(
-            address(priceController), address(fraxBPPhoMetapool), tenThousand_d6, tenThousand_d6
+            address(priceController), address(fraxBPPhoMetapool), TEN_THOUSAND_D6, TEN_THOUSAND_D6
         );
         vm.prank(fraxRichGuy);
-        frax.transfer(address(priceController), tenThousand_d18);
+        frax.transfer(address(priceController), TEN_THOUSAND_D18);
     }
 
-    // /// setOracleAddress
+    /// setOracleAddress
 
     function testSetOracleAddress() public {
         address newAddress = address(110);
@@ -268,7 +266,7 @@ contract PriceControllerTest is BaseSetup {
     function testCannotSetDexPoolPhoNotPreset() public {
         vm.expectRevert("Price Controller: $PHO is not present in the metapool");
         vm.prank(owner);
-        priceController.setDexPool(fraxBPLUSD);
+        priceController.setDexPool(FRAXBP_LUSD);
     }
 
     function testCannotSetDexPoolSameAddress() public {
@@ -281,7 +279,7 @@ contract PriceControllerTest is BaseSetup {
     /// setStabilizingToken
 
     function testSetStabilizingToken() public {
-        address newStabilizingToken = fraxAddress;
+        address newStabilizingToken = FRAX_ADDRESS;
         vm.expectEmit(true, false, false, true);
         emit StabilizingTokenUpdated(newStabilizingToken);
         vm.prank(owner);
@@ -319,36 +317,36 @@ contract PriceControllerTest is BaseSetup {
         uint256 priceGap;
         bool trend;
 
-        /// overPeg, out of band, 3 cents above
-        priceOracle.setPHOUSDPrice(overPegOutBand);
+        /// OVERPEG, out of band, 3 cents above
+        priceOracle.setPHOUSDPrice(OVERPEGOutBand);
         (inBand, priceGap, trend) = priceController.checkPriceBand(priceOracle.getPHOUSDPrice());
 
         assertEq(inBand, false);
-        assertEq(priceGap, overPegOutBand - priceTarget);
+        assertEq(priceGap, OVERPEGOutBand - priceTarget);
         assertEq(trend, true);
 
-        /// overPeg, in band, 0.5 cents
-        priceOracle.setPHOUSDPrice(overPegInBand);
+        /// OVERPEG, in band, 0.5 cents
+        priceOracle.setPHOUSDPrice(OVERPEGInBand);
         (inBand, priceGap, trend) = priceController.checkPriceBand(priceOracle.getPHOUSDPrice());
 
         assertEq(inBand, true);
-        assertEq(priceGap, overPegInBand - priceTarget);
+        assertEq(priceGap, OVERPEGInBand - priceTarget);
         assertEq(trend, true);
 
-        // underPeg, out of band, 2 cents
-        priceOracle.setPHOUSDPrice(underPegOutBand);
+        // UNDERPEG, out of band, 2 cents
+        priceOracle.setPHOUSDPrice(UNDERPEGOutBand);
         (inBand, priceGap, trend) = priceController.checkPriceBand(priceOracle.getPHOUSDPrice());
 
         assertEq(inBand, false);
-        assertEq(priceGap, priceTarget - underPegOutBand);
+        assertEq(priceGap, priceTarget - UNDERPEGOutBand);
         assertEq(trend, false);
 
-        // underPeg, in band, 0.5 cents
-        priceOracle.setPHOUSDPrice(underPegInBand);
+        // UNDERPEG, in band, 0.5 cents
+        priceOracle.setPHOUSDPrice(UNDERPEGInBand);
         (inBand, priceGap, trend) = priceController.checkPriceBand(priceOracle.getPHOUSDPrice());
 
         assertEq(inBand, true);
-        assertEq(priceGap, priceTarget - underPegInBand);
+        assertEq(priceGap, priceTarget - UNDERPEGInBand);
         assertEq(trend, false);
     }
 
@@ -361,8 +359,8 @@ contract PriceControllerTest is BaseSetup {
     /// target price to reach = 1.015;
     /// change in percentage required to reach = 1.456%
     /// totalSupply * change = 1456$
-    function testCalculateGapInTokenOverPeg() public {
-        priceOracle.setPHOUSDPrice(overPegOutBand);
+    function testCalculateGapInTokenOVERPEG() public {
+        priceOracle.setPHOUSDPrice(OVERPEGOutBand);
         uint256 phoPrice = priceOracle.getPHOUSDPrice();
         uint256 phoTotalSupply = pho.totalSupply();
         (bool inBand, uint256 priceGap, bool trend) = priceController.checkPriceBand(phoPrice);
@@ -385,8 +383,8 @@ contract PriceControllerTest is BaseSetup {
     /// target price to reach = 0.99;
     /// change in percentage required to reach = 1.02%
     /// totalSupply * change = 1020$
-    function testCalculateGapInTokenUnderPeg() public {
-        priceOracle.setPHOUSDPrice(underPegOutBand);
+    function testCalculateGapInTokenUNDERPEG() public {
+        priceOracle.setPHOUSDPrice(UNDERPEGOutBand);
         uint256 phoPrice = priceOracle.getPHOUSDPrice();
         uint256 phoTotalSupply = pho.totalSupply();
         (bool inBand, uint256 priceGap, bool trend) = priceController.checkPriceBand(phoPrice);
@@ -410,7 +408,7 @@ contract PriceControllerTest is BaseSetup {
         uint256 fraxBPPriceControllerBalanceBefore = fraxBPLP.balanceOf(address(priceController));
         uint256 phoPriceControllerBalanceBefore = pho.balanceOf(address(priceController));
 
-        uint256 phoToExchange = oneThousand_d18;
+        uint256 phoToExchange = ONE_THOUSAND_D18;
         uint256 minExpected = fraxBPPhoMetapool.get_dy(0, 1, phoToExchange);
 
         vm.expectEmit(true, true, false, true);
@@ -447,8 +445,8 @@ contract PriceControllerTest is BaseSetup {
         uint256 phoPriceControllerBalanceBefore = pho.balanceOf(address(priceController));
 
         /// d18 used to mimic the output of GapInToken function
-        uint256 usdcToExchange = oneThousand_d6;
-        uint256 usdcToExchange_d18 = oneThousand_d18;
+        uint256 usdcToExchange = ONE_THOUSAND_D6;
+        uint256 usdcToExchange_d18 = ONE_THOUSAND_D18;
         uint256 expectedPho =
             fraxBPPhoMetapool.get_dy_underlying(usdcIndex, phoIndex, usdcToExchange);
 
@@ -489,7 +487,7 @@ contract PriceControllerTest is BaseSetup {
         uint256 fraxPriceControllerBalanceBefore = frax.balanceOf(address(priceController));
         uint256 phoPriceControllerBalanceBefore = pho.balanceOf(address(priceController));
 
-        uint256 fraxToExchange = oneThousand_d18;
+        uint256 fraxToExchange = ONE_THOUSAND_D18;
         uint256 expectedPho =
             fraxBPPhoMetapool.get_dy_underlying(fraxIndex, phoIndex, fraxToExchange);
 
@@ -538,12 +536,12 @@ contract PriceControllerTest is BaseSetup {
 
         vm.expectRevert("Price Controller: stabilizing token does not have enough balance");
         vm.prank(owner);
-        priceController.exchangeTokens(false, tenThousand_d18);
+        priceController.exchangeTokens(false, TEN_THOUSAND_D18);
     }
 
     /// stabilize
 
-    function testStabilizeOverPegOutBand() public {
+    function testStabilizeOVERPEGOutBand() public {
         (int128 phoIndex, int128 fraxBPLPIndex,) = curveFactory.get_coin_indices(
             address(fraxBPPhoMetapool), address(pho), address(fraxBPLP)
         );
@@ -551,7 +549,7 @@ contract PriceControllerTest is BaseSetup {
         uint256 phoTotalSupplyBefore = pho.totalSupply();
         uint256 fraxBPPriceControllerBalanceBefore = fraxBPLP.balanceOf(address(priceController));
 
-        priceOracle.setPHOUSDPrice(overPegOutBand);
+        priceOracle.setPHOUSDPrice(OVERPEGOutBand);
         uint256 phoPrice = priceOracle.getPHOUSDPrice();
         (, uint256 priceGap, bool trend) = priceController.checkPriceBand(phoPrice);
         uint256 gapInToken = priceController.calculateGapInToken(phoPrice, priceGap);
@@ -570,14 +568,14 @@ contract PriceControllerTest is BaseSetup {
         assertTrue(stabilized);
     }
 
-    function testStabilizeUnderPegOutBand() public {
+    function testStabilizeUNDERPEGOutBand() public {
         (int128 usdcIndex, int128 phoIndex,) =
             curveFactory.get_coin_indices(address(fraxBPPhoMetapool), address(usdc), address(pho));
 
         uint256 phoTotalSupplyBefore = pho.totalSupply();
         uint256 usdcPriceControllerBalanceBefore = usdc.balanceOf(address(priceController));
 
-        priceOracle.setPHOUSDPrice(underPegOutBand);
+        priceOracle.setPHOUSDPrice(UNDERPEGOutBand);
         uint256 phoPrice = priceOracle.getPHOUSDPrice();
         (, uint256 priceGap, bool trend) = priceController.checkPriceBand(phoPrice);
         uint256 gapInToken = priceController.calculateGapInToken(phoPrice, priceGap);
@@ -606,8 +604,8 @@ contract PriceControllerTest is BaseSetup {
         assertFalse(stabilized);
     }
 
-    function testStabilizePriceInBandOverPeg() public {
-        priceOracle.setPHOUSDPrice(overPegInBand);
+    function testStabilizePriceInBandOVERPEG() public {
+        priceOracle.setPHOUSDPrice(OVERPEGInBand);
         vm.prank(owner);
         bool stabilized = priceController.stabilize();
 
@@ -615,8 +613,8 @@ contract PriceControllerTest is BaseSetup {
         assertTrue(priceController.lastCooldownReset() - block.timestamp < 3600);
     }
 
-    function testStabilizePriceInBanUnderPeg() public {
-        priceOracle.setPHOUSDPrice(underPegInBand);
+    function testStabilizePriceInBanUNDERPEG() public {
+        priceOracle.setPHOUSDPrice(UNDERPEGInBand);
         vm.prank(owner);
         bool stabilized = priceController.stabilize();
 
@@ -632,7 +630,7 @@ contract PriceControllerTest is BaseSetup {
 
         vm.warp(block.timestamp + 100);
 
-        priceOracle.setPHOUSDPrice(overPegOutBand);
+        priceOracle.setPHOUSDPrice(OVERPEGOutBand);
         vm.expectRevert("Price Controller: cooldown not satisfied");
         vm.prank(owner);
         stabilized = priceController.stabilize();
