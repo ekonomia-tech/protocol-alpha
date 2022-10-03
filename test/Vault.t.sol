@@ -11,20 +11,20 @@ contract VaultTest is BaseSetup {
     event OracleAddressSet(address indexed newOracleAddress);
 
     function setUp() public {
-        _fundAndApproveUSDC(owner, address(dispatcher), tenThousand_d6, tenThousand_d6);
+        _fundAndApproveUSDC(owner, address(dispatcher), TEN_THOUSAND_D6, TEN_THOUSAND_D6);
     }
     /// getVaultToken()
 
     function testGetVaultToken() public {
         assertEq(usdcVault.getVaultToken(), USDC_ADDRESS);
-        assertEq(fraxVault.getVaultToken(), fraxAddress);
+        assertEq(fraxVault.getVaultToken(), FRAX_ADDRESS);
     }
 
     /// getTokenPriceUSD()
 
     function testGetTokenPriceUSD() public {
-        assertEq(usdcVault.getTokenPriceUSD(), one_d6);
-        assertEq(fraxVault.getTokenPriceUSD(), one_d6);
+        assertEq(usdcVault.getTokenPriceUSD(), ONE_D6);
+        assertEq(fraxVault.getTokenPriceUSD(), ONE_D6);
     }
 
     /// getVaultUSDValue()
@@ -36,8 +36,8 @@ contract VaultTest is BaseSetup {
 
         uint256 usdcVaultBalanceAfter = usdc.balanceOf(address(usdcVault));
 
-        assertEq(usdcVaultBalanceAfter, usdcVaultBalanceBefore + tenThousand_d6);
-        assertEq(usdcVault.getVaultUSDValue(), tenThousand_d18);
+        assertEq(usdcVaultBalanceAfter, usdcVaultBalanceBefore + TEN_THOUSAND_D6);
+        assertEq(usdcVault.getVaultUSDValue(), TEN_THOUSAND_D18);
     }
 
     /// provideTo()
@@ -48,19 +48,19 @@ contract VaultTest is BaseSetup {
         uint256 vaultUSDCBalanceBefore = usdc.balanceOf(address(usdcVault));
 
         vm.prank(address(dispatcher));
-        usdcVault.provideTo(address(dispatcher), oneThousand_d6);
+        usdcVault.provideTo(address(dispatcher), ONE_THOUSAND_D6);
 
         uint256 dispatcherUSDCBalanceAfter = usdc.balanceOf(address(dispatcher));
         uint256 vaultUSDCBalanceAfter = usdc.balanceOf(address(usdcVault));
 
-        assertEq(dispatcherUSDCBalanceAfter, dispatcherUSDCBalanceBefore + oneThousand_d6);
-        assertEq(vaultUSDCBalanceAfter, vaultUSDCBalanceBefore - oneThousand_d6);
+        assertEq(dispatcherUSDCBalanceAfter, dispatcherUSDCBalanceBefore + ONE_THOUSAND_D6);
+        assertEq(vaultUSDCBalanceAfter, vaultUSDCBalanceBefore - ONE_THOUSAND_D6);
     }
 
     function testCannotProvideToAddressZero() public {
         vm.expectRevert("Vault: zero address detected");
         vm.prank(owner);
-        usdcVault.provideTo(address(0), tenThousand_d6);
+        usdcVault.provideTo(address(0), TEN_THOUSAND_D6);
     }
 
     function testCannotProvideZeroAmount() public {
@@ -72,13 +72,13 @@ contract VaultTest is BaseSetup {
     function testCannotProvideNotApproved() public {
         vm.expectRevert("Vault: caller not approved");
         vm.prank(user1);
-        usdcVault.provideTo(msg.sender, oneThousand_d6);
+        usdcVault.provideTo(msg.sender, ONE_THOUSAND_D6);
     }
 
     function testCannotProvideNotEnoughCollateral() public {
         vm.expectRevert("Vault: not enough collateral");
         vm.prank(address(dispatcher));
-        usdcVault.provideTo(msg.sender, oneThousand_d6);
+        usdcVault.provideTo(msg.sender, ONE_THOUSAND_D6);
     }
 
     /// whitelistCaller()
@@ -167,6 +167,6 @@ contract VaultTest is BaseSetup {
 
     function _dispatchCollateralUSDC() internal {
         vm.prank(owner);
-        dispatcher.dispatchCollateral(USDC_ADDRESS, tenThousand_d6, tenThousand_d6);
+        dispatcher.dispatchCollateral(USDC_ADDRESS, TEN_THOUSAND_D6, TEN_THOUSAND_D6);
     }
 }

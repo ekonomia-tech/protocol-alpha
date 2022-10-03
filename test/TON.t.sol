@@ -13,11 +13,11 @@ contract TONTest is BaseSetup {
 
     function setUp() public {
         vm.prank(owner);
-        ton.transfer(user1, tenThousand_d18);
+        ton.transfer(user1, TEN_THOUSAND_D18);
     }
 
     function testConstructor() public {
-        assertEq(ton.totalSupply(), GENESIS_SUPPLY_d18);
-        assertEq(ton.balanceOf(owner), GENESIS_SUPPLY_d18 - tenThousand_d18);
+        assertEq(ton.totalSupply(), GENESIS_SUPPLY_D18);
+        assertEq(ton.balanceOf(owner), GENESIS_SUPPLY_D18 - TEN_THOUSAND_D18);
     }
 }

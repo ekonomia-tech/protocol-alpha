@@ -10,12 +10,12 @@ contract PHOTest is BaseSetup {
 
     function setUp() public {
         vm.prank(address(teller));
-        pho.mint(user1, tenThousand_d18);
+        pho.mint(user1, TEN_THOUSAND_D18);
     }
     /// setup tests
 
     function testPHOConstructor() public {
-        assertEq(pho.balanceOf(user1), tenThousand_d18);
+        assertEq(pho.balanceOf(user1), TEN_THOUSAND_D18);
         assertEq(pho.name(), "PHO");
         assertEq(pho.symbol(), "PHO");
         assertEq(pho.decimals(), 18);
@@ -36,19 +36,19 @@ contract PHOTest is BaseSetup {
         uint256 totalSupplyBefore = pho.totalSupply();
 
         vm.prank(address(teller));
-        pho.mint(user1, fiveHundred_d18);
+        pho.mint(user1, ONE_HUNDRED_D18 * 5);
 
         uint256 totalSupplyAfter = pho.totalSupply();
         uint256 user1BalanceAfter = pho.balanceOf(user1);
 
-        assertEq(totalSupplyAfter, totalSupplyBefore + fiveHundred_d18);
-        assertEq(user1BalanceAfter, user1BalanceBefore + fiveHundred_d18);
+        assertEq(totalSupplyAfter, totalSupplyBefore + ONE_HUNDRED_D18 * 5);
+        assertEq(user1BalanceAfter, user1BalanceBefore + ONE_HUNDRED_D18 * 5);
     }
 
     function testCannotMintNotTeller() public {
         vm.expectRevert("PHO: caller is not the teller");
         vm.prank(user1);
-        pho.mint(user1, fiveHundred_d18);
+        pho.mint(user1, ONE_HUNDRED_D18 * 5);
     }
 
     /// setTeller()
