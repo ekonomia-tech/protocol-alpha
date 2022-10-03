@@ -47,18 +47,18 @@ contract BondDispatcherTest is BaseSetup {
         // User -> sends USDC to dispatcher (who sends to controller)
         // Bond controller sends PHO to dispatcher
         vm.prank(owner);
-        teller.whitelistCaller(address(bondFixedExpiryController), 200 * tenThousand_d18);
+        teller.whitelistCaller(address(bondFixedExpiryController), 200 * TEN_THOUSAND_D18);
         vm.prank(address(bondFixedExpiryController));
-        teller.mintPHO(address(bondFixedExpiryController), tenThousand_d18);
+        teller.mintPHO(address(bondFixedExpiryController), TEN_THOUSAND_D18);
 
         // User1 gets TON and approves sending to BondDispatcher
-        _getTON(user1, tenThousand_d18);
+        _getTON(user1, TEN_THOUSAND_D18);
         vm.prank(user1);
-        ton.approve(address(bondFixedExpiryDispatcher), 100 * tenThousand_d18);
+        ton.approve(address(bondFixedExpiryDispatcher), 100 * TEN_THOUSAND_D18);
 
         // Approval for bondController sending PHO to BondDispatcher
         vm.prank(address(bondFixedExpiryController));
-        pho.approve(address(bondFixedExpiryDispatcher), 100 * tenThousand_d18);
+        pho.approve(address(bondFixedExpiryDispatcher), 100 * TEN_THOUSAND_D18);
     }
 
     /// Setting protocol fees

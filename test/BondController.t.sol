@@ -162,7 +162,7 @@ contract BondControllerTest is BaseSetup {
     function testCannotCreateMarketInvalidParams() public {
         // payout token not PHO or TON
         MarketParams memory params = MarketParams({
-            payoutToken: ERC20(fraxBPLUSD),
+            payoutToken: ERC20(address(fraxBPLP)),
             quoteToken: ton,
             capacity: 10 ** 18,
             formattedInitialPrice: 10 ** 6,
