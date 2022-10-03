@@ -10,7 +10,9 @@ interface ICurveFactory {
         uint256 _A,
         uint256 _fee,
         uint256 _implementation_idx
-    ) external returns (address);
+    )
+        external
+        returns (address);
 
     function get_underlying_coins(address _pool) external view returns (address[8] memory);
     function get_meta_n_coins(address _pool) external view returns (uint256);

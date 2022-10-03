@@ -11,5 +11,8 @@ interface ICurveFactory {
         uint256 _A,
         uint256 _fee,
         uint256 _implementation_idx
-    ) external view returns (address);
+    )
+        external
+        view
+        returns (address);
 }

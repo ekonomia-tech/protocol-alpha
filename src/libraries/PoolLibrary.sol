@@ -101,7 +101,11 @@ library PoolLibrary {
         uint256 total_supply,
         uint256 global_collateral_ratio,
         uint256 global_collat_value
-    ) public pure returns (uint256) {
+    )
+        public
+        pure
+        returns (uint256)
+    {
         uint256 target_collat_value = total_supply.mul(global_collateral_ratio).div(1e6); // We want 18 decimals of precision so divide by 1e6; total_supply is 1e18 and global_collateral_ratio is 1e6
         // Subtract the current value of collateral from the target value needed, if higher than 0 then system needs to recollateralize
         return target_collat_value.sub(global_collat_value); // If recollateralization is not needed, throws a subtraction underflow
@@ -114,7 +118,11 @@ library PoolLibrary {
         uint256 global_collat_value,
         uint256 pho_total_supply,
         uint256 global_collateral_ratio
-    ) public pure returns (uint256, uint256) {
+    )
+        public
+        pure
+        returns (uint256, uint256)
+    {
         uint256 collat_value_attempted = collateral_amount.mul(col_price).div(1e6);
         uint256 effective_collateral_ratio = global_collat_value.mul(1e6).div(pho_total_supply); //returns it in 1e6
         uint256 recollat_possible = (

@@ -6,11 +6,7 @@ import "src/contracts/TON.sol";
 import "src/contracts/ZeroCouponBond.sol";
 
 contract ZeroCouponBondTest is BaseSetup {
-    event BondIssued(
-        address indexed depositor,
-        uint256 depositAmount,
-        uint256 mintAmount
-    );
+    event BondIssued(address indexed depositor, uint256 depositAmount, uint256 mintAmount);
     event BondRedeemed(address indexed redeemer, uint256 redeemAmount);
     event InterestRateSet(uint256 interestRate);
 
@@ -219,8 +215,7 @@ contract ZeroCouponBondTest is BaseSetup {
     // Basic deposit for non-18 decimals
     function testDepositBondUSDC() public {
         uint256 depositAmount = ONE_HUNDRED_D6;
-        uint256 expectedMint = ((depositAmount * (1e6 + USDC_INTEREST_RATE)) /
-            1e6) * 10**12;
+        uint256 expectedMint = ((depositAmount * (1e6 + USDC_INTEREST_RATE)) / 1e6) * 10 ** 12;
         // deposit
         vm.expectEmit(true, false, false, true);
         emit BondIssued(user1, depositAmount, expectedMint);
@@ -238,8 +233,7 @@ contract ZeroCouponBondTest is BaseSetup {
         vm.prank(user1);
         daiZeroCouponBond.depositBond(depositAmount);
         // check expected mint amount
-        uint256 expectedMint = ((depositAmount * (1e6 + DAI_INTEREST_RATE)) /
-            1e6);
+        uint256 expectedMint = ((depositAmount * (1e6 + DAI_INTEREST_RATE)) / 1e6);
         assertEq(daiZeroCouponBond.totalSupply(), expectedMint);
         assertEq(daiZeroCouponBond.issuedAmount(user1), expectedMint);
     }
@@ -247,8 +241,7 @@ contract ZeroCouponBondTest is BaseSetup {
     // Cannot redeem bond before maturtity
     function testCannotRedeemBondBeforeMaturity() public {
         uint256 depositAmount = ONE_HUNDRED_D6;
-        uint256 redeemAmount = ((depositAmount * (1e6 + USDC_INTEREST_RATE)) /
-            1e6) * 10**12;
+        uint256 redeemAmount = ((depositAmount * (1e6 + USDC_INTEREST_RATE)) / 1e6) * 10 ** 12;
         vm.prank(user1);
         usdcZeroCouponBond.depositBond(depositAmount);
         vm.expectRevert("ZeroCouponBond: maturityTimestamp not reached");
@@ -259,8 +252,7 @@ contract ZeroCouponBondTest is BaseSetup {
     // Cannot redeem more than issued
     function testCannotRedeemBondMoreThanIssued() public {
         uint256 depositAmount = ONE_HUNDRED_D6;
-        uint256 redeemAmount = ((depositAmount * (1e6 + USDC_INTEREST_RATE)) /
-            1e6) * 10**12;
+        uint256 redeemAmount = ((depositAmount * (1e6 + USDC_INTEREST_RATE)) / 1e6) * 10 ** 12;
         vm.warp(USDC_DEPOSIT_WINDOW_END);
         vm.prank(user1);
         usdcZeroCouponBond.depositBond(depositAmount / 2);
@@ -273,14 +265,11 @@ contract ZeroCouponBondTest is BaseSetup {
     // Test basic redeem with non 18 decimals
     function testRedeemBondUSDC() public {
         uint256 depositAmount = ONE_HUNDRED_D6;
-        uint256 redeemAmount = ((depositAmount * (1e6 + USDC_INTEREST_RATE)) /
-            1e6) * 10**12;
+        uint256 redeemAmount = ((depositAmount * (1e6 + USDC_INTEREST_RATE)) / 1e6) * 10 ** 12;
         vm.warp(USDC_DEPOSIT_WINDOW_END);
 
         uint256 phoBalanceUserBefore = pho.balanceOf(user1);
-        uint256 phoZCBBalanceBefore = pho.balanceOf(
-            address(usdcZeroCouponBond)
-        );
+        uint256 phoZCBBalanceBefore = pho.balanceOf(address(usdcZeroCouponBond));
 
         vm.prank(user1);
         usdcZeroCouponBond.depositBond(depositAmount);
@@ -302,8 +291,7 @@ contract ZeroCouponBondTest is BaseSetup {
     // Test basic redeem with standard 18 decimals
     function testRedeemBondDAI() public {
         uint256 depositAmount = ONE_HUNDRED_D18;
-        uint256 redeemAmount = ((depositAmount * (1e6 + DAI_INTEREST_RATE)) /
-            1e6);
+        uint256 redeemAmount = ((depositAmount * (1e6 + DAI_INTEREST_RATE)) / 1e6);
         vm.warp(DAI_DEPOSIT_WINDOW_END);
 
         uint256 phoBalanceUserBefore = pho.balanceOf(user1);
@@ -331,8 +319,7 @@ contract ZeroCouponBondTest is BaseSetup {
     // Test basic redeem with with PHO
     function testRedeemBondPHO() public {
         uint256 depositAmount = ONE_HUNDRED_D18;
-        uint256 redeemAmount = ((depositAmount * (1e6 + PHO_INTEREST_RATE)) /
-            1e6);
+        uint256 redeemAmount = ((depositAmount * (1e6 + PHO_INTEREST_RATE)) / 1e6);
 
         vm.warp(PHO_DEPOSIT_WINDOW_END);
 
@@ -343,18 +330,10 @@ contract ZeroCouponBondTest is BaseSetup {
         phoZeroCouponBond.depositBond(depositAmount);
 
         uint256 phoBalanceUserAfterDeposit = pho.balanceOf(user1);
-        uint256 phoZCBBalanceAfterDeposit = pho.balanceOf(
-            address(phoZeroCouponBond)
-        );
+        uint256 phoZCBBalanceAfterDeposit = pho.balanceOf(address(phoZeroCouponBond));
 
-        assertEq(
-            phoBalanceUserAfterDeposit,
-            phoBalanceUserBefore - depositAmount
-        );
-        assertEq(
-            phoZCBBalanceAfterDeposit,
-            phoZCBBalanceBefore + depositAmount
-        );
+        assertEq(phoBalanceUserAfterDeposit, phoBalanceUserBefore - depositAmount);
+        assertEq(phoZCBBalanceAfterDeposit, phoZCBBalanceBefore + depositAmount);
 
         vm.warp(PHO_MATURITY);
 
@@ -362,18 +341,10 @@ contract ZeroCouponBondTest is BaseSetup {
         phoZeroCouponBond.redeemBond(redeemAmount);
 
         uint256 phoBalanceUserAfterRedeem = pho.balanceOf(user1);
-        uint256 phoZCBBalanceAfterRedeem = pho.balanceOf(
-            address(phoZeroCouponBond)
-        );
+        uint256 phoZCBBalanceAfterRedeem = pho.balanceOf(address(phoZeroCouponBond));
 
-        assertEq(
-            phoBalanceUserAfterRedeem,
-            phoBalanceUserAfterDeposit + redeemAmount
-        );
-        assertEq(
-            phoZCBBalanceAfterRedeem,
-            phoZCBBalanceAfterDeposit - redeemAmount
-        );
+        assertEq(phoBalanceUserAfterRedeem, phoBalanceUserAfterDeposit + redeemAmount);
+        assertEq(phoZCBBalanceAfterRedeem, phoZCBBalanceAfterDeposit - redeemAmount);
 
         assertEq(phoZeroCouponBond.issuedAmount(user1), 0);
     }
