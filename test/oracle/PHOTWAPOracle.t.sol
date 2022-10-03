@@ -10,13 +10,43 @@ import "@external/curve/ICurvePool.sol";
 import "@external/curve/ICurveFactory.sol";
 import "@oracle/PHOTWAPOracle.sol";
 
+contract PHOTWAPOracleExtended is PHOTWAPOracle {
+    constructor(
+        address _pho_address,
+        address _fraxBPPool,
+        address _fraxBPLPToken,
+        address _fraxAddress,
+        address _usdcAddress,
+        address _priceFeed,
+        uint256 _period,
+        address _dex_pool_address,
+        uint256 _priceUpdateThreshold
+    )
+        PHOTWAPOracle(
+            _pho_address,
+            _fraxBPPool,
+            _fraxBPLPToken,
+            _fraxAddress,
+            _usdcAddress,
+            _priceFeed,
+            _period,
+            _dex_pool_address,
+            _priceUpdateThreshold
+        )
+    {}
+
+    function getUSDPerFraxBP() public view returns (uint256) {
+        return _getUSDPerFraxBP();
+    }
+}
+
 /// @notice Basic tests assessing genesis PHOTWAPOracle
 /// @dev For function sigs in metapool, see an example here https://etherscan.io/address/0x497CE58F34605B9944E6b15EcafE6b001206fd25#code
 /// TODO - Write exhaustive tests ensuring this oracle is robust
 contract PHOTWAPOracleTest is BaseSetup {
     ICurvePool public curvePool;
     address public fraxBPPhoMetapoolAddress;
-    PHOTWAPOracle public phoTwapOracle;
+    PHOTWAPOracleExtended public phoTwapOracle;
 
     event PriceUpdated(uint256 indexed latestPHOUSDPrice, uint256 indexed blockTimestampLast);
     event PriceUpdateThresholdChanged(uint256 priceUpdateThreshold);
@@ -53,7 +83,7 @@ contract PHOTWAPOracleTest is BaseSetup {
         fraxBPPhoMetapool.add_liquidity(metaLiquidity, 0); // FraxBP-PHO metapool now at 66/33 split, respectively. Meaning 33/33/33 for underlying assets: USDC/Frax/PHO
 
         phoTwapOracle =
-        new PHOTWAPOracle(address(pho), FRAXBP_POOL, FRAXBP_LP_TOKEN, FRAX_ADDRESS, USDC_ADDRESS, address(priceFeed), period, fraxBPPhoMetapoolAddress, PRICE_THRESHOLD); // deploy PHOTWAPOracle
+        new PHOTWAPOracleExtended(address(pho), FRAXBP_POOL, FRAXBP_LP_TOKEN, FRAX_ADDRESS, USDC_ADDRESS, address(priceFeed), period, fraxBPPhoMetapoolAddress, PRICE_THRESHOLD); // deploy PHOTWAPOracle
         fraxBPPhoMetapool = phoTwapOracle.dexPool();
         pho.approve(fraxBPPhoMetapoolAddress, ONE_HUNDRED_THOUSAND_D18 * 5);
         fraxBPLP.approve(fraxBPPhoMetapoolAddress, ONE_HUNDRED_THOUSAND_D18 * 5);
@@ -77,6 +107,14 @@ contract PHOTWAPOracleTest is BaseSetup {
         assertEq(phoTwapOracle.priceUpdateThreshold(), PRICE_THRESHOLD);
         assertEq(phoTwapOracle.initOracle(), false);
         assertEq(0, phoTwapOracle.latestBlockTimestamp());
+    }
+
+    function testGetUSDPerFraxBP() public {
+        // around 1.0015 in D18
+        uint lpPrice = phoTwapOracle.getUSDPerFraxBP();
+        
+        assertTrue(lpPrice > 1e17);
+        assertTrue(lpPrice < 1e19);
     }
 
     /// updatePrice() tests
