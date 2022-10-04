@@ -9,12 +9,19 @@ import "@oracle/IPHOOracle.sol";
 import "@external/curve/ICurvePool.sol";
 import "@oracle/IPriceOracle.sol";
 
+import "../libraries/Decimal18.sol";
+
+import "forge-std/Test.sol";
+
 /// @title PHOTWAPOracle
 /// @notice Oracle exposing USD/PHO price using v1 Curve PHO/FraxBP Metapool TWAP Pair Oracle && USD PriceFeeds (USD/FRAX && USD/USDC)
 /// @author Ekonomia: https://github.com/Ekonomia
 /// TODO - Write exhaustive tests ensuring this oracle is robust
 /// NOTE - This TWAPOracle is kept simple for security sake. If dealing with new underlying assets and new metapool, create a new PHOTWAPOracle with appropriate new addresses.
 contract PHOTWAPOracle is IPHOOracle, Ownable {
+    using Decimal18 for uint256;
+    using Decimal18 for decimal18;
+
     IPHO public pho;
     ICurvePool public dexPool; // curve metapool oracle is pulling balances for twap
     ICurvePool public fraxBPPool; // frax basepool (USDC && Frax underlying assets) used for normalizing FraxBP price to USD with priceFeeds
@@ -168,15 +175,16 @@ contract PHOTWAPOracle is IPHOOracle, Ownable {
     /// @notice helper to get USD per FraxBP by checking underlying asset composition (FRAX and USDC)
     /// @return newest USD/FraxBP (normalized by d18) price answer derived from fraxBP balances and USD/Frax && USD/USDC priceFeeds
     function _getUSDPerFraxBP() internal view returns (uint256) {
-        uint256 fraxInFraxBP = fraxBPPool.balances(0); // FRAX - decimals: 18
-        uint256 usdcInFraxBP = fraxBPPool.balances(1); // USDC - decimals: 6
-        uint256 fraxPerFraxBP = fraxInFraxBP * PRICE_PRECISION / fraxBPLP.totalSupply(); // UNITS: (FRAX/FraxBP) - normalized by d18
-        uint256 usdcPerFraxBP =
-            usdcInFraxBP * PRICE_PRECISION * DECIMALS_DIFFERENCE / fraxBPLP.totalSupply(); // UNITS: (USDC/FraxBP) - normalized by d18
-        uint256 usdPerFraxBP = (
-            (fraxPerFraxBP * PRICE_PRECISION / priceFeeds.getPrice(fraxAddress))
-                + (usdcPerFraxBP * PRICE_PRECISION / priceFeeds.getPrice(usdcAddress))
-        ); // UNITS: (USD/FraxBP) - normalized by d18
-        return usdPerFraxBP;
+        // fetching token amounts in the FraxBP pool
+        decimal18 fraxBalance = fraxBPPool.balances(0).toDecimal18();
+        decimal18 usdcBalance = fraxBPPool.balances(1).toDecimal18({decimals: 6});
+
+        // chainlink prices of the tokens in FraxBP pool
+        decimal18 fraxPrice = priceFeeds.getPrice(fraxAddress).toDecimal18();
+        decimal18 usdcPrice = priceFeeds.getPrice(usdcAddress).toDecimal18();
+
+        // calculate total value in the pool and 
+        decimal18 poolTvlInUsd = fraxBalance.mul(fraxPrice).add(usdcBalance.mul(usdcPrice));
+        return poolTvlInUsd.div(fraxBPLP.totalSupply().toDecimal18()).toUint256();
     }
 }

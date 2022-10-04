@@ -110,11 +110,10 @@ contract PHOTWAPOracleTest is BaseSetup {
     }
 
     function testGetUSDPerFraxBP() public {
-        // around 1.0015 in D18
-        uint lpPrice = phoTwapOracle.getUSDPerFraxBP();
-        
+        uint256 lpPrice = phoTwapOracle.getUSDPerFraxBP();
         assertTrue(lpPrice > 1e17);
         assertTrue(lpPrice < 1e19);
+        assertEq(lpPrice, 1000076508143902696);
     }
 
     /// updatePrice() tests
@@ -329,17 +328,18 @@ contract PHOTWAPOracleTest is BaseSetup {
     /// @notice manual helper (similar to helper in PHOTWAPOracle.sol except with test vars)
     /// @return newest USD/FraxBP (normalized by d18) price answer derived from fraxBP balances and USD/Frax && USD/USDC priceFeeds
     function _getUSDPerFraxBP() internal returns (uint256) {
-        uint256 fraxInFraxBP = fraxBP.balances(0); // FRAX - decimals: 18
-        uint256 usdcInFraxBP = fraxBP.balances(1); // USDC - decimals: 6
-        uint256 fraxBPLPTotal = fraxBPLP.totalSupply();
-        uint256 fraxPerFraxBP = fraxInFraxBP * PHO_PRICE_PRECISION / fraxBPLPTotal; // UNITS: (FRAX/FraxBP) - normalized by d18
-        uint256 usdcPerFraxBP =
-            usdcInFraxBP * PHO_PRICE_PRECISION * DECIMALS_DIFFERENCE / fraxBPLPTotal; // UNITS: (USDC/FraxBP) - normalized by d18
-        uint256 usdPerFraxBP = (
-            ((fraxPerFraxBP * PHO_PRICE_PRECISION / priceFeed.getPrice(FRAX_ADDRESS)))
-                + (usdcPerFraxBP * PHO_PRICE_PRECISION / priceFeed.getPrice(USDC_ADDRESS))
-        ); // UNITS: (USD/FraxBP) - normalized by d18
-        return usdPerFraxBP;
+        return phoTwapOracle.getUSDPerFraxBP();
+    //     uint256 fraxInFraxBP = fraxBP.balances(0); // FRAX - decimals: 18
+    //     uint256 usdcInFraxBP = fraxBP.balances(1); // USDC - decimals: 6
+    //     uint256 fraxBPLPTotal = fraxBPLP.totalSupply();
+    //     uint256 fraxPerFraxBP = fraxInFraxBP * PHO_PRICE_PRECISION / fraxBPLPTotal; // UNITS: (FRAX/FraxBP) - normalized by d18
+    //     uint256 usdcPerFraxBP =
+    //         usdcInFraxBP * PHO_PRICE_PRECISION * DECIMALS_DIFFERENCE / fraxBPLPTotal; // UNITS: (USDC/FraxBP) - normalized by d18
+    //     uint256 usdPerFraxBP = (
+    //         ((fraxPerFraxBP * PHO_PRICE_PRECISION / priceFeed.getPrice(FRAX_ADDRESS)))
+    //             + (usdcPerFraxBP * PHO_PRICE_PRECISION / priceFeed.getPrice(USDC_ADDRESS))
+    //     ); // UNITS: (USD/FraxBP) - normalized by d18
+    //     return usdPerFraxBP;
     }
 
     /// @notice manual helper calc to compare against calcs within tested contract
