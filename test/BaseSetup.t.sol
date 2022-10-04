@@ -93,7 +93,7 @@ abstract contract BaseSetup is Test {
         if (bytes(RPC_URL).length == 0) {
             revert("Please provide RPC_URL in your .env file");
         }
-        uint256 fork = vm.createFork(RPC_URL);
+        uint256 fork = vm.createFork(RPC_URL, 15675000);
         vm.selectFork(fork);
 
         vm.startPrank(owner);
