@@ -4,9 +4,9 @@ pragma solidity ^0.8.13;
 interface IModuleManager {
     /// events
 
-    event ModuleAdded(address indexed addedModule);
-    event ModuleRemoved(address indexed removedModule);
-    event ModulePHOCeilingUpdated(address indexed module, uint256 newPHOCeiling);
+    event ModuleAdded(address indexed module);
+    event ModuleRemoved(address indexed module);
+    event PHOCeilingUpdated(address indexed module, uint256 newPHOCeiling);
 
     function mintPHO(uint256 _amount) external; // onlyModule
     function burnPHO(uint256 _amount) external; // onlyModule
