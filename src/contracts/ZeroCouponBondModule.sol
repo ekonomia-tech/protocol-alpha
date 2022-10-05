@@ -2,22 +2,24 @@
 
 pragma solidity ^0.8.13;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "../interfaces/IPHO.sol";
+import "../interfaces/IModule.sol";
 
-/// @title ZeroCouponBond
+/// @title ZeroCouponBondModule
 /// @author Ekonomia: https://github.com/ekonomia-tech
 /// @notice Example of simple fixed-expiry zero-coupon bond
-contract ZeroCouponBond is ERC20, Ownable, ReentrancyGuard {
+contract ZeroCouponBondModule is ERC20, Ownable, ReentrancyGuard {
     using SafeERC20 for ERC20;
 
     /// State vars
-    address public controller;
+    address public dispatcher;
+    address public teller;
     IPHO public pho; // depositors recieve pho
     address public depositToken; // assuming stablecoin deposits
     uint256 public interestRate; // 10 ** 6 scale
@@ -32,17 +34,15 @@ contract ZeroCouponBond is ERC20, Ownable, ReentrancyGuard {
     event BondRedeemed(address indexed redeemer, uint256 redeemAmount);
     event InterestRateSet(uint256 interestRate);
 
-    modifier onlyByOwnerOrController() {
-        require(
-            msg.sender == owner() || msg.sender == controller,
-            "ZeroCouponBond: not owner or controller"
-        );
+    modifier onlyDispatcher() {
+        require(msg.sender == dispatcher, "Only dispatcher");
         _;
     }
 
     /// Constructor
     constructor(
-        address _controller,
+        address _dispatcher,
+        address _teller,
         address _pho,
         address _depositToken,
         string memory _bondTokenName,
@@ -52,18 +52,19 @@ contract ZeroCouponBond is ERC20, Ownable, ReentrancyGuard {
         uint256 _maturityTimestamp
     ) ERC20(_bondTokenName, _bondTokenSymbol) {
         require(
-            _controller != address(0) && _pho != address(0) && _depositToken != address(0),
-            "ZeroCouponBond: zero address detected"
+            _dispatcher != address(0) && _teller != address(0) && _pho != address(0)
+                && _depositToken != address(0),
+            "Zero address detected"
         );
         require(
             _maturityTimestamp > block.timestamp && _depositWindowEnd > block.timestamp,
-            "ZeroCouponBond: timestamps must be in future"
+            "Timestamps must be in future"
         );
         depositToken = _depositToken;
         depositTokenDecimals = IERC20Metadata(_depositToken).decimals();
-        require(depositTokenDecimals <= 18, "ZeroCouponBond: depositToken must be < 18 decimals");
+        require(depositTokenDecimals <= 18, "DepositToken must be < 18 decimals");
         pho = IPHO(_pho);
-        controller = _controller;
+        dispatcher = _dispatcher;
         interestRate = _interestRate;
         depositWindowEnd = _depositWindowEnd;
         maturityTimestamp = _maturityTimestamp;
@@ -72,9 +73,7 @@ contract ZeroCouponBond is ERC20, Ownable, ReentrancyGuard {
     /// @notice user deposits for bond
     /// @param depositAmount deposit amount (in depositToken decimals)
     function depositBond(uint256 depositAmount) external nonReentrant {
-        require(
-            block.timestamp <= depositWindowEnd, "ZeroCouponBond: cannot deposit after window end"
-        );
+        require(block.timestamp <= depositWindowEnd, "Cannot deposit after window end");
         // scale if decimals < 18
         uint256 scaledDepositAmount = depositAmount;
         scaledDepositAmount = depositAmount * (10 ** (18 - depositTokenDecimals));
@@ -94,10 +93,8 @@ contract ZeroCouponBond is ERC20, Ownable, ReentrancyGuard {
     /// @notice user redeems their bond
     /// @param redeemAmount redeem amount - 18 decimals
     function redeemBond(uint256 redeemAmount) external nonReentrant {
-        require(
-            block.timestamp >= maturityTimestamp, "ZeroCouponBond: maturityTimestamp not reached"
-        );
-        require(redeemAmount <= issuedAmount[msg.sender], "ZeroCouponBond: cannot redeem > issued");
+        require(block.timestamp >= maturityTimestamp, "MaturityTimestamp not reached");
+        require(redeemAmount <= issuedAmount[msg.sender], "Cannot redeem > issued");
 
         issuedAmount[msg.sender] -= redeemAmount;
 
@@ -112,9 +109,22 @@ contract ZeroCouponBond is ERC20, Ownable, ReentrancyGuard {
 
     /// @notice set interest rate
     /// @param _interestRate interest rate to set
-    function setInterestRate(uint256 _interestRate) external onlyByOwnerOrController {
-        require(_interestRate > 0, "ZeroCouponBond: interest rate must be > 0");
+    function setInterestRate(uint256 _interestRate) external onlyDispatcher {
+        require(_interestRate > 0, "Interest rate must be > 0");
         interestRate = _interestRate;
         emit InterestRateSet(_interestRate);
+    }
+
+    /// @notice mint PHO
+    /// @param amount amount of PHO to mint
+    function mintPho(uint256 amount) external onlyDispatcher {
+        //teller.mintPHO(address(this), amount);
+    }
+
+    /// @notice burn PHO
+    /// @param amount amount of PHO to burn
+    function burnPho(uint256 amount) external onlyDispatcher {
+        //TODO: burnPho()
+        //teller.mintPHO(address(this), amount);
     }
 }
