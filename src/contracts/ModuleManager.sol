@@ -5,18 +5,17 @@ pragma solidity ^0.8.13;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../interfaces/IPHO.sol";
 import "../interfaces/IModuleManager.sol";
-import "../interfaces/IPhotonKernel.sol";
+import "../interfaces/IPHOTONKernel.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /// @title ModuleManager
 /// @notice Intermediary between Modules and PHOTONKernel
 /// @author Ekonomia: https://github.com/Ekonomia
-
 contract ModuleManager is IModuleManager, Ownable, ReentrancyGuard {
-    IPhotonKernel kernel;
+    IPHOTONKernel public kernel;
     address public PHOGovernance;
     address public TONGovernance;
-    uint256 public addModuleDelay;
+    uint256 public moduleDelay;
 
     enum Status {
         Unregistered,
@@ -25,7 +24,6 @@ contract ModuleManager is IModuleManager, Ownable, ReentrancyGuard {
     }
 
     struct Module {
-        bool registered;
         uint256 phoCeiling;
         uint256 phoMinted;
         uint256 startTime;
@@ -37,49 +35,41 @@ contract ModuleManager is IModuleManager, Ownable, ReentrancyGuard {
     /// modifiers
 
     modifier onlyModule() {
-        require(
-            registeredModules[msg.sender].status == Status.Registered,
-            "Only registered module can mint/burn PHO"
-        );
-        _;
-    }
-
-    modifier onlyKernel() {
-        require(msg.sender == address(kernel), "Only kernel");
+        if (registeredModules[msg.sender].status != Status.Registered) {
+            revert Unauthorized_NotRegisteredModule(msg.sender);
+        }
         _;
     }
 
     modifier onlyPHOGovernance() {
-        require(msg.sender == PHOGovernance, "Only PHOGovernance");
+        if (msg.sender != PHOGovernance) revert Unauthorized_NotPHOGovernance(msg.sender);
         _;
     }
 
     modifier onlyTONGovernance() {
-        require(msg.sender == TONGovernance, "Only TONGovernance");
+        if (msg.sender != TONGovernance) revert Unauthorized_NotTONGovernance(msg.sender);
         _;
     }
 
     // need kernel address to access it, and allow it to set things.
     constructor(address _photonKernel, address _PHOGovernance, address _TONGovernance) {
-        require(
-            _photonKernel != address(0) && _PHOGovernance != address(0)
-                && _TONGovernance != address(0),
-            "ModuleManager: zero address detected"
-        );
-        kernel = IPhotonKernel(_photonKernel);
+        if (
+            _photonKernel == address(0) || _PHOGovernance == address(0)
+                || _TONGovernance == address(0)
+        ) revert ZeroAddressDetected();
+        kernel = IPHOTONKernel(_photonKernel);
         PHOGovernance = _PHOGovernance;
         TONGovernance = _TONGovernance;
+        moduleDelay = 2 weeks;
     }
 
     /// @notice updates module accounting && mints PHO through PhotonKernel
     /// @param _amount total PHO to be minted
     function mintPHO(uint256 _amount) external override onlyModule nonReentrant {
-        require(_amount != 0, "ModuleManager: mint amount != 0");
+        require(_amount != 0, "Mint amount != 0");
+        if (_amount == 0) revert ZeroValueDetected();
         Module memory module = registeredModules[msg.sender];
-        require(
-            module.phoMinted + _amount <= module.phoCeiling,
-            "ModuleManager: module pho ceiling reached"
-        );
+        if (module.phoMinted + _amount > module.phoCeiling) revert MaxModulePHOCeilingExceeded();
         registeredModules[msg.sender].phoMinted = module.phoMinted + _amount;
         kernel.mintPHO(msg.sender, _amount);
     }
@@ -88,34 +78,32 @@ contract ModuleManager is IModuleManager, Ownable, ReentrancyGuard {
     /// @dev NOTE - assumes that PHO is being burnt from module calling burn
     /// @param _amount total PHO to be burned
     function burnPHO(uint256 _amount) external override onlyModule nonReentrant {
-        require(_amount != 0, "ModuleManager: burn amount != 0");
+        if (_amount == 0) revert ZeroValueDetected();
         Module memory module = registeredModules[msg.sender];
-        require(module.phoMinted - _amount >= 0, "Burning more PHO than module allows");
-        registeredModules[msg.sender].phoMinted = module.phoMinted - _amount;
+        if (module.phoMinted - _amount <= 0) revert Unauthorized_ModuleBurningTooMuchPHO();
         kernel.burnPHO(msg.sender, _amount);
+        registeredModules[msg.sender].phoMinted = module.phoMinted - _amount;
     }
 
     /// @notice adds new module to registry
     /// @param _newModule address of module to add
     function addModule(address _newModule) external override onlyPHOGovernance {
-        require(
-            registeredModules[_newModule].status != Status.Registered,
-            "ModuleManager: module already registered"
-        );
-        require(_newModule != address(0), "ModuleManage: zero address detected");
+        if (_newModule == address(0)) revert ZeroAddressDetected();
+        if (registeredModules[_newModule].status == Status.Registered) {
+            revert Unauthorized_AlreadyRegisteredModule();
+        }
         registeredModules[_newModule].status = Status.Registered;
-        registeredModules[_newModule].startTime = block.timestamp + addModuleDelay; // NOTE: initially 2 weeks
+        registeredModules[_newModule].startTime = block.timestamp + moduleDelay; // NOTE: initially 2 weeks
         emit ModuleAdded(_newModule);
     }
 
     /// @notice removes new module from registry
     /// @param _existingModule address of module to remove
     function removeModule(address _existingModule) external override onlyPHOGovernance {
-        require(
-            registeredModules[_existingModule].status == Status.Registered,
-            "ModuleManager: module not registered"
-        );
-        require(_existingModule != address(0), "ModuleManage: zero address detected");
+        if (_existingModule == address(0)) revert ZeroAddressDetected();
+        if (registeredModules[_existingModule].status != Status.Registered) {
+            revert Unauthorized_NotRegisteredModule(_existingModule);
+        }
         /// NOTE - not sure if we need to make sure _existingModule has no minted PHO outstanding
         registeredModules[_existingModule].status = Status.Deprecated;
         registeredModules[_existingModule].phoCeiling = 0;
@@ -131,13 +119,24 @@ contract ModuleManager is IModuleManager, Ownable, ReentrancyGuard {
         onlyTONGovernance
     {
         Module memory module = registeredModules[_module];
-        require(module.status == Status.Registered, "ModuleManager: module not registered");
-        require(_module != address(0), "ModuleManager: zero address detected");
-        require(
-            kernel.PHOCeiling() >= (kernel.totalPHOMinted() - module.phoCeiling + _newPHOCeiling),
-            "ModuleManager: kernel PHO ceiling exceeded"
-        );
+        if (_module == address(0)) revert ZeroAddressDetected();
+        if (module.status != Status.Registered) revert Unauthorized_NotRegisteredModule(_module);
+        if (
+            kernel.getPHOCeiling()
+                < (kernel.getTotalPHOMinted() - module.phoCeiling + _newPHOCeiling)
+        ) {
+            revert MaxKernelPHOCeilingExceeded();
+        }
         registeredModules[_module].phoCeiling = _newPHOCeiling;
-        emit ModulePHOCeilingUpdated(_module, _newPHOCeiling);
+        emit PHOCeilingUpdated(_module, _newPHOCeiling);
+    }
+
+    /// @notice set module delay
+    /// @param _newDelay proposed delay before a newly deployed && registered module is functional
+    function setModuleDelay(uint256 _newDelay) external override onlyOwner {
+        if (_newDelay == 0) revert ZeroValueDetected();
+        uint256 oldModuleDelay = moduleDelay;
+        moduleDelay = _newDelay;
+        emit UpdatedModuleDelay(moduleDelay, oldModuleDelay);
     }
 }
