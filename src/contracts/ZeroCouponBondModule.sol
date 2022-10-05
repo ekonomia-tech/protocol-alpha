@@ -78,10 +78,10 @@ contract ZeroCouponBondModule is ERC20, Ownable, ReentrancyGuard {
         uint256 scaledDepositAmount = depositAmount;
         scaledDepositAmount = depositAmount * (10 ** (18 - depositTokenDecimals));
 
-        // Transfer depositToken
+        // transfer depositToken
         ERC20(depositToken).safeTransferFrom(msg.sender, address(this), depositAmount);
 
-        // Mint ZCB to caller
+        // mint ZCB to caller
         uint256 mintAmount = (scaledDepositAmount * (INTEREST_RATE_PRECISION + interestRate))
             / INTEREST_RATE_PRECISION;
         issuedAmount[msg.sender] += mintAmount;
@@ -118,13 +118,14 @@ contract ZeroCouponBondModule is ERC20, Ownable, ReentrancyGuard {
     /// @notice mint PHO
     /// @param amount amount of PHO to mint
     function mintPho(uint256 amount) external onlyDispatcher {
+        //TODO: replace stub
         //teller.mintPHO(address(this), amount);
     }
 
     /// @notice burn PHO
     /// @param amount amount of PHO to burn
     function burnPho(uint256 amount) external onlyDispatcher {
-        //TODO: burnPho()
+        //TODO: replace stub
         //teller.mintPHO(address(this), amount);
     }
 }
