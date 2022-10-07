@@ -49,8 +49,7 @@ contract BondModuleTest is BaseSetup {
             protocol
         );
 
-        // User -> sends USDC to module
-        // Bond controller sends PHO to module
+        // User -> sends USDC to module (which has PHO)
         vm.prank(owner);
         teller.whitelistCaller(address(bondFixedExpiryModule), 200 * ONE_MILLION_D18);
         vm.prank(address(bondFixedExpiryModule));
@@ -61,7 +60,7 @@ contract BondModuleTest is BaseSetup {
         vm.prank(user1);
         ton.approve(address(bondFixedExpiryModule), 100 * TEN_THOUSAND_D18);
 
-        // Approval for bondController sending PHO to BondModule
+        // Approval for sending PHO to BondModule
         vm.prank(address(bondFixedExpiryModule));
         pho.approve(address(bondFixedExpiryModule), 100 * ONE_MILLION_D18);
 
@@ -385,6 +384,14 @@ contract BondModuleTest is BaseSetup {
 
     /// deploy()
 
+    /// Only owner can deploy
+    function testCannotDeployOnlyModuleOwner() public {
+        uint256 termEnd = block.timestamp + 100000;
+        vm.expectRevert("Ownable: caller is not the owner");
+        vm.prank(user1);
+        bondFixedExpiryModule.deploy(pho, termEnd);
+    }
+
     /// Basic example for deploy
     function testDeploy() public {
         uint256 termEnd = block.timestamp + 100000;
@@ -396,8 +403,6 @@ contract BondModuleTest is BaseSetup {
         assertEq(bond.termEnd(), termEnd);
         assertEq(address(bondFixedExpiryModule.bondTokens(pho, termEnd)), address(bond));
     }
-
-    /// create()
 
     /// redeem()
 

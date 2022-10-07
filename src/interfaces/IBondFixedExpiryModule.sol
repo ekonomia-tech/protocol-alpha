@@ -11,16 +11,7 @@ interface IBondFixedExpiryModule {
     /// @param amount_ amount to redeem
     function redeem(ERC20BondToken token_, uint256 amount_) external;
 
-    /// @notice deposit an ERC20 token and mint a future-dated ERC20 bond token
-    /// @param underlying_ ERC20 token redeemable when the bond token vests
-    /// @param termEnd timestamp at which the bond token can be redeemed for the underlying token
-    /// @param amount_ amount of underlying tokens to deposit
-    function create(ERC20 underlying_, uint256 termEnd, uint256 amount_)
-        external
-        returns (ERC20BondToken, uint256);
-
     /// @notice deploy a new ERC20 bond token for an (underlying, expiry) pair and return its address
-    /// @dev ERC20 used for fixed-expiry
     /// @dev if a bond token exists for the (underlying, expiry) pair, it returns that address
     /// @param underlying_ ERC20 token redeemable when the bond token vests
     /// @param termEnd timestamp at which the bond token can be redeemed for the underlying token

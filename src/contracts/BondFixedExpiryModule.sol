@@ -5,6 +5,7 @@ pragma solidity ^0.8.13;
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {BondBaseModule} from "./BondBaseModule.sol";
 import {IBondModule} from "../interfaces/IBondModule.sol";
 import {IBondFixedExpiryModule} from "../interfaces/IBondFixedExpiryModule.sol";
@@ -48,68 +49,41 @@ contract BondFixedExpiryModule is BondBaseModule, IBondFixedExpiryModule {
 
     /// @notice handle payout to recipient
     /// @param recipient address to receive payout
-    /// @param payout_ amount of payoutToken to be paid
+    /// @param payout amount of payoutToken to be paid
     /// @param payoutToken token to be paid out
     /// @param termEnd timestamp when the payout will vest
     /// @return termEnd timestamp when the payout will vest
-    function _handlePayout(address recipient, uint256 payout_, ERC20 payoutToken, uint256 termEnd)
+    function _handlePayout(address recipient, uint256 payout, ERC20 payoutToken, uint256 termEnd)
         internal
         override
         returns (uint256)
     {
         if (termEnd >= block.timestamp) {
-            bondTokens[payoutToken][termEnd].mint(recipient, payout_); // mint ERC20 for fixed termEnd
+            bondTokens[payoutToken][termEnd].mint(recipient, payout); // mint ERC20 for fixed termEnd
         } else {
-            payoutToken.transfer(recipient, payout_); // transfer payout to user
+            payoutToken.transfer(recipient, payout); // transfer payout to user
         }
         return termEnd;
-    }
-
-    /// Deposit / Mint
-
-    /// @inheritdoc IBondFixedExpiryModule
-    function create(ERC20 payoutToken, uint256 termEnd, uint256 amount_)
-        external
-        override
-        returns (ERC20BondToken, uint256)
-    {
-        ERC20BondToken bondToken = bondTokens[payoutToken][termEnd];
-        require(
-            bondToken == ERC20BondToken(address(0x00)),
-            "BondFixedExpiryDispatcher: Token does not exist"
-        ); // token must exist, must call deploy first
-        uint256 oldBalance = payoutToken.balanceOf(address(this)); // transfer payoutToken
-        payoutToken.transferFrom(msg.sender, address(this), amount_);
-        require(
-            payoutToken.balanceOf(address(this)) < oldBalance + amount_,
-            "BondFixedExpiryDispatcher: transfer not full"
-        );
-
-        // calculate fee and then mint bond tokens
-        if (protocolFee > 0) {
-            uint256 feeAmount = (amount_ * protocolFee) / FEE_DECIMALS;
-            rewards[_protocol][payoutToken] += feeAmount;
-            bondToken.mint(msg.sender, amount_ - feeAmount);
-            return (bondToken, amount_ - feeAmount);
-        } else {
-            bondToken.mint(msg.sender, amount_);
-            return (bondToken, amount_);
-        }
     }
 
     /// Redeem
 
     /// @inheritdoc IBondFixedExpiryModule
-    function redeem(ERC20BondToken token_, uint256 amount_) external override {
-        require(uint256(block.timestamp) >= token_.termEnd(), "cannot redeem before termEnd");
-        token_.burn(msg.sender, amount_);
-        token_.payoutToken().transfer(msg.sender, amount_);
+    function redeem(ERC20BondToken token, uint256 amount_) external override {
+        require(uint256(block.timestamp) >= token.termEnd(), "cannot redeem before termEnd");
+        token.burn(msg.sender, amount_);
+        token.payoutToken().transfer(msg.sender, amount_);
     }
 
     /// Tokenization
 
     /// @inheritdoc IBondFixedExpiryModule
-    function deploy(ERC20 payoutToken, uint256 termEnd) public override returns (ERC20BondToken) {
+    function deploy(ERC20 payoutToken, uint256 termEnd)
+        public
+        override
+        onlyOwner
+        returns (ERC20BondToken)
+    {
         // create bond token if one doesn't already exist
         ERC20BondToken bondToken = bondTokens[payoutToken][termEnd];
         if (bondToken == ERC20BondToken(address(0))) {

@@ -20,6 +20,7 @@ interface IBondModule {
     event MarketClosed(uint256 indexed id);
     event Tuned(uint256 indexed id, uint256 oldControlVariable, uint256 newControlVariable);
     event Bonded(uint256 indexed id, uint256 amount, uint256 payout);
+    event ProtocolFeeSet(uint256 protocolFee);
 
     /// State vars
 
@@ -89,13 +90,9 @@ interface IBondModule {
         external
         returns (uint256, uint256);
 
-    /// @notice current fee charged by the dispatcher based on the protocol fee
-    /// @return fee in bps (3 decimal places)
-    function getFee() external view returns (uint48);
-
     /// @notice set protocol fee
-    /// @param fee_ protocol fee in basis points (3 decimal places)
-    function setProtocolFee(uint48 fee_) external;
+    /// @param newProtocolFee protocol fee in basis points (10**6 scale)
+    function setProtocolFee(uint256 newProtocolFee) external;
 
     /// @notice register a new market
     /// @param payoutToken_ token to be paid out by the market

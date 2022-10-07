@@ -33,9 +33,9 @@ abstract contract BondBaseModule is IBondModule, Ownable {
     address public phoAddress;
     address public tonAddress;
     uint256 public marketCounter; // counter of bond markets for controller
-    uint48 public protocolFee; // fees paid to protocol, configureable by policy, must be > 30bps
+    uint256 public protocolFee; // fees paid to protocol, units of 10**6
 
-    uint48 internal constant FEE_DECIMALS = 10 ** 5; // 1% = 1000
+    uint256 internal constant FEE_DECIMALS = 10 ** 6; // 1% = 1000
     address internal immutable _protocol; // address protocol recieves fees at
 
     modifier onlyOwnerOrController() {
@@ -67,8 +67,9 @@ abstract contract BondBaseModule is IBondModule, Ownable {
     }
 
     /// @inheritdoc IBondModule
-    function setProtocolFee(uint48 fee_) external override onlyOwnerOrController {
-        protocolFee = fee_;
+    function setProtocolFee(uint256 newProtocolFee) external override onlyOwnerOrController {
+        protocolFee = newProtocolFee;
+        emit ProtocolFeeSet(newProtocolFee);
     }
 
     /// Market functions
@@ -100,11 +101,6 @@ abstract contract BondBaseModule is IBondModule, Ownable {
             rewards[msg.sender][token] = 0;
             token.transfer(to_, send);
         }
-    }
-
-    /// @inheritdoc IBondModule
-    function getFee() public view returns (uint48) {
-        return protocolFee;
     }
 
     /// @inheritdoc IBondModule
@@ -200,12 +196,8 @@ abstract contract BondBaseModule is IBondModule, Ownable {
         uint256 maxDiscount;
         (payoutToken, quoteToken, termEnd, maxDiscount) = getMarketInfoForPurchase(marketId);
         // User sends quoteToken worth amount
-        // Check balance to ensure full amount recieved
         uint256 quoteBalance = quoteToken.balanceOf(address(this));
         quoteToken.safeTransferFrom(msg.sender, address(this), amount);
-        if (quoteToken.balanceOf(address(this)) < quoteBalance + amount) {
-            revert FullBalanceNotRecieved();
-        }
 
         //
         uint256 payoutBalance = payoutToken.balanceOf(address(this));
