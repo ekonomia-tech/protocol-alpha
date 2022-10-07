@@ -3,7 +3,7 @@
 pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "../interfaces/ITeller.sol";
+import "../interfaces/IKernel.sol";
 import "../interfaces/IDispatcher.sol";
 import "../interfaces/IVault.sol";
 import "./PHO.sol";
@@ -13,7 +13,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 /// @author Ekonomia: https://github.com/Ekonomia
 
 contract Dispatcher is IDispatcher, Ownable {
-    ITeller public teller;
+    IKernel public kernel;
     IPHO public pho;
 
     /// token => vault address
@@ -21,10 +21,8 @@ contract Dispatcher is IDispatcher, Ownable {
     uint256 public constant PRICE_PRECISION = 10 ** 6;
 
     /// @param _phoAddress the address of the $PHO token contract
-    /// @param _tellerAddress the address of the minting privileged teller contract
-    constructor(address _phoAddress, address _tellerAddress) {
+    constructor(address _phoAddress) {
         pho = IPHO(_phoAddress);
-        teller = ITeller(_tellerAddress);
     }
 
     /// @notice mint 1 $PHO to 1 USD collateral value provided the collateral
@@ -46,7 +44,7 @@ contract Dispatcher is IDispatcher, Ownable {
         require(phoAmountOut > minPHOOut, "Dispatcher: max slippage reached");
 
         collateral.transferFrom(msg.sender, address(vault), amountIn);
-        teller.mintPHO(msg.sender, phoAmountOut);
+        kernel.mintPHO(msg.sender, phoAmountOut);
 
         emit Dispatched(msg.sender, tokenIn, amountIn, phoAmountOut);
     }
@@ -98,12 +96,12 @@ contract Dispatcher is IDispatcher, Ownable {
         emit VaultRemoved(vaultToRemove);
     }
 
-    /// @notice setting the teller address that the dispatcher requests minting from
-    /// @param tellerAddress the address of the teller to be set
-    function setTeller(address tellerAddress) external onlyOwner {
-        require(tellerAddress != address(0), "Dispatcher: zero address detected");
-        require(tellerAddress != address(teller), "Dispatcher: same address detected");
-        teller = ITeller(tellerAddress);
-        emit TellerUpdated(tellerAddress);
+    /// @notice setting the kernel address that the dispatcher requests minting from
+    /// @param kernelAddress the address of the kernel to be set
+    function setKernel(address kernelAddress) external onlyOwner {
+        require(kernelAddress != address(0), "Dispatcher: zero address detected");
+        require(kernelAddress != address(kernel), "Dispatcher: same address detected");
+        kernel = IKernel(kernelAddress);
+        emit KernelUpdated(kernelAddress);
     }
 }

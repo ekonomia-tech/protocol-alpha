@@ -6,10 +6,10 @@ import "./BaseSetup.t.sol";
 // error Unauthorized();
 
 contract PHOTest is BaseSetup {
-    event TellerSet(address indexed teller);
+    event KernelSet(address indexed kernel);
 
     function setUp() public {
-        vm.prank(address(teller));
+        vm.prank(address(kernel));
         pho.mint(user1, TEN_THOUSAND_D18);
     }
     /// setup tests
@@ -35,7 +35,7 @@ contract PHOTest is BaseSetup {
         uint256 user1BalanceBefore = pho.balanceOf(user1);
         uint256 totalSupplyBefore = pho.totalSupply();
 
-        vm.prank(address(teller));
+        vm.prank(address(kernel));
         pho.mint(user1, ONE_HUNDRED_D18 * 5);
 
         uint256 totalSupplyAfter = pho.totalSupply();
@@ -45,42 +45,42 @@ contract PHOTest is BaseSetup {
         assertEq(user1BalanceAfter, user1BalanceBefore + ONE_HUNDRED_D18 * 5);
     }
 
-    function testCannotMintNotTeller() public {
-        vm.expectRevert("PHO: caller is not the teller");
+    function testCannotMintNotKernel() public {
+        vm.expectRevert("PHO: caller is not the kernel");
         vm.prank(user1);
         pho.mint(user1, ONE_HUNDRED_D18 * 5);
     }
 
-    /// setTeller()
+    /// setKernel()
 
-    function setTeller() public {
+    function setKernel() public {
         vm.startPrank(owner);
-        address initialTeller = pho.teller();
+        address initialKernel = pho.kernel();
         vm.expectEmit(true, false, false, true);
-        emit TellerSet(owner);
-        pho.setTeller(owner);
+        emit KernelSet(owner);
+        pho.setKernel(owner);
 
-        assertTrue(initialTeller != pho.teller());
-        assertEq(pho.teller(), owner);
+        assertTrue(initialKernel != pho.kernel());
+        assertEq(pho.kernel(), owner);
         vm.stopPrank();
     }
 
-    function testCannotSetTellerAddressZero() public {
+    function testCannotSetKernelAddressZero() public {
         vm.expectRevert("PHO: zero address detected");
         vm.prank(owner);
-        pho.setTeller(address(0));
+        pho.setKernel(address(0));
     }
 
-    function testCannotSetTellerNotAllowed() public {
+    function testCannotSetKernelNotAllowed() public {
         vm.expectRevert("Ownable: caller is not the owner");
         vm.prank(user1);
-        pho.setTeller(address(0));
+        pho.setKernel(address(0));
     }
 
-    function testCannotSetTellerSameAddress() public {
-        address currentTeller = pho.teller();
+    function testCannotSetKernelSameAddress() public {
+        address currentKernel = pho.kernel();
         vm.expectRevert("PHO: same address detected");
         vm.prank(owner);
-        pho.setTeller(currentTeller);
+        pho.setKernel(currentKernel);
     }
 }
