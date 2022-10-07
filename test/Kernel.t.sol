@@ -149,7 +149,6 @@ contract KernelTest is BaseSetup {
         kernel.updateDispatcherDelay(4 weeks);
     }
 
-
     /// updateDispatcher()
 
     function testUpdateDispatcher() public {
@@ -177,6 +176,4 @@ contract KernelTest is BaseSetup {
         vm.prank(TONGovernance);
         kernel.updateDispatcher(address(dispatcher));
     }
-
-
 }
