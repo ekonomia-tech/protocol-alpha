@@ -14,6 +14,7 @@ import "src/contracts/Vault.sol";
 import "src/oracle/ChainlinkPriceFeed.sol";
 import "src/oracle/PHOTWAPOracle.sol";
 import "src/interfaces/IPHOOracle.sol";
+import "src/contracts/Kernel.sol";
 
 abstract contract BaseSetup is Test {
     struct Balance {
@@ -25,6 +26,7 @@ abstract contract BaseSetup is Test {
     PHO public pho;
     TON public ton;
     Teller public teller;
+    Kernel public kernel;
     DummyOracle public priceOracle;
     ChainlinkPriceFeed public priceFeed;
     Dispatcher dispatcher;
@@ -36,6 +38,8 @@ abstract contract BaseSetup is Test {
     ICurvePool fraxBP;
     ICurveFactory curveFactory;
     ICurvePool fraxBPPhoMetapool;
+    address public moduleManager = address(104);
+    address public TONGovernance = address(105);
 
     address public owner = 0xed320Bf569E5F3c4e9313391708ddBFc58e296bb;
     address public timelock_address = address(100);
@@ -103,11 +107,11 @@ abstract contract BaseSetup is Test {
         pho = new PHO("PHO", "PHO");
         ton = new TON("TON", "TON");
 
-        teller = new Teller(address(pho), tellerCeiling);
-        pho.setTeller(address(teller));
+        dispatcher = new Dispatcher(address(pho));
+        kernel = new Kernel(address(pho), moduleManager, address(dispatcher), TONGovernance);
 
-        dispatcher = new Dispatcher(address(pho), address(teller));
-        teller.whitelistCaller(address(dispatcher), 2000 * TEN_THOUSAND_D18);
+        dispatcher.setKernel(address(kernel));
+        pho.setKernel(address(kernel));
 
         usdcVault = new Vault(address(pho), USDC_ADDRESS, address(priceOracle));
         fraxVault = new Vault(address(pho), FRAX_ADDRESS, address(priceOracle));

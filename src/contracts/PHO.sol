@@ -10,10 +10,10 @@ import "../interfaces/IPHO.sol";
 /// @author Ekonomia: https://github.com/Ekonomia
 
 contract PHO is IPHO, ERC20Burnable, Ownable {
-    address public teller;
+    address public kernel;
 
-    modifier onlyTeller() {
-        require(teller == msg.sender, "PHO: caller is not the teller");
+    modifier onlyKernel() {
+        require(kernel == msg.sender, "PHO: caller is not the kernel");
         _;
     }
 
@@ -22,7 +22,7 @@ contract PHO is IPHO, ERC20Burnable, Ownable {
     /// @notice mint new $PHO tokens
     /// @param to the user to mint $PHO to
     /// @param amount the amount to mint
-    function mint(address to, uint256 amount) external onlyTeller {
+    function mint(address to, uint256 amount) external onlyKernel {
         super._mint(to, amount);
     }
 
@@ -30,11 +30,11 @@ contract PHO is IPHO, ERC20Burnable, Ownable {
         super.burnFrom(account, amount);
     }
 
-    /// @notice set the teller address, which will be the only address capable of minting
-    function setTeller(address newTeller) external onlyOwner {
-        require(newTeller != address(0), "PHO: zero address detected");
-        require(newTeller != teller, "PHO: same address detected");
-        teller = newTeller;
-        emit TellerSet(teller);
+    /// @notice set the kernel address, which will be the only address capable of minting
+    function setKernel(address newKernel) external onlyOwner {
+        require(newKernel != address(0), "PHO: zero address detected");
+        require(newKernel != kernel, "PHO: same address detected");
+        kernel = newKernel;
+        emit KernelSet(kernel);
     }
 }

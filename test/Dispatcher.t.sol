@@ -5,7 +5,7 @@ import "./BaseSetup.t.sol";
 import "src/contracts/Vault.sol";
 
 contract DispatcherTest is BaseSetup {
-    event TellerUpdated(address indexed tellerAddress);
+    event KernelUpdated(address indexed kernelAddress);
     event VaultAdded(address indexed vault);
     event VaultRemoved(address indexed vault);
     event Dispatched(
@@ -27,7 +27,7 @@ contract DispatcherTest is BaseSetup {
         uint256 usdcVaultBalanceBefore = usdc.balanceOf(address(usdcVault));
         uint256 user1USDCBalanceBefore = usdc.balanceOf(user1);
         uint256 user1PHOBalanceBefore = pho.balanceOf(user1);
-        uint256 tellerDispatcherMintBalanceBefore = teller.mintingBalances(address(dispatcher));
+        // uint256 kernelDispatcherMintBalanceBefore = kernel.mintingBalances(address(dispatcher));
 
         vm.expectEmit(true, true, false, true);
         emit Dispatched(user1, USDC_ADDRESS, amountIn, TEN_THOUSAND_D18);
@@ -37,14 +37,14 @@ contract DispatcherTest is BaseSetup {
         uint256 usdcVaultBalanceAfter = usdc.balanceOf(address(usdcVault));
         uint256 user1USDCBalanceAfter = usdc.balanceOf(user1);
         uint256 user1PHOBalanceAfter = pho.balanceOf(user1);
-        uint256 tellerDispatcherMintBalanceAfter = teller.mintingBalances(address(dispatcher));
+        // uint256 kernelDispatcherMintBalanceAfter = kernel.mintingBalances(address(dispatcher));
 
         assertEq(usdcVaultBalanceAfter, usdcVaultBalanceBefore + amountIn);
         assertEq(user1USDCBalanceAfter, user1USDCBalanceBefore - amountIn);
         assertEq(user1PHOBalanceAfter, user1PHOBalanceBefore + TEN_THOUSAND_D18);
-        assertEq(
-            tellerDispatcherMintBalanceAfter, tellerDispatcherMintBalanceBefore + TEN_THOUSAND_D18
-        );
+        // assertEq(
+        //     kernelDispatcherMintBalanceAfter, kernelDispatcherMintBalanceBefore + TEN_THOUSAND_D18
+        // );
     }
 
     function testDispatchCollateralFRAX() public {
@@ -61,7 +61,7 @@ contract DispatcherTest is BaseSetup {
         uint256 fraxVaultBalanceBefore = frax.balanceOf(address(fraxVault));
         uint256 user1FRAXBalanceBefore = frax.balanceOf(user1);
         uint256 user1PHOBalanceBefore = pho.balanceOf(user1);
-        uint256 tellerDispatcherMintBalanceBefore = teller.mintingBalances(address(dispatcher));
+        // uint256 kernelDispatcherMintBalanceBefore = kernel.mintingBalances(address(dispatcher));
 
         vm.expectEmit(true, true, false, true);
         emit Dispatched(user1, FRAX_ADDRESS, amountIn, TEN_THOUSAND_D18);
@@ -71,14 +71,14 @@ contract DispatcherTest is BaseSetup {
         uint256 fraxVaultBalanceAfter = frax.balanceOf(address(fraxVault));
         uint256 user1FRAXBalanceAfter = frax.balanceOf(user1);
         uint256 user1PHOBalanceAfter = pho.balanceOf(user1);
-        uint256 tellerDispatcherMintBalanceAfter = teller.mintingBalances(address(dispatcher));
+        // uint256 kernelDispatcherMintBalanceAfter = kernel.mintingBalances(address(dispatcher));
 
         assertEq(fraxVaultBalanceAfter, fraxVaultBalanceBefore + amountIn);
         assertEq(user1FRAXBalanceAfter, user1FRAXBalanceBefore - amountIn);
         assertEq(user1PHOBalanceAfter, user1PHOBalanceBefore + TEN_THOUSAND_D18);
-        assertEq(
-            tellerDispatcherMintBalanceAfter, tellerDispatcherMintBalanceBefore + TEN_THOUSAND_D18
-        );
+        // assertEq(
+        //     kernelDispatcherMintBalanceAfter, kernelDispatcherMintBalanceBefore + TEN_THOUSAND_D18
+        // );
     }
 
     function testCannotDispatchCollateralZeroAddress() public {
@@ -254,36 +254,36 @@ contract DispatcherTest is BaseSetup {
         dispatcher.removeVault(address(usdcVault));
     }
 
-    /// setTeller()
+    /// setKernel()
 
-    function setTeller() public {
+    function setKernel() public {
         vm.startPrank(owner);
-        address initialTeller = address(dispatcher.teller());
+        address initialKernel = address(dispatcher.kernel());
         vm.expectEmit(true, false, false, true);
-        emit TellerUpdated(owner);
-        dispatcher.setTeller(owner);
+        emit KernelUpdated(owner);
+        dispatcher.setKernel(owner);
 
-        assertTrue(initialTeller != address(dispatcher.teller()));
-        assertEq(address(dispatcher.teller()), owner);
+        assertTrue(initialKernel != address(dispatcher.kernel()));
+        assertEq(address(dispatcher.kernel()), owner);
         vm.stopPrank();
     }
 
-    function testCannotSetTellerAddressZero() public {
+    function testCannotSetKernelAddressZero() public {
         vm.expectRevert("Dispatcher: zero address detected");
         vm.prank(owner);
-        dispatcher.setTeller(address(0));
+        dispatcher.setKernel(address(0));
     }
 
-    function testCannotSetTellerNotAllowed() public {
+    function testCannotSetKernelNotAllowed() public {
         vm.expectRevert("Ownable: caller is not the owner");
         vm.prank(user1);
-        dispatcher.setTeller(address(0));
+        dispatcher.setKernel(address(0));
     }
 
-    function testCannotSetTellerSameAddress() public {
-        address currentTeller = address(dispatcher.teller());
+    function testCannotSetKernelSameAddress() public {
+        address currentKernel = address(dispatcher.kernel());
         vm.expectRevert("Dispatcher: same address detected");
         vm.prank(owner);
-        dispatcher.setTeller(currentTeller);
+        dispatcher.setKernel(currentKernel);
     }
 }

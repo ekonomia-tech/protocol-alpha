@@ -4,9 +4,9 @@ pragma solidity ^0.8.13;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 interface IPHO is IERC20Metadata {
-    event TellerSet(address indexed teller);
+    event KernelSet(address indexed kernel);
 
     function mint(address to, uint256 amount) external;
-    function setTeller(address newTeller) external;
+    function setKernel(address newKernel) external;
     function burnFrom(address account, uint256 amount) external;
 }

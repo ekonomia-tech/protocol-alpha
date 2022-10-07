@@ -2,7 +2,12 @@
 pragma solidity ^0.8.13;
 
 interface IDispatcher {
-    event TellerUpdated(address indexed tellerAddress);
+    error ZeroAddressDetected();
+    error ZeroValueDetected();
+    error TokenNotAccepted();
+    error MaxSlippageReached();
+
+    event KernelUpdated(address indexed kernelAddress);
     event VaultAdded(address indexed vault);
     event VaultRemoved(address indexed vault);
     event Dispatched(
@@ -16,5 +21,5 @@ interface IDispatcher {
     function redeemPHO(address tokenOut, uint256 amount, uint256 minCollateralOut) external;
     function addVault(address vault) external;
     function removeVault(address vault) external;
-    function setTeller(address tellerAddress) external;
+    function setKernel(address kernelAddress) external;
 }
