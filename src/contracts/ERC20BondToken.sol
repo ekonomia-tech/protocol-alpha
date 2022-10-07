@@ -10,12 +10,12 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 /// @dev ERC20 tokens for fixed term bonds
 contract ERC20BondToken is ERC20, Ownable {
     uint8 internal _decimals;
-    ERC20 public underlying;
-    uint48 public expiry;
-    address public dispatcher;
+    ERC20 public payoutToken;
+    uint256 public termEnd;
+    address public module;
 
-    modifier onlyDispatcher() {
-        require(msg.sender == dispatcher, "ERC20BondToken: caller is not the dispatcher");
+    modifier onlyModule() {
+        require(msg.sender == module, "ERC20BondToken: caller is not the module");
         _;
     }
 
@@ -24,14 +24,14 @@ contract ERC20BondToken is ERC20, Ownable {
         string memory _name,
         string memory _symbol,
         uint8 __decimals,
-        ERC20 _underlying,
-        uint48 _expiry,
-        address _dispatcher
+        ERC20 _payoutToken,
+        uint256 _termEnd,
+        address _module
     ) ERC20(_name, _symbol) {
         _decimals = __decimals;
-        underlying = _underlying;
-        expiry = _expiry;
-        dispatcher = _dispatcher;
+        payoutToken = _payoutToken;
+        termEnd = _termEnd;
+        module = _module;
     }
 
     function decimals() public view virtual override returns (uint8) {
@@ -41,11 +41,11 @@ contract ERC20BondToken is ERC20, Ownable {
     /// @notice mint new bond tokens
     /// @param to the user to mint to
     /// @param amount the amount to mint
-    function mint(address to, uint256 amount) external onlyDispatcher {
+    function mint(address to, uint256 amount) external onlyModule {
         super._mint(to, amount);
     }
 
-    function burn(address from, uint256 amount) external onlyDispatcher {
+    function burn(address from, uint256 amount) external onlyModule {
         _burn(from, amount);
     }
 }

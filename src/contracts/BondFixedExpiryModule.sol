@@ -3,29 +3,27 @@
 pragma solidity ^0.8.13;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {BondBaseModule} from "./BondBaseModule.sol";
 import {IBondModule} from "../interfaces/IBondModule.sol";
 import {IBondFixedExpiryModule} from "../interfaces/IBondFixedExpiryModule.sol";
-import {TransferHelper} from "../libraries/TransferHelper.sol";
 import {BondUtils} from "../libraries/BondUtils.sol";
-import {FullMath} from "../libraries/FullMath.sol";
 import {ERC20BondToken} from "./ERC20BondToken.sol";
 
 /// @title Bond Fixed Expiry Module
 /// @author Ekonomia: https://github.com/ekonomia-tech
-/// @dev An implementation of the BondBaseModule for bond markets that vest with a fixed expiry
+/// @dev An implementation of the BondBaseModule for bond markets with fixed termEnd
 contract BondFixedExpiryModule is BondBaseModule, IBondFixedExpiryModule {
-    using TransferHelper for ERC20;
-    using FullMath for uint256;
+    using SafeERC20 for ERC20;
 
     /// Events
     event ERC20BondTokenCreated(
-        ERC20BondToken bondToken, ERC20 indexed underlying, uint48 indexed expiry
+        ERC20BondToken bondToken, ERC20 indexed payoutToken, uint256 indexed termEnd
     );
 
     /// State vars
-    mapping(ERC20 => mapping(uint48 => ERC20BondToken)) public bondTokens; // ERC20 bond tokens
+    mapping(ERC20 => mapping(uint256 => ERC20BondToken)) public bondTokens; // ERC20 bond tokens
 
     /// Constructor
     constructor(
@@ -40,8 +38,8 @@ contract BondFixedExpiryModule is BondBaseModule, IBondFixedExpiryModule {
         MarketParams memory params = abi.decode(params_, (MarketParams));
         uint256 marketId = _createMarket(params);
 
-        // create ERC20 fixed expiry bond token
-        deploy(params.payoutToken, params.vesting);
+        // create ERC20 fixed termEnd bond token
+        deploy(params.payoutToken, params.termEnd);
 
         return marketId;
     }
@@ -49,50 +47,48 @@ contract BondFixedExpiryModule is BondBaseModule, IBondFixedExpiryModule {
     /// Purchase
 
     /// @notice handle payout to recipient
-    /// @param recipient_ address to receive payout
+    /// @param recipient address to receive payout
     /// @param payout_ amount of payoutToken to be paid
-    /// @param underlying_ token to be paid out
-    /// @param vesting_ timestamp when the payout will vest
-    /// @return expiry timestamp when the payout will vest
-    function _handlePayout(address recipient_, uint256 payout_, ERC20 underlying_, uint48 vesting_)
+    /// @param payoutToken token to be paid out
+    /// @param termEnd timestamp when the payout will vest
+    /// @return termEnd timestamp when the payout will vest
+    function _handlePayout(address recipient, uint256 payout_, ERC20 payoutToken, uint256 termEnd)
         internal
         override
-        returns (uint48)
+        returns (uint256)
     {
-        uint48 expiry;
-        if (vesting_ > uint48(block.timestamp)) {
-            expiry = vesting_;
-            bondTokens[underlying_][expiry].mint(recipient_, payout_); // mint ERC20 for fixed expiry
+        if (termEnd >= block.timestamp) {
+            bondTokens[payoutToken][termEnd].mint(recipient, payout_); // mint ERC20 for fixed termEnd
         } else {
-            underlying_.transfer(recipient_, payout_); // transfer payout to user
+            payoutToken.transfer(recipient, payout_); // transfer payout to user
         }
-        return expiry;
+        return termEnd;
     }
 
     /// Deposit / Mint
 
     /// @inheritdoc IBondFixedExpiryModule
-    function create(ERC20 underlying_, uint48 expiry_, uint256 amount_)
+    function create(ERC20 payoutToken, uint256 termEnd, uint256 amount_)
         external
         override
         returns (ERC20BondToken, uint256)
     {
-        ERC20BondToken bondToken = bondTokens[underlying_][expiry_];
+        ERC20BondToken bondToken = bondTokens[payoutToken][termEnd];
         require(
             bondToken == ERC20BondToken(address(0x00)),
             "BondFixedExpiryDispatcher: Token does not exist"
         ); // token must exist, must call deploy first
-        uint256 oldBalance = underlying_.balanceOf(address(this)); // transfer underlying
-        underlying_.transferFrom(msg.sender, address(this), amount_);
+        uint256 oldBalance = payoutToken.balanceOf(address(this)); // transfer payoutToken
+        payoutToken.transferFrom(msg.sender, address(this), amount_);
         require(
-            underlying_.balanceOf(address(this)) < oldBalance + amount_,
+            payoutToken.balanceOf(address(this)) < oldBalance + amount_,
             "BondFixedExpiryDispatcher: transfer not full"
         );
 
         // calculate fee and then mint bond tokens
         if (protocolFee > 0) {
-            uint256 feeAmount = amount_.mulDiv(protocolFee, FEE_DECIMALS);
-            rewards[_protocol][underlying_] += feeAmount;
+            uint256 feeAmount = (amount_ * protocolFee) / FEE_DECIMALS;
+            rewards[_protocol][payoutToken] += feeAmount;
             bondToken.mint(msg.sender, amount_ - feeAmount);
             return (bondToken, amount_ - feeAmount);
         } else {
@@ -105,33 +101,30 @@ contract BondFixedExpiryModule is BondBaseModule, IBondFixedExpiryModule {
 
     /// @inheritdoc IBondFixedExpiryModule
     function redeem(ERC20BondToken token_, uint256 amount_) external override {
-        require(
-            uint48(block.timestamp) >= token_.expiry(),
-            "BondFixedExpiryDispatcher: cannot redeem before expiry"
-        );
+        require(uint256(block.timestamp) >= token_.termEnd(), "cannot redeem before termEnd");
         token_.burn(msg.sender, amount_);
-        token_.underlying().transfer(msg.sender, amount_);
+        token_.payoutToken().transfer(msg.sender, amount_);
     }
 
     /// Tokenization
 
     /// @inheritdoc IBondFixedExpiryModule
-    function deploy(ERC20 underlying_, uint48 expiry_) public override returns (ERC20BondToken) {
+    function deploy(ERC20 payoutToken, uint256 termEnd) public override returns (ERC20BondToken) {
         // create bond token if one doesn't already exist
-        ERC20BondToken bondToken = bondTokens[underlying_][expiry_];
+        ERC20BondToken bondToken = bondTokens[payoutToken][termEnd];
         if (bondToken == ERC20BondToken(address(0))) {
             (string memory name, string memory symbol) =
-                BondUtils._getNameAndSymbol(underlying_, expiry_);
+                BondUtils._getNameAndSymbol(payoutToken, termEnd);
             bondToken = new ERC20BondToken(
                 name,
                 symbol,
-                IERC20Metadata(underlying_).decimals(),
-                underlying_,
-                expiry_,
+                IERC20Metadata(payoutToken).decimals(),
+                payoutToken,
+                termEnd,
                 address(this)
             );
-            bondTokens[underlying_][expiry_] = bondToken;
-            emit ERC20BondTokenCreated(bondToken, underlying_, expiry_);
+            bondTokens[payoutToken][termEnd] = bondToken;
+            emit ERC20BondTokenCreated(bondToken, payoutToken, termEnd);
         }
         return bondToken;
     }
@@ -143,7 +136,7 @@ contract BondFixedExpiryModule is BondBaseModule, IBondFixedExpiryModule {
         override
         returns (ERC20BondToken)
     {
-        (ERC20 underlying,, uint48 vesting,) = getMarketInfoForPurchase(marketId);
-        return bondTokens[underlying][vesting];
+        (ERC20 payoutToken,, uint256 termEnd,) = getMarketInfoForPurchase(marketId);
+        return bondTokens[payoutToken][termEnd];
     }
 }
