@@ -11,8 +11,8 @@ import {ModuleManager} from "../src/contracts/ModuleManager.sol";
 contract ModuleManagerTest is BaseSetup {
     PHOTONKernel public photonKernel;
     ModuleManager public moduleManager;
-    address public PHOGovernance; // move to BaseSetup
-    address public TONGovernance; // move to BaseSetup
+    address public PHOGovernance; // probably move to BaseSetup
+    address public TONGovernance; // probably move to BaseSetup
 
     /// errors
 
@@ -28,10 +28,14 @@ contract ModuleManagerTest is BaseSetup {
 
     /// events
 
+    event Transfer(address indexed from, address indexed to, uint256 value);
+
     event ModuleAdded(address indexed module);
     event ModuleRemoved(address indexed module);
     event PHOCeilingUpdated(address indexed module, uint256 newPHOCeiling);
     event UpdatedModuleDelay(uint256 newDelay, uint256 oldDelay);
+    event Minted(address module, uint256 amount);
+    event Burned(address module, uint256 amount);
 
     struct Module {
         uint256 phoCeiling;
@@ -58,12 +62,12 @@ contract ModuleManagerTest is BaseSetup {
         vm.prank(PHOGovernance);
         moduleManager.addModule(owner);
 
-        (,, uint256 startTime, ModuleManager.Status status) = moduleManager.registeredModules(owner);
+        (,, uint256 startTime, ModuleManager.Status status) = moduleManager.modules(owner);
         assertEq(uint8(status), uint8(Status.Registered));
         assertEq(startTime, block.timestamp + moduleManager.moduleDelay());
         vm.prank(TONGovernance);
         moduleManager.setPHOCeilingForModule(owner, ONE_MILLION_D18);
-        (uint256 newPhoCeiling,,,) = moduleManager.registeredModules(owner);
+        (uint256 newPhoCeiling,,,) = moduleManager.modules(owner);
         assertEq(newPhoCeiling, ONE_MILLION_D18);
     }
 
@@ -93,14 +97,16 @@ contract ModuleManagerTest is BaseSetup {
         vm.stopPrank();
     }
 
-    // check that new PHO was minted and accounted for
     function testMintPHO() public {
         vm.startPrank(owner);
         assertEq(pho.balanceOf(owner), 0);
-        (, uint256 phoMinted,,) = moduleManager.registeredModules(owner);
+        (, uint256 phoMinted,,) = moduleManager.modules(owner);
         assertEq(phoMinted, 0);
+        vm.expectEmit(true, false, false, true);
+        emit Transfer(address(0), owner, ONE_HUNDRED_THOUSAND_D18);
+        emit Minted(owner, ONE_HUNDRED_THOUSAND_D18);
         moduleManager.mintPHO(ONE_HUNDRED_THOUSAND_D18);
-        (, uint256 newPhoMinted,,) = moduleManager.registeredModules(owner);
+        (, uint256 newPhoMinted,,) = moduleManager.modules(owner);
         assertEq(pho.balanceOf(owner), ONE_HUNDRED_THOUSAND_D18);
         assertEq(newPhoMinted, ONE_HUNDRED_THOUSAND_D18);
         vm.stopPrank();
@@ -113,7 +119,7 @@ contract ModuleManagerTest is BaseSetup {
         moduleManager.mintPHO(TEN_THOUSAND_D18);
         moduleManager.mintPHO(ONE_HUNDRED_D18);
 
-        (, uint256 newPhoMinted,,) = moduleManager.registeredModules(owner);
+        (, uint256 newPhoMinted,,) = moduleManager.modules(owner);
         uint256 sum = ONE_HUNDRED_THOUSAND_D18 + TEN_THOUSAND_D18 + ONE_HUNDRED_D18;
         assertEq(pho.balanceOf(owner), sum);
         assertEq(newPhoMinted, sum);
@@ -143,7 +149,6 @@ contract ModuleManagerTest is BaseSetup {
     function testCannotBurnPastZero() public {
         vm.startPrank(owner);
         vm.expectRevert(abi.encodeWithSelector(Unauthorized_ModuleBurningTooMuchPHO.selector));
-        // vm.expectRevert("Arithmetic over/underflow");
         moduleManager.burnPHO(ONE_MILLION_D18 * 2);
         vm.stopPrank();
     }
@@ -154,14 +159,17 @@ contract ModuleManagerTest is BaseSetup {
         vm.startPrank(owner);
         assertEq(pho.balanceOf(owner), ONE_HUNDRED_THOUSAND_D18);
 
-        (, uint256 phoMinted,,) = moduleManager.registeredModules(owner);
+        (, uint256 phoMinted,,) = moduleManager.modules(owner);
 
         assertEq(phoMinted, ONE_HUNDRED_THOUSAND_D18);
         pho.approve(address(photonKernel), pho.balanceOf(owner));
+        vm.expectEmit(true, false, false, true);
+        emit Transfer(owner, address(0), TEN_THOUSAND_D18 * 5);
+        emit Burned(owner, TEN_THOUSAND_D18 * 5);
         moduleManager.burnPHO(TEN_THOUSAND_D18 * 5);
         assertEq(pho.balanceOf(owner), expectedModulePHO);
 
-        (, uint256 newPhoMinted,,) = moduleManager.registeredModules(owner);
+        (, uint256 newPhoMinted,,) = moduleManager.modules(owner);
 
         assertEq(newPhoMinted, expectedModulePHO);
         vm.stopPrank();
@@ -176,7 +184,7 @@ contract ModuleManagerTest is BaseSetup {
         moduleManager.burnPHO(TEN_THOUSAND_D18);
         moduleManager.burnPHO(TEN_THOUSAND_D18);
         assertEq(pho.balanceOf(owner), expectedModulePHO);
-        (, uint256 phoMinted,,) = moduleManager.registeredModules(owner);
+        (, uint256 phoMinted,,) = moduleManager.modules(owner);
 
         assertEq(phoMinted, expectedModulePHO);
         vm.stopPrank();
@@ -186,15 +194,13 @@ contract ModuleManagerTest is BaseSetup {
 
     function testCannotAddRegisteredModule() public {
         vm.startPrank(PHOGovernance);
-        (,,, ModuleManager.Status status) = moduleManager.registeredModules(owner);
+        (,,, ModuleManager.Status status) = moduleManager.modules(owner);
         assertEq(uint8(status), uint8(Status.Registered));
 
         vm.expectRevert(abi.encodeWithSelector(Unauthorized_AlreadyRegisteredModule.selector));
         moduleManager.addModule(owner);
-        (,,, ModuleManager.Status newStatus) = moduleManager.registeredModules(owner);
-        assertEq(uint8(newStatus), uint8(Status.Registered));
-
-        // check that status hasn't changed
+        (,,, ModuleManager.Status newStatus) = moduleManager.modules(owner);
+        assertEq(uint8(newStatus), uint8(Status.Registered)); // check that status hasn't changed
         vm.stopPrank();
     }
 
@@ -212,19 +218,17 @@ contract ModuleManagerTest is BaseSetup {
         vm.stopPrank();
     }
 
-    // TODO - do we need to test that minting, burning, settingPHOCeiling, works on newly added modules? Seems redundant but it is possible user flow. For now, not doing it.
     function testAddModule() public {
         vm.startPrank(PHOGovernance);
 
-        (,,, ModuleManager.Status status) = moduleManager.registeredModules(user1);
+        (,,, ModuleManager.Status status) = moduleManager.modules(user1);
         assertEq(uint8(status), uint8(Status.Unregistered));
 
         vm.expectEmit(true, false, false, true);
         emit ModuleAdded(user1);
         moduleManager.addModule(user1);
 
-        (,, uint256 newStartTime, ModuleManager.Status newStatus) =
-            moduleManager.registeredModules(user1);
+        (,, uint256 newStartTime, ModuleManager.Status newStatus) = moduleManager.modules(user1);
         assertEq(uint8(newStatus), uint8(Status.Registered));
         assertEq(newStartTime, block.timestamp + moduleManager.moduleDelay());
         vm.stopPrank();
@@ -235,12 +239,12 @@ contract ModuleManagerTest is BaseSetup {
     function testCannotRemoveUnRegisteredModule() public {
         vm.startPrank(PHOGovernance);
 
-        (,,, ModuleManager.Status status) = moduleManager.registeredModules(user1);
+        (,,, ModuleManager.Status status) = moduleManager.modules(user1);
         assertEq(uint8(status), uint8(Status.Unregistered));
 
         vm.expectRevert(abi.encodeWithSelector(Unauthorized_NotRegisteredModule.selector, user1));
         moduleManager.removeModule(user1);
-        (,,, ModuleManager.Status newStatus) = moduleManager.registeredModules(user1);
+        (,,, ModuleManager.Status newStatus) = moduleManager.modules(user1);
         assertEq(uint8(newStatus), uint8(Status.Unregistered)); // check that status hasn't changed
         vm.stopPrank();
     }
@@ -262,15 +266,14 @@ contract ModuleManagerTest is BaseSetup {
     function testRemoveModule() public {
         vm.startPrank(PHOGovernance);
 
-        (uint256 phoCeiling,,, ModuleManager.Status status) = moduleManager.registeredModules(owner);
+        (,,, ModuleManager.Status status) = moduleManager.modules(owner);
         assertEq(uint8(status), uint8(Status.Registered));
 
         vm.expectEmit(true, false, false, true);
         emit ModuleRemoved(owner);
         moduleManager.removeModule(owner);
 
-        (uint256 newPhoCeiling,,, ModuleManager.Status newStatus) =
-            moduleManager.registeredModules(owner);
+        (uint256 newPhoCeiling,,, ModuleManager.Status newStatus) = moduleManager.modules(owner);
         assertEq(uint8(newStatus), uint8(Status.Deprecated));
 
         // TODO - do we need an endTime for modules when they are deprecated?
@@ -318,7 +321,7 @@ contract ModuleManagerTest is BaseSetup {
         emit PHOCeilingUpdated(owner, expectedPHOCeiling);
         moduleManager.setPHOCeilingForModule(owner, ONE_MILLION_D18 * 10);
 
-        (uint256 phoCeiling,,,) = moduleManager.registeredModules(owner);
+        (uint256 phoCeiling,,,) = moduleManager.modules(owner);
 
         assertEq(phoCeiling, expectedPHOCeiling);
         vm.stopPrank();

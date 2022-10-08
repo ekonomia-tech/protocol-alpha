@@ -17,6 +17,7 @@ contract ModuleManager is IModuleManager, Ownable, ReentrancyGuard {
     address public TONGovernance;
     uint256 public moduleDelay;
 
+    // TODO - Niv's questions: what are the status' of modules really? When we stop using a module, is it just deprecated? I think he was saying something like decomissioned. They mean the same thing to me. Registered means active. Unregistered means they were never active.
     enum Status {
         Unregistered,
         Registered,
@@ -30,12 +31,12 @@ contract ModuleManager is IModuleManager, Ownable, ReentrancyGuard {
         Status status;
     }
 
-    mapping(address => Module) public registeredModules;
+    mapping(address => Module) public modules;
 
     /// modifiers
 
     modifier onlyModule() {
-        if (registeredModules[msg.sender].status != Status.Registered) {
+        if (modules[msg.sender].status != Status.Registered) {
             revert Unauthorized_NotRegisteredModule(msg.sender);
         }
         _;
@@ -68,10 +69,11 @@ contract ModuleManager is IModuleManager, Ownable, ReentrancyGuard {
     function mintPHO(uint256 _amount) external override onlyModule nonReentrant {
         require(_amount != 0, "Mint amount != 0");
         if (_amount == 0) revert ZeroValueDetected();
-        Module memory module = registeredModules[msg.sender];
+        Module memory module = modules[msg.sender];
         if (module.phoMinted + _amount > module.phoCeiling) revert MaxModulePHOCeilingExceeded();
-        registeredModules[msg.sender].phoMinted = module.phoMinted + _amount;
+        modules[msg.sender].phoMinted = module.phoMinted + _amount;
         kernel.mintPHO(msg.sender, _amount);
+        emit Minted(msg.sender, _amount);
     }
 
     /// @notice updates module accounting && burns PHO through PhotonKernel
@@ -79,21 +81,22 @@ contract ModuleManager is IModuleManager, Ownable, ReentrancyGuard {
     /// @param _amount total PHO to be burned
     function burnPHO(uint256 _amount) external override onlyModule nonReentrant {
         if (_amount == 0) revert ZeroValueDetected();
-        Module memory module = registeredModules[msg.sender];
-        if (module.phoMinted - _amount <= 0) revert Unauthorized_ModuleBurningTooMuchPHO();
+        Module memory module = modules[msg.sender];
+        if ((module.phoMinted <= _amount)) revert Unauthorized_ModuleBurningTooMuchPHO();
         kernel.burnPHO(msg.sender, _amount);
-        registeredModules[msg.sender].phoMinted = module.phoMinted - _amount;
+        modules[msg.sender].phoMinted = module.phoMinted - _amount;
+        emit Burned(msg.sender, _amount);
     }
 
     /// @notice adds new module to registry
     /// @param _newModule address of module to add
     function addModule(address _newModule) external override onlyPHOGovernance {
         if (_newModule == address(0)) revert ZeroAddressDetected();
-        if (registeredModules[_newModule].status == Status.Registered) {
+        if (modules[_newModule].status == Status.Registered) {
             revert Unauthorized_AlreadyRegisteredModule();
         }
-        registeredModules[_newModule].status = Status.Registered;
-        registeredModules[_newModule].startTime = block.timestamp + moduleDelay; // NOTE: initially 2 weeks
+        modules[_newModule].status = Status.Registered;
+        modules[_newModule].startTime = block.timestamp + moduleDelay; // NOTE: initially 2 weeks
         emit ModuleAdded(_newModule);
     }
 
@@ -101,12 +104,12 @@ contract ModuleManager is IModuleManager, Ownable, ReentrancyGuard {
     /// @param _existingModule address of module to remove
     function removeModule(address _existingModule) external override onlyPHOGovernance {
         if (_existingModule == address(0)) revert ZeroAddressDetected();
-        if (registeredModules[_existingModule].status != Status.Registered) {
+        if (modules[_existingModule].status != Status.Registered) {
             revert Unauthorized_NotRegisteredModule(_existingModule);
         }
         /// NOTE - not sure if we need to make sure _existingModule has no minted PHO outstanding
-        registeredModules[_existingModule].status = Status.Deprecated;
-        registeredModules[_existingModule].phoCeiling = 0;
+        modules[_existingModule].status = Status.Deprecated;
+        modules[_existingModule].phoCeiling = 0;
         emit ModuleRemoved(_existingModule);
     }
 
@@ -118,16 +121,16 @@ contract ModuleManager is IModuleManager, Ownable, ReentrancyGuard {
         override
         onlyTONGovernance
     {
-        Module memory module = registeredModules[_module];
+        Module memory module = modules[_module];
         if (_module == address(0)) revert ZeroAddressDetected();
         if (module.status != Status.Registered) revert Unauthorized_NotRegisteredModule(_module);
         if (
             kernel.getPHOCeiling()
-                < (kernel.getTotalPHOMinted() - module.phoCeiling + _newPHOCeiling)
+                < (kernel.getTotalPHOMinted() + _newPHOCeiling - module.phoCeiling)
         ) {
             revert MaxKernelPHOCeilingExceeded();
         }
-        registeredModules[_module].phoCeiling = _newPHOCeiling;
+        modules[_module].phoCeiling = _newPHOCeiling;
         emit PHOCeilingUpdated(_module, _newPHOCeiling);
     }
 

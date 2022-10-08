@@ -19,6 +19,8 @@ interface IModuleManager {
     event ModuleRemoved(address indexed module);
     event PHOCeilingUpdated(address indexed module, uint256 newPHOCeiling);
     event UpdatedModuleDelay(uint256 newDelay, uint256 oldDelay);
+    event Minted(address indexed module, uint256 amount);
+    event Burned(address indexed module, uint256 amount);
 
     function mintPHO(uint256 _amount) external; // onlyModule
     function burnPHO(uint256 _amount) external; // onlyModule
