@@ -31,6 +31,7 @@ abstract contract BaseSetup is Test {
     Vault usdcVault;
     Vault fraxVault;
     IERC20 usdc;
+    IERC20 dai;
     IERC20 frax;
     IERC20 fraxBPLP;
     ICurvePool fraxBP;
@@ -45,6 +46,7 @@ abstract contract BaseSetup is Test {
     address public user3 = address(3);
     address public dummyAddress = address(4);
     address public richGuy = 0x72A53cDBBcc1b9efa39c834A540550e23463AAcB;
+    address public daiWhale = 0xc08a8a9f809107c5A7Be6d90e315e4012c99F39a;
     address public metaPoolFactoryAddress = 0xB9fC157394Af804a3578134A6585C0dc9cc990d4;
     address public fraxRichGuy = 0xd3d176F7e4b43C70a68466949F6C64F06Ce75BB9;
 
@@ -54,6 +56,7 @@ abstract contract BaseSetup is Test {
     address public constant FRAXBP_LP_TOKEN = 0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC;
     address public constant FRAXBP_POOL = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
     address public constant FRAXBP_LUSD = 0x497CE58F34605B9944E6b15EcafE6b001206fd25;
+    address public constant DAI_ADDRESS = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
 
     address public constant ETH_NULL_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address public constant PRICEFEED_ETHUSD = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
@@ -61,6 +64,7 @@ abstract contract BaseSetup is Test {
     address public constant PRICEFEED_FRAXUSD = 0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD;
 
     uint256 public constant ONE_D6 = 10 ** 6;
+    uint256 public constant ONE_HUNDRED_D6 = 100 * 10 ** 6;
     uint256 public constant ONE_HUNDRED_D18 = 100 * 10 ** 18;
     uint256 public constant ONE_THOUSAND_D18 = 1000 * 10 ** 18;
     uint256 public constant ONE_THOUSAND_D6 = 1000 * 10 ** 6;
@@ -119,6 +123,7 @@ abstract contract BaseSetup is Test {
         fraxVault.whitelistCaller(address(dispatcher));
 
         usdc = IERC20(USDC_ADDRESS);
+        dai = IERC20(DAI_ADDRESS);
         frax = IERC20(FRAX_ADDRESS);
 
         priceFeed = new ChainlinkPriceFeed(PRECISION_DIFFERENCE);
@@ -156,6 +161,26 @@ abstract contract BaseSetup is Test {
     ) internal {
         _getUSDC(_owner, _amountIn);
         _approveUSDC(_owner, _spender, _amountOut);
+    }
+
+    function _getDAI(address to, uint256 _amount) internal {
+        vm.prank(daiWhale);
+        dai.transfer(to, _amount);
+    }
+
+    function _approveDAI(address _owner, address _spender, uint256 _amount) internal {
+        vm.prank(_owner);
+        dai.approve(_spender, _amount);
+    }
+
+    function _fundAndApproveDAI(
+        address _owner,
+        address _spender,
+        uint256 _amountIn,
+        uint256 _amountOut
+    ) internal {
+        _getDAI(_owner, _amountIn);
+        _approveDAI(_owner, _spender, _amountOut);
     }
 
     function _getTON(address _to, uint256 _amount) internal {
