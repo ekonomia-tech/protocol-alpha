@@ -108,7 +108,7 @@ abstract contract BaseSetup is Test {
         ton = new TON("TON", "TON");
 
         dispatcher = new Dispatcher(address(pho));
-        kernel = new Kernel(address(pho), moduleManager, address(dispatcher), TONGovernance);
+        kernel = new Kernel(address(pho), moduleManager, TONGovernance);
 
         dispatcher.setKernel(address(kernel));
         pho.setKernel(address(kernel));

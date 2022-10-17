@@ -2,7 +2,6 @@
 
 import "../interfaces/IKernel.sol";
 import "../interfaces/IPHO.sol";
-import "../interfaces/IDispatcher.sol";
 
 contract Kernel is IKernel {
     IPHO public pho;
@@ -10,10 +9,8 @@ contract Kernel is IKernel {
     // uint256 PHOCeiling;
     // uint256 totalPHOMinted;
     uint256 public moduleManagerDelay = 4 weeks;
-    uint256 public dispatcherDelay = 4 weeks;
     uint256 public moduleDelay = 2 weeks;
 
-    IDispatcher public dispatcher;
     address public moduleManager;
     address public TONGovernance;
 
@@ -29,12 +26,13 @@ contract Kernel is IKernel {
 
     /// @param _pho the $PHO contract address
     /// @param _moduleManager the address of the current module manager
-    /// @param _dispatcher the address of the current deployed dispatcher
     /// @param _TONGovernance the governance address for $TON
-    constructor(address _pho, address _moduleManager, address _dispatcher, address _TONGovernance) {
+    constructor(address _pho, address _moduleManager, address _TONGovernance) {
+        if (_pho == address(0) || _moduleManager == address(0) || _TONGovernance == address(0)) {
+            revert ZeroAddressDetected();
+        }
         pho = IPHO(_pho);
         moduleManager = _moduleManager;
-        dispatcher = IDispatcher(_dispatcher);
         TONGovernance = _TONGovernance;
     }
 
@@ -71,24 +69,6 @@ contract Kernel is IKernel {
         if (newDelay == moduleManagerDelay) revert SameValueDetected();
         moduleManagerDelay = newDelay;
         emit ModuleManagerDelayUpdated(newDelay);
-    }
-
-    /// @notice function to update the dispatcher delay for updating a dispatcher
-    /// @param newDelay the new delay in seconds
-    function updateDispatcherDelay(uint256 newDelay) external onlyTONGovernance {
-        if (newDelay == 0) revert ZeroValueDetected();
-        if (newDelay == dispatcherDelay) revert SameValueDetected();
-        dispatcherDelay = newDelay;
-        emit DispatcherDelayUpdated(newDelay);
-    }
-
-    /// @notice update the dispatcher address in the kernel
-    /// @param newDispatcher the new dispatcher address
-    function updateDispatcher(address newDispatcher) external onlyTONGovernance {
-        if (newDispatcher == address(0)) revert ZeroAddressDetected();
-        if (newDispatcher == address(dispatcher)) revert SameAddressDetected();
-        dispatcher = IDispatcher(newDispatcher);
-        emit DispatcherUpdated(newDispatcher);
     }
 
     /// @notice update the module manager address in the kernel
