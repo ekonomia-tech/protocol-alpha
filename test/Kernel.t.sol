@@ -15,9 +15,7 @@ contract KernelTest is BaseSetup {
     error Unauthorized_NotTONGovernance(address caller);
 
     event ModuleManagerDelayUpdated(uint256 newDelay);
-    event DispatcherDelayUpdated(uint256 newDelay);
     event ModuleDelayUpdated(uint256 newDelay);
-    event DispatcherUpdated(address indexed newDispatcher);
     event ModuleManagerUpdated(address indexed newModuleManager);
 
     /// mintPHO()
@@ -119,61 +117,5 @@ contract KernelTest is BaseSetup {
         vm.expectRevert(abi.encodeWithSelector(SameValueDetected.selector));
         vm.prank(TONGovernance);
         kernel.updateModuleManagerDelay(4 weeks);
-    }
-
-    /// updateDispatcherDelay()
-
-    function testUpdateDispatcherDelay() public {
-        uint256 newDelay = 2 weeks;
-        vm.expectEmit(true, false, false, true);
-        emit DispatcherDelayUpdated(newDelay);
-        vm.prank(TONGovernance);
-        kernel.updateDispatcherDelay(newDelay);
-    }
-
-    function testCannotUpdateDispatcherDelayUnauthorized() public {
-        vm.expectRevert(abi.encodeWithSelector(Unauthorized_NotTONGovernance.selector, user1));
-        vm.prank(user1);
-        kernel.updateDispatcherDelay(2 weeks);
-    }
-
-    function testCannotUpdateDispatcherDelayZeroValue() public {
-        vm.expectRevert(abi.encodeWithSelector(ZeroValueDetected.selector));
-        vm.prank(TONGovernance);
-        kernel.updateDispatcherDelay(0);
-    }
-
-    function testCannotUpdateDispatcherDelaySameValue() public {
-        vm.expectRevert(abi.encodeWithSelector(SameValueDetected.selector));
-        vm.prank(TONGovernance);
-        kernel.updateDispatcherDelay(4 weeks);
-    }
-
-    /// updateDispatcher()
-
-    function testUpdateDispatcher() public {
-        address newDispatcher = address(205);
-        vm.expectEmit(true, false, false, true);
-        emit DispatcherUpdated(newDispatcher);
-        vm.prank(TONGovernance);
-        kernel.updateDispatcher(newDispatcher);
-    }
-
-    function testCannotAddDispatcherUnauthorized() public {
-        vm.expectRevert(abi.encodeWithSelector(Unauthorized_NotTONGovernance.selector, user1));
-        vm.prank(user1);
-        kernel.updateDispatcher(address(205));
-    }
-
-    function testCannotAddDispatcherZeroAddress() public {
-        vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
-        vm.prank(TONGovernance);
-        kernel.updateDispatcher(address(0));
-    }
-
-    function testCannotAddDispatcherSameAddress() public {
-        vm.expectRevert(abi.encodeWithSelector(SameAddressDetected.selector));
-        vm.prank(TONGovernance);
-        kernel.updateDispatcher(address(dispatcher));
     }
 }
