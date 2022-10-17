@@ -21,7 +21,8 @@ contract StablecoinDepositModuleTest is BaseSetup {
         address indexed stablecoin, address indexed redeemer, uint256 redeemAmount
     );
 
-    StablecoinDepositModule public generalStablecoinDepositModule;
+    StablecoinDepositModule public usdcStablecoinDepositModule;
+    StablecoinDepositModule public daiStablecoinDepositModule;
 
     /// private functions
     function _whitelistCaller(address caller, uint256 ceiling) private {
@@ -34,8 +35,17 @@ contract StablecoinDepositModuleTest is BaseSetup {
         _whitelistCaller(user1, ONE_HUNDRED_D18);
 
         vm.prank(owner);
-        generalStablecoinDepositModule = new StablecoinDepositModule(
+        usdcStablecoinDepositModule = new StablecoinDepositModule(
             address(owner),
+            address(usdc),
+            address(teller),
+            address(pho)
+        );
+
+        vm.prank(owner);
+        daiStablecoinDepositModule = new StablecoinDepositModule(
+            address(owner),
+            address(dai),
             address(teller),
             address(pho)
         );
@@ -52,36 +62,31 @@ contract StablecoinDepositModuleTest is BaseSetup {
 
         // Approve sending USDC to USDC Deposit contract
         vm.prank(user1);
-        usdc.approve(address(generalStablecoinDepositModule), TEN_THOUSAND_D6);
+        usdc.approve(address(usdcStablecoinDepositModule), TEN_THOUSAND_D6);
         // Approve sending DAI to DAI Deposit contract
         vm.prank(user1);
-        dai.approve(address(generalStablecoinDepositModule), TEN_THOUSAND_D18);
+        dai.approve(address(daiStablecoinDepositModule), TEN_THOUSAND_D18);
 
         // Allow sending PHO (redemptions) to each StablecoinDeposit contract
         vm.prank(user1);
-        pho.approve(address(generalStablecoinDepositModule), TEN_THOUSAND_D18);
+        pho.approve(address(usdcStablecoinDepositModule), TEN_THOUSAND_D18);
         vm.prank(user1);
-        pho.approve(address(generalStablecoinDepositModule), TEN_THOUSAND_D18);
+        pho.approve(address(daiStablecoinDepositModule), TEN_THOUSAND_D18);
 
         // Mint PHO to USDC Deposit contract
         vm.prank(owner);
-        teller.mintPHO(address(generalStablecoinDepositModule), ONE_THOUSAND_D18);
+        teller.mintPHO(address(usdcStablecoinDepositModule), ONE_THOUSAND_D18);
         // Mint PHO to DAI Deposit contract
         vm.prank(owner);
-        teller.mintPHO(address(generalStablecoinDepositModule), ONE_THOUSAND_D18);
-
-        // Whitelist stablecoins
-        vm.prank(owner);
-        generalStablecoinDepositModule.addStablecoin(address(usdc));
-        vm.prank(owner);
-        generalStablecoinDepositModule.addStablecoin(address(dai));
+        teller.mintPHO(address(daiStablecoinDepositModule), ONE_THOUSAND_D18);
     }
 
     // Cannot set any 0 addresses for constructor
     function testCannotMakeStablecoinDepositModuleWithZeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
         vm.prank(user1);
-        generalStablecoinDepositModule = new StablecoinDepositModule(
+        usdcStablecoinDepositModule = new StablecoinDepositModule(
+            address(owner),
             address(0),
             address(teller),
             address(pho)
@@ -89,53 +94,21 @@ contract StablecoinDepositModuleTest is BaseSetup {
 
         vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
         vm.prank(user1);
-        generalStablecoinDepositModule = new StablecoinDepositModule(
+        usdcStablecoinDepositModule = new StablecoinDepositModule(
             address(owner),
+            address(usdc),
             address(0),
             address(pho)
         );
 
         vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
         vm.prank(user1);
-        generalStablecoinDepositModule = new StablecoinDepositModule(
+        usdcStablecoinDepositModule = new StablecoinDepositModule(
             address(owner),
+            address(usdc),
             address(teller),
             address(0)
         );
-    }
-
-    // Cannot add to whitelist unless owner
-    function testAddToWhitelistOnlyOwner() public {
-        vm.expectRevert("Ownable: caller is not the owner");
-        vm.prank(user1);
-        generalStablecoinDepositModule.addStablecoin(address(fraxBP));
-    }
-
-    // Basic add to whitelist test
-    function testAddToWhitelist() public {
-        vm.expectEmit(true, true, true, true);
-        emit StablecoinWhitelisted(address(fraxBP));
-        vm.prank(owner);
-        generalStablecoinDepositModule.addStablecoin(address(fraxBP));
-        assertEq(generalStablecoinDepositModule.stablecoinWhitelist(address(fraxBP)), true);
-    }
-
-    // Cannot remove from whitelist unless owner
-    function testRemoveFromWhitelistOnlyOwner() public {
-        vm.expectRevert("Ownable: caller is not the owner");
-        vm.prank(user1);
-        generalStablecoinDepositModule.removeStablecoin(address(fraxBP));
-    }
-
-    // Basic remove from whitelist test
-    function testRemoveFromWhitelist() public {
-        vm.expectEmit(true, true, true, true);
-        emit StablecoinDelisted(address(fraxBP));
-        vm.prank(owner);
-        generalStablecoinDepositModule.addStablecoin(address(fraxBP));
-        vm.prank(owner);
-        generalStablecoinDepositModule.removeStablecoin(address(fraxBP));
-        assertEq(generalStablecoinDepositModule.stablecoinWhitelist(address(fraxBP)), false);
     }
 
     // Basic deposit for non-18 decimals
@@ -146,11 +119,9 @@ contract StablecoinDepositModuleTest is BaseSetup {
         vm.expectEmit(true, true, true, true);
         emit StablecoinDeposited(address(usdc), user1, depositAmount);
         vm.prank(user1);
-        generalStablecoinDepositModule.depositStablecoin(address(usdc), depositAmount);
+        usdcStablecoinDepositModule.depositStablecoin(depositAmount);
         // check expected mint amount
-        assertEq(
-            generalStablecoinDepositModule.issuedAmount(address(usdc), user1), expectedIssuedAmount
-        );
+        assertEq(usdcStablecoinDepositModule.issuedAmount(user1), expectedIssuedAmount);
     }
 
     // Basic deposit for standard 18 decimals
@@ -158,8 +129,8 @@ contract StablecoinDepositModuleTest is BaseSetup {
         uint256 depositAmount = ONE_HUNDRED_D18;
         // deposit
         vm.prank(user1);
-        generalStablecoinDepositModule.depositStablecoin(address(dai), depositAmount);
-        assertEq(generalStablecoinDepositModule.issuedAmount(address(dai), user1), depositAmount);
+        daiStablecoinDepositModule.depositStablecoin(depositAmount);
+        assertEq(daiStablecoinDepositModule.issuedAmount(user1), depositAmount);
     }
 
     // Cannot redeem more than issued
@@ -167,10 +138,10 @@ contract StablecoinDepositModuleTest is BaseSetup {
         uint256 depositAmount = ONE_HUNDRED_D6;
         uint256 redeemAmount = depositAmount * 10 ** 12;
         vm.prank(user1);
-        generalStablecoinDepositModule.depositStablecoin(address(usdc), depositAmount / 2);
+        usdcStablecoinDepositModule.depositStablecoin(depositAmount / 2);
         vm.expectRevert(abi.encodeWithSelector(CannotRedeemMoreThanDeposited.selector));
         vm.prank(user1);
-        generalStablecoinDepositModule.redeemStablecoin(address(usdc), redeemAmount);
+        usdcStablecoinDepositModule.redeemStablecoin(redeemAmount);
     }
 
     // Test basic redeem with non 18 decimals
@@ -179,33 +150,32 @@ contract StablecoinDepositModuleTest is BaseSetup {
         uint256 redeemAmount = depositAmount * 10 ** 12;
 
         vm.prank(user1);
-        generalStablecoinDepositModule.depositStablecoin(address(usdc), depositAmount);
+        usdcStablecoinDepositModule.depositStablecoin(depositAmount);
 
         // USDC and PHO balances before
         uint256 usdcBalanceUserBefore = usdc.balanceOf(address(user1));
         uint256 usdcDepositModuleBalanceBefore =
-            usdc.balanceOf(address(generalStablecoinDepositModule));
+            usdc.balanceOf(address(usdcStablecoinDepositModule));
         uint256 phoBalanceUserBefore = pho.balanceOf(user1);
-        uint256 phoDepositBalanceBefore = pho.balanceOf(address(generalStablecoinDepositModule));
+        uint256 phoDepositBalanceBefore = pho.balanceOf(address(usdcStablecoinDepositModule));
 
         vm.expectEmit(true, true, true, true);
         emit StablecoinRedeemed(address(usdc), user1, redeemAmount);
         vm.prank(user1);
-        generalStablecoinDepositModule.redeemStablecoin(address(usdc), redeemAmount);
+        usdcStablecoinDepositModule.redeemStablecoin(redeemAmount);
 
         // USDC and PHO balances after
         uint256 usdcBalanceUserAfter = usdc.balanceOf(address(user1));
-        uint256 usdcDepositModuleBalanceAfter =
-            usdc.balanceOf(address(generalStablecoinDepositModule));
+        uint256 usdcDepositModuleBalanceAfter = usdc.balanceOf(address(usdcStablecoinDepositModule));
         uint256 phoBalanceUserAfter = pho.balanceOf(user1);
-        uint256 phoDepositBalanceAfter = pho.balanceOf(address(generalStablecoinDepositModule));
+        uint256 phoDepositBalanceAfter = pho.balanceOf(address(usdcStablecoinDepositModule));
 
         // Check that DAI and PHO balances before and after are same
         assertEq(usdcBalanceUserAfter, usdcBalanceUserBefore + depositAmount);
         assertEq(usdcDepositModuleBalanceAfter, usdcDepositModuleBalanceBefore - depositAmount);
         assertEq(phoBalanceUserAfter, phoBalanceUserBefore - redeemAmount);
         assertEq(phoDepositBalanceAfter, phoDepositBalanceBefore + redeemAmount);
-        assertEq(generalStablecoinDepositModule.issuedAmount(address(usdc), user1), 0);
+        assertEq(usdcStablecoinDepositModule.issuedAmount(user1), 0);
     }
 
     // Test basic redeem with standard 18 decimals
@@ -214,24 +184,22 @@ contract StablecoinDepositModuleTest is BaseSetup {
         uint256 redeemAmount = ONE_HUNDRED_D18;
 
         vm.prank(user1);
-        generalStablecoinDepositModule.depositStablecoin(address(dai), depositAmount);
+        daiStablecoinDepositModule.depositStablecoin(depositAmount);
 
         // DAI and PHO balances before
         uint256 daiBalanceUserBefore = dai.balanceOf(address(user1));
-        uint256 daiDepositModuleBalanceBefore =
-            dai.balanceOf(address(generalStablecoinDepositModule));
+        uint256 daiDepositModuleBalanceBefore = dai.balanceOf(address(daiStablecoinDepositModule));
         uint256 phoBalanceUserBefore = pho.balanceOf(user1);
-        uint256 phoDepositBalanceBefore = pho.balanceOf(address(generalStablecoinDepositModule));
+        uint256 phoDepositBalanceBefore = pho.balanceOf(address(daiStablecoinDepositModule));
 
         vm.prank(user1);
-        generalStablecoinDepositModule.redeemStablecoin(address(dai), redeemAmount);
+        daiStablecoinDepositModule.redeemStablecoin(redeemAmount);
 
         // DAI and PHO balances after
         uint256 daiBalanceUserAfter = dai.balanceOf(address(user1));
-        uint256 daiDepositModuleBalanceAfter =
-            dai.balanceOf(address(generalStablecoinDepositModule));
+        uint256 daiDepositModuleBalanceAfter = dai.balanceOf(address(daiStablecoinDepositModule));
         uint256 phoBalanceUserAfter = pho.balanceOf(user1);
-        uint256 phoDepositBalanceAfter = pho.balanceOf(address(generalStablecoinDepositModule));
+        uint256 phoDepositBalanceAfter = pho.balanceOf(address(daiStablecoinDepositModule));
 
         // Check that DAI and PHO balances before and after are same
         assertEq(daiBalanceUserAfter, daiBalanceUserBefore + depositAmount);
@@ -239,24 +207,8 @@ contract StablecoinDepositModuleTest is BaseSetup {
         assertEq(phoBalanceUserAfter, phoBalanceUserBefore - redeemAmount);
         assertEq(phoDepositBalanceAfter, phoDepositBalanceBefore + redeemAmount);
 
-        assertEq(generalStablecoinDepositModule.issuedAmount(address(dai), user1), 0);
+        assertEq(daiStablecoinDepositModule.issuedAmount(user1), 0);
     }
 
-    // Functionality is stubbed out for now
-
-    // Cannot mint PHO if not dispatcher
-    function testCannotMintPhoOnlyDispatcher() public {
-        uint256 amount = ONE_HUNDRED_D18;
-        vm.expectRevert("Only dispatcher");
-        vm.prank(user1);
-        generalStablecoinDepositModule.mintPho(amount);
-    }
-
-    // Cannot burn PHO if not dispatcher
-    function testCannotMintOnlyDispatcher() public {
-        uint256 amount = ONE_HUNDRED_D18;
-        vm.expectRevert("Only dispatcher");
-        vm.prank(user1);
-        generalStablecoinDepositModule.burnPho(amount);
-    }
+    // TODO: mint/burn PHO
 }
