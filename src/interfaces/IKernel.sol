@@ -3,12 +3,12 @@
 pragma solidity ^0.8.13;
 
 interface IKernel {
-    error ZeroAddressDetected();
-    error ZeroValueDetected();
-    error SameAddressDetected();
-    error SameValueDetected();
-    error Unauthorized_NotModuleManager(address caller);
-    error Unauthorized_NotTONGovernance(address caller);
+    error ZeroAddress();
+    error ZeroValue();
+    error SameAddress();
+    error SameValue();
+    error NotModuleManager(address caller);
+    error NotTONGovernance(address caller);
 
     event ModuleManagerDelayUpdated(uint256 newDelay);
     event ModuleManagerUpdated(address indexed newModuleManager);
