@@ -15,12 +15,12 @@ contract Kernel is IKernel {
     address public TONGovernance;
 
     modifier onlyModuleManager() {
-        if (msg.sender != moduleManager) revert Unauthorized_NotModuleManager(msg.sender);
+        if (msg.sender != moduleManager) revert NotModuleManager(msg.sender);
         _;
     }
 
     modifier onlyTONGovernance() {
-        if (msg.sender != TONGovernance) revert Unauthorized_NotTONGovernance(msg.sender);
+        if (msg.sender != TONGovernance) revert NotTONGovernance(msg.sender);
         _;
     }
 
@@ -29,7 +29,7 @@ contract Kernel is IKernel {
     /// @param _TONGovernance the governance address for $TON
     constructor(address _pho, address _moduleManager, address _TONGovernance) {
         if (_pho == address(0) || _moduleManager == address(0) || _TONGovernance == address(0)) {
-            revert ZeroAddressDetected();
+            revert ZeroAddress();
         }
         pho = IPHO(_pho);
         moduleManager = _moduleManager;
@@ -40,17 +40,17 @@ contract Kernel is IKernel {
     /// @param to the address to which $PHO will be minted to
     /// @param amount the amount of $PHO to be minted
     function mintPHO(address to, uint256 amount) external onlyModuleManager {
-        if (to == address(0)) revert ZeroAddressDetected();
-        if (amount == 0) revert ZeroValueDetected();
+        if (to == address(0)) revert ZeroAddress();
+        if (amount == 0) revert ZeroValue();
         pho.mint(to, amount);
     }
 
-    /// @notice function to burn $PHO that cab be called only by moduleManager
+    /// @notice function to burn $PHO that can be called only by moduleManager
     /// @param from the address to burn $PHO from
     /// @param amount the amount of $PHO to burn
     function burnPHO(address from, uint256 amount) external onlyModuleManager {
-        if (from == address(0)) revert ZeroAddressDetected();
-        if (amount == 0) revert ZeroValueDetected();
+        if (from == address(0)) revert ZeroAddress();
+        if (amount == 0) revert ZeroValue();
         pho.burnFrom(from, amount);
     }
 
@@ -65,8 +65,8 @@ contract Kernel is IKernel {
     /// @notice function to update the module manager delay for updating a module manager
     /// @param newDelay the new delay in seconds
     function updateModuleManagerDelay(uint256 newDelay) external onlyTONGovernance {
-        if (newDelay == 0) revert ZeroValueDetected();
-        if (newDelay == moduleManagerDelay) revert SameValueDetected();
+        if (newDelay == 0) revert ZeroValue();
+        if (newDelay == moduleManagerDelay) revert SameValue();
         moduleManagerDelay = newDelay;
         emit ModuleManagerDelayUpdated(newDelay);
     }
@@ -74,8 +74,8 @@ contract Kernel is IKernel {
     /// @notice update the module manager address in the kernel
     /// @param newModuleManager the new module manager address
     function updateModuleManager(address newModuleManager) external onlyTONGovernance {
-        if (newModuleManager == address(0)) revert ZeroAddressDetected();
-        if (newModuleManager == moduleManager) revert SameAddressDetected();
+        if (newModuleManager == address(0)) revert ZeroAddress();
+        if (newModuleManager == moduleManager) revert SameAddress();
         moduleManager = newModuleManager;
         emit ModuleManagerUpdated(newModuleManager);
     }
