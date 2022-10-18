@@ -183,7 +183,7 @@ contract PHOTWAPOracle is IPHOOracle, Ownable {
         decimal18 fraxPrice = priceFeeds.getPrice(fraxAddress).toDecimal18();
         decimal18 usdcPrice = priceFeeds.getPrice(usdcAddress).toDecimal18();
 
-        // calculate total value in the pool and 
+        // calculate total value in the pool and
         decimal18 poolTvlInUsd = fraxBalance.mul(fraxPrice).add(usdcBalance.mul(usdcPrice));
         return poolTvlInUsd.div(fraxBPLP.totalSupply().toDecimal18()).toUint256();
     }
