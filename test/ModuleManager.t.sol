@@ -3,17 +3,11 @@ pragma solidity ^0.8.13;
 
 import "./BaseSetup.t.sol";
 import {PHO} from "../src/contracts/PHO.sol";
-import "src/interfaces/IPHOTONKernel.sol";
-import {PHOTONKernel} from "../src/contracts/PHOTONKernel.sol";
+import "src/interfaces/IKernel.sol";
 import {ModuleManager} from "../src/contracts/ModuleManager.sol";
 
 /// @notice Basic tests assessing ModuleManager.sol
 contract ModuleManagerTest is BaseSetup {
-    PHOTONKernel public photonKernel;
-    ModuleManager public moduleManager;
-    address public PHOGovernance; // probably move to BaseSetup
-    address public TONGovernance; // probably move to BaseSetup
-
     /// errors
 
     error ZeroAddressDetected();
@@ -25,6 +19,7 @@ contract ModuleManagerTest is BaseSetup {
     error Unauthorized_NotTONGovernance(address caller);
     error Unauthorized_NotRegisteredModule(address caller);
     error Unauthorized_AlreadyRegisteredModule();
+    error KernelAlreadySet(address kernel);
 
     /// events
 
@@ -36,6 +31,7 @@ contract ModuleManagerTest is BaseSetup {
     event UpdatedModuleDelay(uint256 newDelay, uint256 oldDelay);
     event Minted(address module, uint256 amount);
     event Burned(address module, uint256 amount);
+    event KernelSet(address indexed kernel);
 
     struct Module {
         uint256 phoCeiling;
@@ -52,11 +48,7 @@ contract ModuleManagerTest is BaseSetup {
 
     function setUp() public {
         vm.startPrank(owner);
-        photonKernel = new PHOTONKernel(address(pho));
-        PHOGovernance = address(5);
-        TONGovernance = address(6);
-        moduleManager = new ModuleManager(address(photonKernel), PHOGovernance, TONGovernance);
-        pho.setTeller(address(photonKernel));
+        // pho.setTeller(address(kernel));
         vm.stopPrank();
 
         vm.prank(PHOGovernance);
@@ -72,8 +64,8 @@ contract ModuleManagerTest is BaseSetup {
     }
 
     function testModuleManagerConstructor() public {
-        IPHOTONKernel kernelCheck = moduleManager.kernel();
-        assertEq(address(kernelCheck), address(photonKernel));
+        IKernel kernelCheck = moduleManager.kernel();
+        assertEq(address(kernelCheck), address(kernel));
         assertEq(moduleManager.PHOGovernance(), PHOGovernance);
         assertEq(moduleManager.TONGovernance(), TONGovernance);
     }
@@ -162,7 +154,7 @@ contract ModuleManagerTest is BaseSetup {
         (, uint256 phoMinted,,) = moduleManager.modules(owner);
 
         assertEq(phoMinted, ONE_HUNDRED_THOUSAND_D18);
-        pho.approve(address(photonKernel), pho.balanceOf(owner));
+        pho.approve(address(kernel), pho.balanceOf(owner));
         vm.expectEmit(true, false, false, true);
         emit Transfer(owner, address(0), TEN_THOUSAND_D18 * 5);
         emit Burned(owner, TEN_THOUSAND_D18 * 5);
@@ -179,7 +171,7 @@ contract ModuleManagerTest is BaseSetup {
         _moduleMintPHO();
         uint256 expectedModulePHO = TEN_THOUSAND_D18 * 3;
         vm.startPrank(owner);
-        pho.approve(address(photonKernel), pho.balanceOf(owner));
+        pho.approve(address(kernel), pho.balanceOf(owner));
         moduleManager.burnPHO(TEN_THOUSAND_D18 * 5);
         moduleManager.burnPHO(TEN_THOUSAND_D18);
         moduleManager.burnPHO(TEN_THOUSAND_D18);
@@ -282,6 +274,7 @@ contract ModuleManagerTest is BaseSetup {
     }
 
     /// setPHOCeilingModule() tests
+    /// NOTE - PHOCeilingModule() tests
 
     function testCannotSetPHOCeilingUnregistered() public {
         vm.startPrank(TONGovernance);
@@ -302,7 +295,7 @@ contract ModuleManagerTest is BaseSetup {
     // /// TODO - this test requires kernel.PHOCeiling() to be set
     // function testCannotSetPHOCeilingMaxExceeded() public {
     //     vm.startPrank(TONGovernance);
-    //     vm.expectRevert("Kernel PHO ceiling exceeded");
+    //     vm.expectRevert(abi.encodeWithSelector(MaxKernelPHOCeilingExceeded.selector);
     //     moduleManager.setPHOCeilingForModule(owner, kernel.PHOCeiling() + 1);
     //     vm.stopPrank();
     // }
@@ -347,6 +340,36 @@ contract ModuleManagerTest is BaseSetup {
         emit UpdatedModuleDelay(3 weeks, 2 weeks);
         moduleManager.setModuleDelay(3 weeks);
         assertEq(moduleManager.moduleDelay(), 3 weeks);
+        vm.stopPrank();
+    }
+
+    function testCannotSetKernelOnlyOwner() public {
+        vm.startPrank(user1);
+        vm.expectRevert("Ownable: caller is not the owner");
+        moduleManager.setKernel(dummyAddress);
+        vm.stopPrank();
+    }
+
+    function testCannotSetKernelAddressZero() public {
+        vm.startPrank(owner);
+        vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
+        moduleManager.setKernel(address(0));
+        vm.stopPrank();
+    }
+
+    function testCannotResetKernel() public {
+        vm.startPrank(owner);
+        vm.expectRevert(abi.encodeWithSelector(KernelAlreadySet.selector, address(kernel)));
+        moduleManager.setKernel(dummyAddress);
+        vm.stopPrank();
+    }
+
+    function testSetKernel() public {
+        vm.startPrank(owner);
+        ModuleManager moduleManager2 = new ModuleManager(PHOGovernance, TONGovernance);
+        vm.expectEmit(true, false, false, true);
+        emit KernelSet(address(kernel));
+        moduleManager2.setKernel(address(kernel));
         vm.stopPrank();
     }
 
