@@ -6,13 +6,12 @@ interface IModuleManager {
     error ZeroAddress();
     error ZeroValue();
     error ModuleCeilingExceeded();
-    error KernalCeilingExceeded();
-    error ModuleBurningTooMuchPHO();
+    error KernelCeilingExceeded();
+    error ModuleBurnExceeded();
     error NotPHOGovernance(address caller);
     error NotTONGovernance(address caller);
-    error NotRegisteredModule(address module);
-    error AlreadyRegisteredModule();
-    error KernelAlreadySet(address kernel);
+    error UnregisteredModule(address module);
+    error ModuleRegistered();
     error DeprecatedModule(address module);
 
     /// events

@@ -21,7 +21,7 @@ contract ModuleManager is IModuleManager {
 
     modifier onlyModule() {
         if (modules[msg.sender].status != Status.Registered) {
-            revert NotRegisteredModule(msg.sender);
+            revert UnregisteredModule(msg.sender);
         }
         _;
     }
@@ -61,9 +61,12 @@ contract ModuleManager is IModuleManager {
     /// @notice updates module accounting && burns PHO through Kernel
     /// @param _amount total PHO to be burned
     function burnPHO(uint256 _amount) external override {
+        if (modules[msg.sender].status == Status.Unregistered) {
+            revert UnregisteredModule(msg.sender);
+        }
         if (_amount == 0) revert ZeroValue();
         Module storage module = modules[msg.sender];
-        if ((module.phoMinted <= _amount)) revert ModuleBurningTooMuchPHO();
+        if ((module.phoMinted <= _amount)) revert ModuleBurnExceeded();
         kernel.burnPHO(msg.sender, _amount);
         module.phoMinted = module.phoMinted - _amount;
         emit ModuleBurn(msg.sender, _amount);
@@ -74,12 +77,7 @@ contract ModuleManager is IModuleManager {
     function addModule(address _newModule) external override onlyPHOGovernance {
         Module storage module = modules[_newModule];
         if (_newModule == address(0)) revert ZeroAddress();
-        if (module.status == Status.Registered) {
-            revert AlreadyRegisteredModule();
-        }
-        if (module.status == Status.Deprecated) {
-            revert DeprecatedModule(_newModule);
-        }
+        if (module.status != Status.Unregistered) revert ModuleRegistered();
         module.status = Status.Registered;
         module.startTime = block.timestamp + moduleDelay; // NOTE: initially 2 weeks
         emit ModuleAdded(_newModule);
@@ -92,7 +90,7 @@ contract ModuleManager is IModuleManager {
 
         if (_existingModule == address(0)) revert ZeroAddress();
         if (module.status != Status.Registered) {
-            revert NotRegisteredModule(_existingModule);
+            revert UnregisteredModule(_existingModule);
         }
         /// NOTE - not sure if we need to make sure _existingModule has no minted PHO outstanding
         module.status = Status.Deprecated;
@@ -110,7 +108,7 @@ contract ModuleManager is IModuleManager {
     {
         Module memory module = modules[_module];
         if (_module == address(0)) revert ZeroAddress();
-        if (module.status == Status.Unregistered) revert NotRegisteredModule(_module);
+        if (module.status == Status.Unregistered) revert UnregisteredModule(_module);
         if (module.status == Status.Deprecated) revert DeprecatedModule(_module);
         // TODO - Commented out until kernel has PHOCeiling and totalPHOMinted uncommented
         // if (

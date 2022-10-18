@@ -13,13 +13,12 @@ contract ModuleManagerTest is BaseSetup {
     error ZeroAddress();
     error ZeroValue();
     error ModuleCeilingExceeded();
-    error KernalCeilingExceeded();
-    error ModuleBurningTooMuchPHO();
+    error KernelCeilingExceeded();
+    error ModuleBurnExceeded();
     error NotPHOGovernance(address caller);
     error NotTONGovernance(address caller);
-    error NotRegisteredModule(address module);
-    error AlreadyRegisteredModule();
-    error KernelAlreadySet(address kernel);
+    error UnregisteredModule(address module);
+    error ModuleRegistered();
     error DeprecatedModule(address module);
 
     /// events
@@ -31,7 +30,6 @@ contract ModuleManagerTest is BaseSetup {
     event UpdatedModuleDelay(uint256 newDelay);
     event ModuleMint(address module, uint256 amount);
     event ModuleBurn(address module, uint256 amount);
-    event KernelSet(address indexed kernel);
 
     struct Module {
         uint256 phoCeiling;
@@ -73,7 +71,7 @@ contract ModuleManagerTest is BaseSetup {
 
     function testCannotMintPHOUnregistered() public {
         vm.startPrank(dummyAddress);
-        vm.expectRevert(abi.encodeWithSelector(NotRegisteredModule.selector, dummyAddress));
+        vm.expectRevert(abi.encodeWithSelector(UnregisteredModule.selector, dummyAddress));
         moduleManager.mintPHO(ONE_MILLION_D18);
         vm.stopPrank();
     }
@@ -102,6 +100,34 @@ contract ModuleManagerTest is BaseSetup {
 
     /// burnPHO() tests
 
+    function testBurnDeprecatedModule() public {
+        _moduleMintPHO();
+        vm.prank(PHOGovernance);
+        moduleManager.removeModule(module1);
+        uint256 expectedModulePHO = pho.balanceOf(module1) - TEN_THOUSAND_D18 * 5;
+        uint256 burnAmount = TEN_THOUSAND_D18 * 5;
+        vm.startPrank(module1);
+
+        pho.approve(address(kernel), pho.balanceOf(module1));
+        vm.expectEmit(true, false, false, true);
+        emit Transfer(module1, address(0), burnAmount);
+        emit ModuleBurn(module1, burnAmount);
+        moduleManager.burnPHO(burnAmount);
+        assertEq(pho.balanceOf(module1), expectedModulePHO);
+
+        (, uint256 newPhoMinted,,) = moduleManager.modules(module1);
+
+        assertEq(newPhoMinted, expectedModulePHO);
+        vm.stopPrank();
+    }
+
+    function testCannotBurnUnregistered() public {
+        vm.startPrank(dummyAddress);
+        vm.expectRevert(abi.encodeWithSelector(UnregisteredModule.selector, dummyAddress));
+        moduleManager.burnPHO(ONE_HUNDRED_D18);
+        vm.stopPrank();
+    }
+
     function testCannotBurnZeroPHO() public {
         vm.startPrank(module1);
         vm.expectRevert(abi.encodeWithSelector(ZeroValue.selector));
@@ -111,7 +137,7 @@ contract ModuleManagerTest is BaseSetup {
 
     function testCannotBurnPastZero() public {
         vm.startPrank(module1);
-        vm.expectRevert(abi.encodeWithSelector(ModuleBurningTooMuchPHO.selector));
+        vm.expectRevert(abi.encodeWithSelector(ModuleBurnExceeded.selector));
         moduleManager.burnPHO(ONE_MILLION_D18 * 2);
         vm.stopPrank();
     }
@@ -142,7 +168,7 @@ contract ModuleManagerTest is BaseSetup {
         (,,, ModuleManager.Status status) = moduleManager.modules(module1);
         assertEq(uint8(status), uint8(Status.Registered));
 
-        vm.expectRevert(abi.encodeWithSelector(AlreadyRegisteredModule.selector));
+        vm.expectRevert(abi.encodeWithSelector(ModuleRegistered.selector));
         moduleManager.addModule(module1);
         (,,, ModuleManager.Status newStatus) = moduleManager.modules(module1);
         assertEq(uint8(newStatus), uint8(Status.Registered)); // check that status hasn't changed
@@ -161,7 +187,7 @@ contract ModuleManagerTest is BaseSetup {
         moduleManager.removeModule(module1);
         (,,, ModuleManager.Status status) = moduleManager.modules(module1);
         assertEq(uint8(status), uint8(Status.Deprecated));
-        vm.expectRevert(abi.encodeWithSelector(DeprecatedModule.selector, module1));
+        vm.expectRevert(abi.encodeWithSelector(ModuleRegistered.selector));
         moduleManager.addModule(module1);
         vm.stopPrank();
     }
@@ -197,7 +223,7 @@ contract ModuleManagerTest is BaseSetup {
         (,,, ModuleManager.Status status) = moduleManager.modules(user1);
         assertEq(uint8(status), uint8(Status.Unregistered));
 
-        vm.expectRevert(abi.encodeWithSelector(NotRegisteredModule.selector, user1));
+        vm.expectRevert(abi.encodeWithSelector(UnregisteredModule.selector, user1));
         moduleManager.removeModule(user1);
         (,,, ModuleManager.Status newStatus) = moduleManager.modules(user1);
         assertEq(uint8(newStatus), uint8(Status.Unregistered)); // check that status hasn't changed
@@ -246,7 +272,7 @@ contract ModuleManagerTest is BaseSetup {
 
     function testCannotSetPHOCeilingUnregistered() public {
         vm.startPrank(TONGovernance);
-        vm.expectRevert(abi.encodeWithSelector(NotRegisteredModule.selector, dummyAddress));
+        vm.expectRevert(abi.encodeWithSelector(UnregisteredModule.selector, dummyAddress));
         moduleManager.setPHOCeilingForModule(dummyAddress, ONE_MILLION_D18);
         vm.stopPrank();
     }
