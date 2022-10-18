@@ -17,8 +17,16 @@ import "../interfaces/IModule.sol";
 contract ZeroCouponBondModule is ERC20, Ownable, ReentrancyGuard {
     using SafeERC20 for ERC20;
 
+    /// Errors
+    error ZeroAddressDetected();
+    error TimestampMustBeInFuture();
+    error DepositTokenTooManyDecimals();
+    error CannotDepositAfterWindowEnd();
+    error MaturityNotReached();
+    error CannotRedeemMoreThanIssued();
+
     /// State vars
-    address public dispatcher;
+    address public moduleManager;
     address public teller;
     IPHO public pho; // depositors recieve pho
     address public depositToken; // assuming stablecoin deposits
@@ -34,14 +42,14 @@ contract ZeroCouponBondModule is ERC20, Ownable, ReentrancyGuard {
     event BondRedeemed(address indexed redeemer, uint256 redeemAmount);
     event InterestRateSet(uint256 interestRate);
 
-    modifier onlyDispatcher() {
-        require(msg.sender == dispatcher, "Only dispatcher");
+    modifier onlyModuleManager() {
+        require(msg.sender == moduleManager, "Only moduleManager");
         _;
     }
 
     /// Constructor
     constructor(
-        address _dispatcher,
+        address _moduleManager,
         address _teller,
         address _pho,
         address _depositToken,
@@ -51,20 +59,22 @@ contract ZeroCouponBondModule is ERC20, Ownable, ReentrancyGuard {
         uint256 _depositWindowEnd,
         uint256 _maturityTimestamp
     ) ERC20(_bondTokenName, _bondTokenSymbol) {
-        require(
-            _dispatcher != address(0) && _teller != address(0) && _pho != address(0)
-                && _depositToken != address(0),
-            "Zero address detected"
-        );
-        require(
-            _maturityTimestamp > block.timestamp && _depositWindowEnd > block.timestamp,
-            "Timestamps must be in future"
-        );
+        if (
+            _moduleManager == address(0) || _teller == address(0) || _pho == address(0)
+                || _depositToken == address(0)
+        ) {
+            revert ZeroAddressDetected();
+        }
+        if (_maturityTimestamp <= block.timestamp || _depositWindowEnd <= block.timestamp) {
+            revert TimestampMustBeInFuture();
+        }
         depositToken = _depositToken;
         depositTokenDecimals = IERC20Metadata(_depositToken).decimals();
-        require(depositTokenDecimals <= 18, "DepositToken must be < 18 decimals");
+        if (depositTokenDecimals > 18) {
+            revert DepositTokenTooManyDecimals();
+        }
         pho = IPHO(_pho);
-        dispatcher = _dispatcher;
+        moduleManager = _moduleManager;
         interestRate = _interestRate;
         depositWindowEnd = _depositWindowEnd;
         maturityTimestamp = _maturityTimestamp;
@@ -73,7 +83,9 @@ contract ZeroCouponBondModule is ERC20, Ownable, ReentrancyGuard {
     /// @notice user deposits for bond
     /// @param depositAmount deposit amount (in depositToken decimals)
     function depositBond(uint256 depositAmount) external nonReentrant {
-        require(block.timestamp <= depositWindowEnd, "Cannot deposit after window end");
+        if (block.timestamp > depositWindowEnd) {
+            revert CannotDepositAfterWindowEnd();
+        }
         // scale if decimals < 18
         uint256 scaledDepositAmount = depositAmount;
         scaledDepositAmount = depositAmount * (10 ** (18 - depositTokenDecimals));
@@ -93,8 +105,12 @@ contract ZeroCouponBondModule is ERC20, Ownable, ReentrancyGuard {
     /// @notice user redeems their bond
     /// @param redeemAmount redeem amount - 18 decimals
     function redeemBond(uint256 redeemAmount) external nonReentrant {
-        require(block.timestamp >= maturityTimestamp, "MaturityTimestamp not reached");
-        require(redeemAmount <= issuedAmount[msg.sender], "Cannot redeem > issued");
+        if (block.timestamp < maturityTimestamp) {
+            revert MaturityNotReached();
+        }
+        if (redeemAmount > issuedAmount[msg.sender]) {
+            revert CannotRedeemMoreThanIssued();
+        }
 
         issuedAmount[msg.sender] -= redeemAmount;
 
@@ -109,22 +125,21 @@ contract ZeroCouponBondModule is ERC20, Ownable, ReentrancyGuard {
 
     /// @notice set interest rate
     /// @param _interestRate interest rate to set
-    function setInterestRate(uint256 _interestRate) external onlyDispatcher {
-        require(_interestRate > 0, "Interest rate must be > 0");
+    function setInterestRate(uint256 _interestRate) external onlyModuleManager {
         interestRate = _interestRate;
         emit InterestRateSet(_interestRate);
     }
 
     /// @notice mint PHO
     /// @param amount amount of PHO to mint
-    function mintPho(uint256 amount) external onlyDispatcher {
+    function mintPho(uint256 amount) external onlyModuleManager {
         //TODO: replace stub
         //teller.mintPHO(address(this), amount);
     }
 
     /// @notice burn PHO
     /// @param amount amount of PHO to burn
-    function burnPho(uint256 amount) external onlyDispatcher {
+    function burnPho(uint256 amount) external onlyModuleManager {
         //TODO: replace stub
         //teller.mintPHO(address(this), amount);
     }

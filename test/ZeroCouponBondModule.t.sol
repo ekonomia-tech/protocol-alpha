@@ -6,6 +6,15 @@ import "src/contracts/TON.sol";
 import "src/contracts/ZeroCouponBondModule.sol";
 
 contract ZeroCouponBondModuleTest is BaseSetup {
+    /// Errors
+    error ZeroAddressDetected();
+    error TimestampMustBeInFuture();
+    error DepositTokenTooManyDecimals();
+    error CannotDepositAfterWindowEnd();
+    error MaturityNotReached();
+    error CannotRedeemMoreThanIssued();
+
+    /// Events
     event BondIssued(address indexed depositor, uint256 depositAmount, uint256 mintAmount);
     event BondRedeemed(address indexed redeemer, uint256 redeemAmount);
     event InterestRateSet(uint256 interestRate);
@@ -120,7 +129,7 @@ contract ZeroCouponBondModuleTest is BaseSetup {
 
     // Cannot set dispatcher to address(0)
     function testCannotMakeZCBWithDispatcherZeroAddress() public {
-        vm.expectRevert("Zero address detected");
+        vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
         vm.prank(user1);
         usdcZeroCouponBondModule = new ZeroCouponBondModule(
             address(0),
@@ -137,7 +146,7 @@ contract ZeroCouponBondModuleTest is BaseSetup {
 
     // Cannot set teller to address(0)
     function testCannotMakeZCBWithTellerZeroAddress() public {
-        vm.expectRevert("Zero address detected");
+        vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
         vm.prank(user1);
         usdcZeroCouponBondModule = new ZeroCouponBondModule(
             address(owner),
@@ -154,7 +163,7 @@ contract ZeroCouponBondModuleTest is BaseSetup {
 
     // Cannot set pho to address(0)
     function testCannotMakeZCBWithPHOZeroAddress() public {
-        vm.expectRevert("Zero address detected");
+        vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
         vm.prank(user1);
         usdcZeroCouponBondModule = new ZeroCouponBondModule(
             address(owner),
@@ -171,7 +180,7 @@ contract ZeroCouponBondModuleTest is BaseSetup {
 
     // Cannot set pho to address(0)
     function testCannotMakeZCBWithDepositTokenZeroAddress() public {
-        vm.expectRevert("Zero address detected");
+        vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
         vm.prank(user1);
         usdcZeroCouponBondModule = new ZeroCouponBondModule(
             address(owner),
@@ -188,7 +197,7 @@ contract ZeroCouponBondModuleTest is BaseSetup {
 
     // Cannot set depositWindowEnd <= block.timestamp
     function testCannotMakeZCBWithDepositWindowEndLow() public {
-        vm.expectRevert("Timestamps must be in future");
+        vm.expectRevert(abi.encodeWithSelector(TimestampMustBeInFuture.selector));
         vm.prank(user1);
         usdcZeroCouponBondModule = new ZeroCouponBondModule(
             address(owner),
@@ -205,7 +214,7 @@ contract ZeroCouponBondModuleTest is BaseSetup {
 
     // Cannot set maturityTimestamp <= block.timestamp
     function testCannotMakeZCBWithMaturityTimestampLow() public {
-        vm.expectRevert("Timestamps must be in future");
+        vm.expectRevert(abi.encodeWithSelector(TimestampMustBeInFuture.selector));
         vm.prank(user1);
         usdcZeroCouponBondModule = new ZeroCouponBondModule(
             address(owner),
@@ -221,8 +230,8 @@ contract ZeroCouponBondModuleTest is BaseSetup {
     }
 
     // Cannot set interest rate if not dispatcher
-    function testCannotSetInterestRateOnlyDispatcher() public {
-        vm.expectRevert("Only dispatcher");
+    function testCannotSetInterestRateOnlyModuleManager() public {
+        vm.expectRevert("Only moduleManager");
         vm.prank(user1);
         usdcZeroCouponBondModule.setInterestRate(3e5);
     }
@@ -232,7 +241,7 @@ contract ZeroCouponBondModuleTest is BaseSetup {
         uint256 depositAmount = ONE_HUNDRED_D6;
         // deposit
         vm.warp(USDC_DEPOSIT_WINDOW_END + 1);
-        vm.expectRevert("Cannot deposit after window end");
+        vm.expectRevert(abi.encodeWithSelector(CannotDepositAfterWindowEnd.selector));
         vm.prank(user1);
         usdcZeroCouponBondModule.depositBond(depositAmount);
     }
@@ -269,7 +278,7 @@ contract ZeroCouponBondModuleTest is BaseSetup {
         uint256 redeemAmount = ((depositAmount * (1e6 + USDC_INTEREST_RATE)) / 1e6) * 10 ** 12;
         vm.prank(user1);
         usdcZeroCouponBondModule.depositBond(depositAmount);
-        vm.expectRevert("MaturityTimestamp not reached");
+        vm.expectRevert(abi.encodeWithSelector(MaturityNotReached.selector));
         vm.prank(user1);
         usdcZeroCouponBondModule.redeemBond(redeemAmount);
     }
@@ -282,7 +291,7 @@ contract ZeroCouponBondModuleTest is BaseSetup {
         vm.prank(user1);
         usdcZeroCouponBondModule.depositBond(depositAmount / 2);
         vm.warp(USDC_MATURITY);
-        vm.expectRevert("Cannot redeem > issued");
+        vm.expectRevert(abi.encodeWithSelector(CannotRedeemMoreThanIssued.selector));
         vm.prank(user1);
         usdcZeroCouponBondModule.redeemBond(redeemAmount);
     }
@@ -377,17 +386,17 @@ contract ZeroCouponBondModuleTest is BaseSetup {
     // Functionality is stubbed out for now
 
     // Cannot mint PHO if not dispatcher
-    function testCannotMintPhoOnlyDispatcher() public {
+    function testCannotMintPhoOnlyModuleManager() public {
         uint256 amount = ONE_HUNDRED_D18;
-        vm.expectRevert("Only dispatcher");
+        vm.expectRevert("Only moduleManager");
         vm.prank(user1);
         phoZeroCouponBondModule.mintPho(amount);
     }
 
     // Cannot burn PHO if not dispatcher
-    function testCannotMintOnlyDispatcher() public {
+    function testCannotMintOnlyModuleManager() public {
         uint256 amount = ONE_HUNDRED_D18;
-        vm.expectRevert("Only dispatcher");
+        vm.expectRevert("Only moduleManager");
         vm.prank(user1);
         phoZeroCouponBondModule.burnPho(amount);
     }
