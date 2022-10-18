@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+pragma solidity ^0.8.13;
+
 import "../interfaces/IKernel.sol";
 import "../interfaces/IPHO.sol";
 
@@ -25,14 +27,12 @@ contract Kernel is IKernel {
     }
 
     /// @param _pho the $PHO contract address
-    /// @param _moduleManager the address of the current module manager
     /// @param _TONGovernance the governance address for $TON
-    constructor(address _pho, address _moduleManager, address _TONGovernance) {
-        if (_pho == address(0) || _moduleManager == address(0) || _TONGovernance == address(0)) {
+    constructor(address _pho, address _TONGovernance) {
+        if (_pho == address(0) || _TONGovernance == address(0)) {
             revert ZeroAddress();
         }
         pho = IPHO(_pho);
-        moduleManager = _moduleManager;
         TONGovernance = _TONGovernance;
     }
 

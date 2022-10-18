@@ -50,6 +50,7 @@ abstract contract BaseSetup is Test {
     address public user2 = address(2);
     address public user3 = address(3);
     address public dummyAddress = address(4);
+    address public module1 = address(5);
     address public richGuy = 0x72A53cDBBcc1b9efa39c834A540550e23463AAcB;
     address public metaPoolFactoryAddress = 0xB9fC157394Af804a3578134A6585C0dc9cc990d4;
     address public fraxRichGuy = 0xd3d176F7e4b43C70a68466949F6C64F06Ce75BB9;
@@ -109,12 +110,17 @@ abstract contract BaseSetup is Test {
         pho = new PHO("PHO", "PHO");
         ton = new TON("TON", "TON");
 
-        moduleManager = new ModuleManager(PHOGovernance, TONGovernance);
-
         dispatcher = new Dispatcher(address(pho));
-        kernel = new Kernel(address(pho), address(moduleManager), TONGovernance);
+        kernel = new Kernel(address(pho), TONGovernance);
 
-        moduleManager.setKernel(address(kernel));
+        moduleManager = new ModuleManager(address(kernel), PHOGovernance, TONGovernance);
+
+        vm.stopPrank();
+
+        vm.prank(TONGovernance);
+        kernel.updateModuleManager(address(moduleManager));
+
+        vm.startPrank(owner);
 
         dispatcher.setKernel(address(kernel));
         pho.setKernel(address(kernel));
