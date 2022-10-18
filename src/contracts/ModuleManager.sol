@@ -5,14 +5,14 @@ pragma solidity ^0.8.13;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../interfaces/IPHO.sol";
 import "../interfaces/IModuleManager.sol";
-import "../interfaces/IPHOTONKernel.sol";
+import "../interfaces/IKernel.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /// @title ModuleManager
-/// @notice Intermediary between Modules and PHOTONKernel
+/// @notice Intermediary between Modules and Kernel
 /// @author Ekonomia: https://github.com/Ekonomia
 contract ModuleManager is IModuleManager, Ownable, ReentrancyGuard {
-    IPHOTONKernel public kernel;
+    IKernel public kernel;
     address public PHOGovernance;
     address public TONGovernance;
     uint256 public moduleDelay;
@@ -33,6 +33,8 @@ contract ModuleManager is IModuleManager, Ownable, ReentrancyGuard {
 
     mapping(address => Module) public modules;
 
+    bool public kernelSet;
+
     /// modifiers
 
     modifier onlyModule() {
@@ -52,19 +54,17 @@ contract ModuleManager is IModuleManager, Ownable, ReentrancyGuard {
         _;
     }
 
-    // need kernel address to access it, and allow it to set things.
-    constructor(address _photonKernel, address _PHOGovernance, address _TONGovernance) {
-        if (
-            _photonKernel == address(0) || _PHOGovernance == address(0)
-                || _TONGovernance == address(0)
-        ) revert ZeroAddressDetected();
-        kernel = IPHOTONKernel(_photonKernel);
+    /// NOTE -  need to setKernel right after initial deployment of ModuleManager
+    constructor(address _PHOGovernance, address _TONGovernance) {
+        if (_PHOGovernance == address(0) || _TONGovernance == address(0)) {
+            revert ZeroAddressDetected();
+        }
         PHOGovernance = _PHOGovernance;
         TONGovernance = _TONGovernance;
         moduleDelay = 2 weeks;
     }
 
-    /// @notice updates module accounting && mints PHO through PhotonKernel
+    /// @notice updates module accounting && mints PHO through Kernel
     /// @param _amount total PHO to be minted
     function mintPHO(uint256 _amount) external override onlyModule nonReentrant {
         require(_amount != 0, "Mint amount != 0");
@@ -76,7 +76,7 @@ contract ModuleManager is IModuleManager, Ownable, ReentrancyGuard {
         emit Minted(msg.sender, _amount);
     }
 
-    /// @notice updates module accounting && burns PHO through PhotonKernel
+    /// @notice updates module accounting && burns PHO through Kernel
     /// @dev NOTE - assumes that PHO is being burnt from module calling burn
     /// @param _amount total PHO to be burned
     function burnPHO(uint256 _amount) external override onlyModule nonReentrant {
@@ -124,12 +124,13 @@ contract ModuleManager is IModuleManager, Ownable, ReentrancyGuard {
         Module memory module = modules[_module];
         if (_module == address(0)) revert ZeroAddressDetected();
         if (module.status != Status.Registered) revert Unauthorized_NotRegisteredModule(_module);
-        if (
-            kernel.getPHOCeiling()
-                < (kernel.getTotalPHOMinted() + _newPHOCeiling - module.phoCeiling)
-        ) {
-            revert MaxKernelPHOCeilingExceeded();
-        }
+        // TODO - Commented out until kernel has PHOCeiling and totalPHOMinted uncommented
+        // if (
+        //     kernel.PHOCeiling()
+        //         < (kernel.totalPHOMinted() + _newPHOCeiling - module.phoCeiling)
+        // ) {
+        //     revert MaxKernelPHOCeilingExceeded();
+        // }
         modules[_module].phoCeiling = _newPHOCeiling;
         emit PHOCeilingUpdated(_module, _newPHOCeiling);
     }
@@ -141,5 +142,15 @@ contract ModuleManager is IModuleManager, Ownable, ReentrancyGuard {
         uint256 oldModuleDelay = moduleDelay;
         moduleDelay = _newDelay;
         emit UpdatedModuleDelay(moduleDelay, oldModuleDelay);
+    }
+
+    /// @notice set kernel address
+    /// @param _kernel Kernel address
+    function setKernel(address _kernel) external override onlyOwner {
+        if (_kernel == address(0)) revert ZeroAddressDetected();
+        if (kernelSet) revert KernelAlreadySet(address(kernel));
+        kernelSet = true;
+        kernel = IKernel(_kernel);
+        emit KernelSet(_kernel);
     }
 }

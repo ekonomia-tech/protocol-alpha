@@ -12,6 +12,7 @@ interface IModuleManager {
     error Unauthorized_NotTONGovernance(address caller);
     error Unauthorized_NotRegisteredModule(address caller);
     error Unauthorized_AlreadyRegisteredModule();
+    error KernelAlreadySet(address kernel);
 
     /// events
 
@@ -21,6 +22,7 @@ interface IModuleManager {
     event UpdatedModuleDelay(uint256 newDelay, uint256 oldDelay);
     event Minted(address indexed module, uint256 amount);
     event Burned(address indexed module, uint256 amount);
+    event KernelSet(address indexed kernel);
 
     function mintPHO(uint256 _amount) external; // onlyModule
     function burnPHO(uint256 _amount) external; // onlyModule
@@ -28,4 +30,5 @@ interface IModuleManager {
     function removeModule(address _existingModule) external; // onlyPHOGovernance
     function setPHOCeilingForModule(address _module, uint256 _newPHOCeiling) external; // onlyTONGovernance
     function setModuleDelay(uint256 _newDelay) external;
+    function setKernel(address _kernel) external;
 }

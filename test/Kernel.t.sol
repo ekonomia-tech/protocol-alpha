@@ -23,7 +23,7 @@ contract KernelTest is BaseSetup {
         uint256 user1PHOBalanceBefore = pho.balanceOf(user1);
         uint256 phoTotalSupplyBefore = pho.totalSupply();
 
-        vm.prank(moduleManager);
+        vm.prank(address(moduleManager));
         kernel.mintPHO(user1, TEN_THOUSAND_D18);
 
         uint256 user1PHOBalanceAfter = pho.balanceOf(user1);
@@ -41,13 +41,13 @@ contract KernelTest is BaseSetup {
 
     function testCannotMintPhoZeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(ZeroAddress.selector));
-        vm.prank(moduleManager);
+        vm.prank(address(moduleManager));
         kernel.mintPHO(address(0), TEN_THOUSAND_D18);
     }
 
     function testCannotMintPhoZeroValue() public {
         vm.expectRevert(abi.encodeWithSelector(ZeroValue.selector));
-        vm.prank(moduleManager);
+        vm.prank(address(moduleManager));
         kernel.mintPHO(user1, 0);
     }
 
@@ -62,7 +62,7 @@ contract KernelTest is BaseSetup {
         vm.prank(user1);
         pho.approve(address(kernel), TEN_THOUSAND_D18);
 
-        vm.prank(moduleManager);
+        vm.prank(address(moduleManager));
         kernel.burnPHO(user1, TEN_THOUSAND_D18);
 
         uint256 user1BalanceAfter = pho.balanceOf(user1);
@@ -80,13 +80,13 @@ contract KernelTest is BaseSetup {
 
     function testCannotBurnPhoZeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(ZeroAddress.selector));
-        vm.prank(moduleManager);
+        vm.prank(address(moduleManager));
         kernel.burnPHO(address(0), TEN_THOUSAND_D18);
     }
 
     function testCannotBurnPhoZeroValue() public {
         vm.expectRevert(abi.encodeWithSelector(ZeroValue.selector));
-        vm.prank(moduleManager);
+        vm.prank(address(moduleManager));
         kernel.burnPHO(user1, 0);
     }
 
@@ -143,6 +143,6 @@ contract KernelTest is BaseSetup {
     function testCannotAddModuleManagerSameAddress() public {
         vm.expectRevert(abi.encodeWithSelector(SameAddress.selector));
         vm.prank(TONGovernance);
-        kernel.updateModuleManager(moduleManager);
+        kernel.updateModuleManager(address(moduleManager));
     }
 }

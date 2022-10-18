@@ -15,6 +15,7 @@ import "src/oracle/ChainlinkPriceFeed.sol";
 import "src/oracle/PHOTWAPOracle.sol";
 import "src/interfaces/IPHOOracle.sol";
 import "src/contracts/Kernel.sol";
+import "src/contracts/ModuleManager.sol";
 
 abstract contract BaseSetup is Test {
     struct Balance {
@@ -26,6 +27,7 @@ abstract contract BaseSetup is Test {
     PHO public pho;
     TON public ton;
     Teller public teller;
+    ModuleManager public moduleManager;
     Kernel public kernel;
     DummyOracle public priceOracle;
     ChainlinkPriceFeed public priceFeed;
@@ -38,8 +40,8 @@ abstract contract BaseSetup is Test {
     ICurvePool fraxBP;
     ICurveFactory curveFactory;
     ICurvePool fraxBPPhoMetapool;
-    address public moduleManager = address(104);
     address public TONGovernance = address(105);
+    address public PHOGovernance = address(106);
 
     address public owner = 0xed320Bf569E5F3c4e9313391708ddBFc58e296bb;
     address public timelock_address = address(100);
@@ -107,8 +109,12 @@ abstract contract BaseSetup is Test {
         pho = new PHO("PHO", "PHO");
         ton = new TON("TON", "TON");
 
+        moduleManager = new ModuleManager(PHOGovernance, TONGovernance);
+
         dispatcher = new Dispatcher(address(pho));
-        kernel = new Kernel(address(pho), moduleManager, TONGovernance);
+        kernel = new Kernel(address(pho), address(moduleManager), TONGovernance);
+
+        moduleManager.setKernel(address(kernel));
 
         dispatcher.setKernel(address(kernel));
         pho.setKernel(address(kernel));
