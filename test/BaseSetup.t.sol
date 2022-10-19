@@ -2,17 +2,17 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import {PHO} from "../src/contracts/PHO.sol";
-import {TON} from "../src/contracts/TON.sol";
-import {DummyOracle} from "../src/oracle/DummyOracle.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "src/interfaces/curve/ICurvePool.sol";
-import "src/interfaces/curve/ICurveFactory.sol";
-import "src/oracle/ChainlinkPriceFeed.sol";
-import "src/oracle/PHOTWAPOracle.sol";
-import "src/interfaces/IPHOOracle.sol";
-import "src/contracts/Kernel.sol";
-import "src/contracts/ModuleManager.sol";
+import "@protocol/contracts/PHO.sol";
+import "@protocol/contracts/TON.sol";
+import "@protocol/contracts/Kernel.sol";
+import "@protocol/contracts/ModuleManager.sol";
+import "@oracle/ChainlinkPriceFeed.sol";
+import "@oracle/PHOTWAPOracle.sol";
+import "@oracle/IPHOOracle.sol";
+import "@oracle/DummyOracle.sol";
+import "@external/curve/ICurvePool.sol";
+import "@external/curve/ICurveFactory.sol";
 
 abstract contract BaseSetup is Test {
     struct Balance {
