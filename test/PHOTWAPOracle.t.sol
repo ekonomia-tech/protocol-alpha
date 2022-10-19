@@ -32,7 +32,7 @@ contract PHOTWAPOracleTest is BaseSetup {
 
         fraxBPPhoMetapoolAddress = (_deployFraxBPPHOPool()); // deploy FRAXBP-PHO metapool
 
-        vm.prank(address(teller));
+        vm.prank(address(kernel));
         pho.mint(owner, ONE_MILLION_D18 * 5);
 
         _fundAndApproveUSDC(owner, address(fraxBP), ONE_MILLION_D6 * 2, ONE_MILLION_D6 * 2);
