@@ -88,8 +88,6 @@ abstract contract BaseSetup is Test {
 
     uint256 public constant POOL_CEILING = (2 ** 256) - 1;
 
-    uint256 tellerCeiling = 2 * 100 * TEN_THOUSAND_D18; // set to 2 million
-
     constructor() {
         string memory RPC_URL = vm.envString("RPC_URL");
         if (bytes(RPC_URL).length == 0) {
@@ -241,9 +239,10 @@ abstract contract BaseSetup is Test {
     }
 }
 
-interface IUSDC is IERC20 {
+interface IUSDC {
     function balanceOf(address account) external view returns (uint256);
     function mint(address to, uint256 amount) external;
+    function approve(address spender, uint256 amount) external returns (bool);
     function configureMinter(address minter, uint256 minterAllowedAmount) external;
     function masterMinter() external view returns (address);
 }
