@@ -62,7 +62,7 @@ contract ModuleManager is IModuleManager {
 
     /// @notice updates module accounting && burns PHO through Kernel
     /// @param _amount total PHO to be burned
-    function burnPHO(uint256 _amount) external override onlyModule {
+    function burnPHO(uint256 _amount) external override {
         if (modules[msg.sender].status == Status.Unregistered) {
             revert UnregisteredModule(msg.sender);
         }
