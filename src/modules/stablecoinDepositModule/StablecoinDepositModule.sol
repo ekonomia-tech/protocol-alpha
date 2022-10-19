@@ -50,7 +50,7 @@ contract StablecoinDepositModule is Ownable, ReentrancyGuard {
         ) {
             revert ZeroAddressDetected();
         }
-        moduleManager = IModuleManager(moduleManager);
+        moduleManager = IModuleManager(_moduleManager);
         stablecoin = _stablecoin;
         kernel = _kernel;
         pho = IPHO(_pho);
@@ -98,19 +98,5 @@ contract StablecoinDepositModule is Ownable, ReentrancyGuard {
         ERC20(stablecoin).transfer(msg.sender, scaledRedeemAmount);
 
         emit StablecoinRedeemed(address(stablecoin), msg.sender, redeemAmount);
-    }
-
-    /// @notice mint PHO
-    /// @param amount amount of PHO to mint
-    function mintPho(uint256 amount) external onlyModuleManager {
-        //TODO: replace stub
-        //kernel.mintPHO(address(this), amount);
-    }
-
-    /// @notice burn PHO
-    /// @param amount amount of PHO to burn
-    function burnPho(uint256 amount) external onlyModuleManager {
-        //TODO: replace stub
-        //kernel.mintPHO(address(this), amount);
     }
 }
