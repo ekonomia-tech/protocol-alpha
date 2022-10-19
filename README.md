@@ -39,7 +39,12 @@ If you are using Juan Blanco's [solidity](https://marketplace.visualstudio.com/i
 {
   "solidity.remappings": [
     "forge-std/=lib/forge-std/src/",
-    "@openzeppelin=lib/openzeppelin-contracts/"
+    "@openzeppelin=lib/openzeppelin-contracts/",
+    "@chainlink=lib/chainlink/",
+    "@protocol=src/protocol/",
+    "@modules=src/modules/",
+    "@external=src/external/",
+    "@oracle=src/oracle/"
   ],
   "solidity.compileUsingRemoteVersion": "v0.8.13+commit.abaa5c0e"
 }

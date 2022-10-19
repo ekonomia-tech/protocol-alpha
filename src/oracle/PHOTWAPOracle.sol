@@ -2,12 +2,12 @@
 
 pragma solidity ^0.8.13;
 
-import "../interfaces/IPHO.sol";
+import "@protocol/interfaces/IPHO.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "../interfaces/IPHOOracle.sol";
-import "../interfaces/curve/ICurvePool.sol";
-import "../interfaces/IPriceOracle.sol";
+import "@oracle/IPHOOracle.sol";
+import "@external/curve/ICurvePool.sol";
+import "@oracle/IPriceOracle.sol";
 
 /// @title PHOTWAPOracle
 /// @notice Oracle exposing USD/PHO price using v1 Curve PHO/FraxBP Metapool TWAP Pair Oracle && USD PriceFeeds (USD/FRAX && USD/USDC)
