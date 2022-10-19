@@ -2,7 +2,6 @@
 pragma solidity ^0.8.13;
 
 import "./BaseSetup.t.sol";
-import "src/contracts/Vault.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 contract ChainlinkPriceFeedTest is BaseSetup {

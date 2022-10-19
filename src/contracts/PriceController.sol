@@ -4,7 +4,6 @@ pragma solidity ^0.8.13;
 
 import "./PHO.sol";
 import "../interfaces/IPriceController.sol";
-import "../interfaces/ITeller.sol";
 import "../oracle/DummyOracle.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
@@ -14,6 +13,7 @@ import "../interfaces/curve/ICurvePool.sol";
 import "../interfaces/curve/ICurveFactory.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "../interfaces/IModuleManager.sol";
 
 /// @title PriceController
 /// @author Ekonomia: https://github.com/ekonomia-tech
@@ -39,11 +39,11 @@ contract PriceController is IPriceController, Ownable, AccessControl {
     uint256 stabilizingTokenDecimals;
 
     PHO public pho;
-    ITeller public teller;
     DummyOracle public priceOracle;
     ICurvePool public dexPool;
     ICurveFactory public curveFactory;
     IERC20 public stabilizingToken;
+    IModuleManager public moduleManager;
 
     uint256 private constant PRICE_TARGET = 10 ** 6;
     uint256 private constant PRICE_PRECISION = 10 ** 18;
@@ -60,7 +60,7 @@ contract PriceController is IPriceController, Ownable, AccessControl {
 
     constructor(
         address _pho_address,
-        address _teller_address,
+        address _module_manager,
         address _oracle_address,
         address _dex_pool_address,
         address _stabilizing_token,
@@ -72,7 +72,7 @@ contract PriceController is IPriceController, Ownable, AccessControl {
         uint256 _max_slippage
     ) {
         require(_pho_address != address(0), "Price Controller: zero address detected");
-        require(_teller_address != address(0), "Price Controller: zero address detected");
+        require(_module_manager != address(0), "Price Controller: zero address detected");
         require(_oracle_address != address(0), "Price Controller: zero address detected");
         require(_dex_pool_address != address(0), "Price Controller: zero address detected");
         require(_stabilizing_token != address(0), "Price Controller: zero address detected");
@@ -96,7 +96,7 @@ contract PriceController is IPriceController, Ownable, AccessControl {
         );
 
         pho = PHO(_pho_address);
-        teller = ITeller(_teller_address);
+        moduleManager = IModuleManager(_module_manager);
         priceOracle = DummyOracle(_oracle_address);
         dexPool = ICurvePool(_dex_pool_address);
         stabilizingToken = IERC20(_stabilizing_token);
@@ -140,7 +140,7 @@ contract PriceController is IPriceController, Ownable, AccessControl {
 
         if (trend) {
             // if the market price is >1 then mint pho and exchange pho for bpToken
-            teller.mintPHO(address(this), tokenAmount);
+            // moduleManager.mintPHO(address(this), tokenAmount);
             amountReceived = exchangeTokens(true, tokenAmount);
         } else {
             amountReceived = exchangeTokens(false, tokenAmount);
