@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.13;
 
-import "./BaseSetup.t.sol";
+import "../BaseSetup.t.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import {PHO} from "../src/contracts/PHO.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "src/interfaces/curve/ICurvePool.sol";
-import "src/interfaces/curve/ICurveFactory.sol";
-import {PHOTWAPOracle} from "../src/oracle/PHOTWAPOracle.sol";
+import "@protocol/contracts/PHO.sol";
+import "@external/curve/ICurvePool.sol";
+import "@external/curve/ICurveFactory.sol";
+import "@oracle/PHOTWAPOracle.sol";
 
 /// @notice Basic tests assessing genesis PHOTWAPOracle
 /// @dev For function sigs in metapool, see an example here https://etherscan.io/address/0x497CE58F34605B9944E6b15EcafE6b001206fd25#code

@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "../interfaces/IPHO.sol";
+import "@protocol/interfaces/IPHO.sol";
 
 /// @title PHOTON protocol stablecoin
 /// @author Ekonomia: https://github.com/Ekonomia

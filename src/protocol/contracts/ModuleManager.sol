@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.13;
 
-import "../interfaces/IPHO.sol";
-import "../interfaces/IModuleManager.sol";
-import "../interfaces/IKernel.sol";
+import "@protocol/interfaces/IPHO.sol";
+import "@protocol/interfaces/IModuleManager.sol";
+import "@protocol/interfaces/IKernel.sol";
 
 /// @title ModuleManager
 /// @notice Intermediary between Modules and Kernel

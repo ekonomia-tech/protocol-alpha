@@ -2,18 +2,18 @@
 
 pragma solidity ^0.8.13;
 
-import "./PHO.sol";
-import "../interfaces/IPriceController.sol";
-import "../oracle/DummyOracle.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../interfaces/curve/ICurvePool.sol";
-import "../interfaces/curve/ICurveFactory.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "../interfaces/IModuleManager.sol";
+import "@external/curve/ICurvePool.sol";
+import "@external/curve/ICurveFactory.sol";
+import "@protocol/contracts/PHO.sol";
+import "@protocol/interfaces/IModuleManager.sol";
+import "@modules/priceController/IPriceController.sol";
+import "@oracle/DummyOracle.sol";
 
 /// @title PriceController
 /// @author Ekonomia: https://github.com/ekonomia-tech

@@ -2,9 +2,9 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import "src/contracts/TON.sol";
+import "@protocol/contracts/TON.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "./BaseSetup.t.sol";
+import "../BaseSetup.t.sol";
 
 contract TONTest is BaseSetup {
     event TONBurned(address indexed from, uint256 amount);

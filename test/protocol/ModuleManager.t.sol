@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.13;
 
-import "./BaseSetup.t.sol";
-import {PHO} from "../src/contracts/PHO.sol";
-import "src/interfaces/IKernel.sol";
-import {ModuleManager} from "../src/contracts/ModuleManager.sol";
+import "../BaseSetup.t.sol";
+import "@protocol/contracts/PHO.sol";
+import "@protocol/interfaces/IKernel.sol";
+import "@protocol/contracts/ModuleManager.sol";
 
 /// @notice Basic tests assessing ModuleManager.sol
 contract ModuleManagerTest is BaseSetup {
