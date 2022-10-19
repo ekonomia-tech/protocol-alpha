@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./BaseSetup.t.sol";
 
 contract TONTest is BaseSetup {
-    event TellerSet(address indexed tellerAddress);
     event TONBurned(address indexed from, uint256 amount);
     event TONMinted(address indexed from, address indexed to, uint256 amount);
 

@@ -46,7 +46,6 @@ contract ModuleManagerTest is BaseSetup {
 
     function setUp() public {
         // vm.prank(owner);
-        // // pho.setTeller(address(kernel));
 
         vm.prank(PHOGovernance);
         moduleManager.addModule(module1);
