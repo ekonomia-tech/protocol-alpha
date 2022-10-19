@@ -2,18 +2,17 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import {PHO} from "../src/contracts/PHO.sol";
-import {TON} from "../src/contracts/TON.sol";
-import {DummyOracle} from "../src/oracle/DummyOracle.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "src/interfaces/curve/ICurvePool.sol";
-import "src/interfaces/curve/ICurveFactory.sol";
-import "src/contracts/Teller.sol";
-import "src/contracts/Dispatcher.sol";
-import "src/contracts/Vault.sol";
-import "src/oracle/ChainlinkPriceFeed.sol";
-import "src/oracle/PHOTWAPOracle.sol";
-import "src/interfaces/IPHOOracle.sol";
+import "@protocol/contracts/PHO.sol";
+import "@protocol/contracts/TON.sol";
+import "@protocol/contracts/Kernel.sol";
+import "@protocol/contracts/ModuleManager.sol";
+import "@oracle/ChainlinkPriceFeed.sol";
+import "@oracle/PHOTWAPOracle.sol";
+import "@oracle/IPHOOracle.sol";
+import "@oracle/DummyOracle.sol";
+import "@external/curve/ICurvePool.sol";
+import "@external/curve/ICurveFactory.sol";
 
 abstract contract BaseSetup is Test {
     struct Balance {
@@ -24,19 +23,19 @@ abstract contract BaseSetup is Test {
 
     PHO public pho;
     TON public ton;
-    Teller public teller;
+    ModuleManager public moduleManager;
+    Kernel public kernel;
     DummyOracle public priceOracle;
     ChainlinkPriceFeed public priceFeed;
-    Dispatcher dispatcher;
-    Vault usdcVault;
-    Vault fraxVault;
-    IERC20 usdc;
     IERC20 dai;
+    IUSDC usdc;
     IERC20 frax;
     IERC20 fraxBPLP;
     ICurvePool fraxBP;
     ICurveFactory curveFactory;
     ICurvePool fraxBPPhoMetapool;
+    address public TONGovernance = address(105);
+    address public PHOGovernance = address(106);
 
     address public owner = 0xed320Bf569E5F3c4e9313391708ddBFc58e296bb;
     address public timelock_address = address(100);
@@ -45,6 +44,7 @@ abstract contract BaseSetup is Test {
     address public user2 = address(2);
     address public user3 = address(3);
     address public dummyAddress = address(4);
+    address public module1 = address(5);
     address public richGuy = 0x72A53cDBBcc1b9efa39c834A540550e23463AAcB;
     address public daiWhale = 0xc08a8a9f809107c5A7Be6d90e315e4012c99F39a;
     address public fraxBPLPToken = 0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC;
@@ -95,8 +95,6 @@ abstract contract BaseSetup is Test {
 
     uint256 public constant POOL_CEILING = (2 ** 256) - 1;
 
-    uint256 tellerCeiling = 2 * 100 * TEN_THOUSAND_D18; // set to 2 million
-
     constructor() {
         string memory RPC_URL = vm.envString("RPC_URL");
         if (bytes(RPC_URL).length == 0) {
@@ -110,23 +108,25 @@ abstract contract BaseSetup is Test {
         pho = new PHO("PHO", "PHO");
         ton = new TON("TON", "TON");
 
-        teller = new Teller(address(pho), tellerCeiling);
-        pho.setTeller(address(teller));
+        kernel = new Kernel(address(pho), TONGovernance);
 
-        dispatcher = new Dispatcher(address(pho), address(teller));
-        teller.whitelistCaller(address(dispatcher), 2000 * TEN_THOUSAND_D18);
+        moduleManager = new ModuleManager(
+            address(kernel),
+            PHOGovernance,
+            TONGovernance
+        );
 
-        usdcVault = new Vault(address(pho), USDC_ADDRESS, address(priceOracle));
-        fraxVault = new Vault(address(pho), FRAX_ADDRESS, address(priceOracle));
+        vm.stopPrank();
 
-        dispatcher.addVault(address(usdcVault));
-        dispatcher.addVault(address(fraxVault));
+        vm.prank(TONGovernance);
+        kernel.updateModuleManager(address(moduleManager));
 
-        usdcVault.whitelistCaller(address(dispatcher));
-        fraxVault.whitelistCaller(address(dispatcher));
+        vm.startPrank(owner);
 
-        usdc = IERC20(USDC_ADDRESS);
+        pho.setKernel(address(kernel));
+
         dai = IERC20(DAI_ADDRESS);
+        usdc = IUSDC(USDC_ADDRESS);
         frax = IERC20(FRAX_ADDRESS);
 
         priceFeed = new ChainlinkPriceFeed(PRECISION_DIFFERENCE);
@@ -147,8 +147,10 @@ abstract contract BaseSetup is Test {
     }
 
     function _getUSDC(address to, uint256 _amount) internal {
-        vm.prank(richGuy);
-        usdc.transfer(to, _amount);
+        vm.prank(usdc.masterMinter());
+        usdc.configureMinter(address(this), type(uint256).max);
+
+        usdc.mint(to, _amount);
     }
 
     function _approveUSDC(address _owner, address _spender, uint256 _amount) internal {
@@ -227,7 +229,7 @@ abstract contract BaseSetup is Test {
     }
 
     function _deployFraxBPPHOPool() internal returns (address) {
-        vm.prank(address(teller));
+        vm.prank(address(kernel));
         pho.mint(owner, TEN_THOUSAND_D18);
 
         frax = IERC20(FRAX_ADDRESS);
@@ -267,4 +269,18 @@ abstract contract BaseSetup is Test {
 
         return fraxBPPhoMetapoolAddress;
     }
+}
+
+interface IUSDC {
+    function balanceOf(address account) external view returns (uint256);
+
+    function mint(address to, uint256 amount) external;
+
+    function approve(address spender, uint256 amount) external returns (bool);
+
+    function transfer(address to, uint256 amount) external;
+
+    function configureMinter(address minter, uint256 minterAllowedAmount) external;
+
+    function masterMinter() external view returns (address);
 }
