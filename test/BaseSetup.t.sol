@@ -242,8 +242,8 @@ abstract contract BaseSetup is Test {
 }
 
 interface IUSDC is IERC20 {
-    function balanceOf(address account) external view returns(uint256);
+    function balanceOf(address account) external view returns (uint256);
     function mint(address to, uint256 amount) external;
     function configureMinter(address minter, uint256 minterAllowedAmount) external;
-    function masterMinter() external view returns(address);
+    function masterMinter() external view returns (address);
 }
