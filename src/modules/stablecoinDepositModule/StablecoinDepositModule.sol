@@ -69,7 +69,7 @@ contract StablecoinDepositModule is Ownable, ReentrancyGuard {
 
         issuedAmount[msg.sender] += scaledDepositAmount;
 
-        moduleManager.mintPHO(scaledDepositAmount);
+        moduleManager.mintPHO(address(this), scaledDepositAmount);
         pho.transfer(msg.sender, scaledDepositAmount);
 
         emit StablecoinDeposited(address(stablecoin), msg.sender, depositAmount);
