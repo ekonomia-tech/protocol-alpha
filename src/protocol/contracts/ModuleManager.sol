@@ -48,28 +48,30 @@ contract ModuleManager is IModuleManager {
     }
 
     /// @notice updates module accounting && mints PHO through Kernel
+    /// @param _to the user address to be minted $PHO
     /// @param _amount total PHO to be minted
-    function mintPHO(uint256 _amount) external override onlyModule {
+    function mintPHO(address _to, uint256 _amount) external override onlyModule {
         if (_amount == 0) revert ZeroValue();
         Module storage module = modules[msg.sender];
         if (module.phoMinted + _amount > module.phoCeiling) revert ModuleCeilingExceeded();
         module.phoMinted = module.phoMinted + _amount;
-        kernel.mintPHO(msg.sender, _amount);
-        emit ModuleMint(msg.sender, _amount);
+        kernel.mintPHO(_to, _amount);
+        emit ModuleMint(msg.sender, _to, _amount);
     }
 
     /// @notice updates module accounting && burns PHO through Kernel
+    /// @param _from the user that $PHO will be burned from
     /// @param _amount total PHO to be burned
-    function burnPHO(uint256 _amount) external override {
+    function burnPHO(address _from, uint256 _amount) external override {
         if (modules[msg.sender].status == Status.Unregistered) {
             revert UnregisteredModule(msg.sender);
         }
         if (_amount == 0) revert ZeroValue();
         Module storage module = modules[msg.sender];
         if ((module.phoMinted <= _amount)) revert ModuleBurnExceeded();
-        kernel.burnPHO(msg.sender, _amount);
+        kernel.burnPHO(_from, _amount);
         module.phoMinted = module.phoMinted - _amount;
-        emit ModuleBurn(msg.sender, _amount);
+        emit ModuleBurn(msg.sender, _from, _amount);
     }
 
     /// @notice adds new module to registry
@@ -83,9 +85,9 @@ contract ModuleManager is IModuleManager {
         emit ModuleAdded(_newModule);
     }
 
-    /// @notice removes new module from registry
+    /// @notice deprecates new module from registry
     /// @param _existingModule address of module to remove
-    function removeModule(address _existingModule) external override onlyPHOGovernance {
+    function deprecateModule(address _existingModule) external override onlyPHOGovernance {
         Module storage module = modules[_existingModule];
 
         if (_existingModule == address(0)) revert ZeroAddress();
@@ -95,7 +97,7 @@ contract ModuleManager is IModuleManager {
         /// NOTE - not sure if we need to make sure _existingModule has no minted PHO outstanding
         module.status = Status.Deprecated;
         module.phoCeiling = 0;
-        emit ModuleRemoved(_existingModule);
+        emit ModuleDeprecated(_existingModule);
     }
 
     /// @notice sets new PHO ceiling for specified module
