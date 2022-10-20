@@ -592,8 +592,7 @@ contract PriceControllerTest is BaseSetup {
         uint256 phoPrice = priceOracle.getPHOUSDPrice();
         (, uint256 priceGap, bool trend) = priceController.checkPriceBand(phoPrice);
         uint256 gapInToken = priceController.calculateGapInToken(phoPrice, priceGap);
-        uint256 expectedPho =
-            fraxBPPhoMetapool.get_dy_underlying(fraxIndex, phoIndex, gapInToken);
+        uint256 expectedPho = fraxBPPhoMetapool.get_dy_underlying(fraxIndex, phoIndex, gapInToken);
 
         vm.prank(owner);
         bool stabilized = priceController.stabilize();
@@ -602,10 +601,7 @@ contract PriceControllerTest is BaseSetup {
         uint256 fraxPriceControllerBalanceAfter = frax.balanceOf(address(priceController));
 
         assertApproxEqAbs(phoTotalSupplyAfter, phoTotalSupplyBefore - expectedPho, 10 ** 18);
-        assertEq(
-            fraxPriceControllerBalanceBefore,
-            fraxPriceControllerBalanceAfter + (gapInToken)
-        );
+        assertEq(fraxPriceControllerBalanceBefore, fraxPriceControllerBalanceAfter + (gapInToken));
         assertTrue(priceController.lastCooldownReset() - block.timestamp < 3600);
         assertTrue(stabilized);
     }

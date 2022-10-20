@@ -300,5 +300,5 @@ contract PriceController is IPriceController, Ownable {
     /// @notice onlyOwner access to _exchangeTokens
     function exchangeTokens(bool phoIn, uint256 amountIn) public onlyOwner returns (uint256) {
         return _exchangeTokens(phoIn, amountIn);
-    } 
+    }
 }
