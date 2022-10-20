@@ -18,9 +18,7 @@ import "@oracle/DummyOracle.sol";
 /// @title PriceController
 /// @author Ekonomia: https://github.com/ekonomia-tech
 
-contract PriceController is IPriceController, Ownable, AccessControl {
-    address public controllerAddress;
-
+contract PriceController is IPriceController, Ownable {
     /// The price band in which the price is allowed to fluctuate and will not trigger the balancing process
     uint256 public priceBand;
 
@@ -44,82 +42,60 @@ contract PriceController is IPriceController, Ownable, AccessControl {
     ICurveFactory public curveFactory;
     IERC20 public stabilizingToken;
     IModuleManager public moduleManager;
+    address public kernel;
 
     uint256 private constant PRICE_TARGET = 10 ** 6;
     uint256 private constant PRICE_PRECISION = 10 ** 18;
     uint256 private constant FRACTION_PRECISION = 10 ** 5;
     uint256 private constant SLIPPAGE_PRECISION = 10 ** 6;
 
-    modifier onlyByOwnerGovernanceOrController() {
-        require(
-            msg.sender == owner() || msg.sender == controllerAddress || msg.sender == address(this),
-            "Price Controller: not the owner or controller"
-        );
-        _;
-    }
-
     constructor(
         address _pho_address,
         address _module_manager,
+        address _kernel,
         address _oracle_address,
         address _dex_pool_address,
         address _stabilizing_token,
         address _curve_factory,
-        address _controller_address,
         uint256 _cooldownPeriod,
         uint256 _priceBand,
         uint256 _gapFraction,
         uint256 _max_slippage
     ) {
-        require(_pho_address != address(0), "Price Controller: zero address detected");
-        require(_module_manager != address(0), "Price Controller: zero address detected");
-        require(_oracle_address != address(0), "Price Controller: zero address detected");
-        require(_dex_pool_address != address(0), "Price Controller: zero address detected");
-        require(_stabilizing_token != address(0), "Price Controller: zero address detected");
-        require(_curve_factory != address(0), "Price Controller: zero address detected");
-        require(_controller_address != address(0), "Price Controller: zero address detected");
-        require(
-            _cooldownPeriod >= 3600,
-            "Price Controller: cooldown period cannot be shorter then 1 hour"
-        );
-        require(
-            _priceBand > 0 && _priceBand < FRACTION_PRECISION,
-            "Price Controller: value can only be between 0 to 100000"
-        );
-        require(
-            _gapFraction > 0 && _gapFraction < FRACTION_PRECISION,
-            "Price Controller: value can only be between 0 to 100000"
-        );
-        require(
-            _max_slippage > 0 && _max_slippage < FRACTION_PRECISION,
-            "Price Controller: value can only be between 0 to 100000"
-        );
+        if (
+            _pho_address == address(0) || _module_manager == address(0) || _kernel == address(0)
+                || _oracle_address == address(0) || _dex_pool_address == address(0)
+                || _stabilizing_token == address(0) || _curve_factory == address(0)
+        ) revert ZeroAddress();
+
+        if (_cooldownPeriod < 3600) revert CooldownPeriodAtLeastOneHour();
+        if (
+            (_priceBand == 0 || _priceBand > 100000) || (_gapFraction == 0 || _gapFraction > 100000)
+                || (_max_slippage == 0 || _max_slippage > 100000)
+        ) {
+            revert ValueNotInRange();
+        }
 
         pho = PHO(_pho_address);
         moduleManager = IModuleManager(_module_manager);
+        kernel = _kernel;
         priceOracle = DummyOracle(_oracle_address);
         dexPool = ICurvePool(_dex_pool_address);
         stabilizingToken = IERC20(_stabilizing_token);
         stabilizingTokenDecimals = IERC20Metadata(_stabilizing_token).decimals();
         curveFactory = ICurveFactory(_curve_factory);
 
-        controllerAddress = _controller_address;
-
         cooldownPeriod = _cooldownPeriod;
         priceBand = _priceBand;
         gapFraction = _gapFraction;
         maxSlippage = _max_slippage;
-        _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
     }
 
     /// @notice this function checks the price on the market and stabilizes it according to the gap that has to be bridged.
     /// @return bool representing if a stabilization process was executed or not
     /// The function will not bridge the whole gap, but a certain part of it to make sure the bridging will not oversell/overbuy.
     function stabilize() external returns (bool) {
-        require(
-            block.timestamp - lastCooldownReset > cooldownPeriod,
-            "Price Controller: cooldown not satisfied"
-        );
+        if (block.timestamp - lastCooldownReset <= cooldownPeriod) revert CooldownNotSatisfied();
 
         // Get the current price of PHO from the price oracle abstraction
         uint256 phoPrice = priceOracle.getPHOUSDPrice();
@@ -140,12 +116,12 @@ contract PriceController is IPriceController, Ownable, AccessControl {
 
         if (trend) {
             // if the market price is >1 then mint pho and exchange pho for bpToken
-            // moduleManager.mintPHO(address(this), tokenAmount);
-            amountReceived = exchangeTokens(true, tokenAmount);
+            moduleManager.mintPHO(address(this), tokenAmount);
+            amountReceived = _exchangeTokens(true, tokenAmount);
         } else {
-            amountReceived = exchangeTokens(false, tokenAmount);
-            pho.approve(address(this), amountReceived);
-            pho.burnFrom(address(this), amountReceived);
+            amountReceived = _exchangeTokens(false, tokenAmount);
+            pho.approve(address(kernel), amountReceived);
+            moduleManager.burnPHO(address(this), amountReceived);
         }
 
         lastCooldownReset = block.timestamp;
@@ -189,12 +165,8 @@ contract PriceController is IPriceController, Ownable, AccessControl {
     /// @param phoIn determines wether the sent token is pho or not
     /// @param amountIn the amount of the token being sent
     /// @return tokensReceived the amount of tokens received back from the exchange
-    function exchangeTokens(bool phoIn, uint256 amountIn)
-        public
-        onlyByOwnerGovernanceOrController
-        returns (uint256)
-    {
-        require(amountIn > 0, "Price Controller: amount cannot be 0");
+    function _exchangeTokens(bool phoIn, uint256 amountIn) private returns (uint256) {
+        if (amountIn == 0) revert ZeroValue();
 
         uint256 minOut;
         uint256 tokensReceived;
@@ -220,10 +192,9 @@ contract PriceController is IPriceController, Ownable, AccessControl {
             }
 
             uint256 stabilizingTokenBalance = stabilizingToken.balanceOf(address(this));
-            require(
-                stabilizingTokenBalance > amountIn,
-                "Price Controller: stabilizing token does not have enough balance"
-            );
+
+            if (stabilizingTokenBalance < amountIn) revert NotEnoughBalanceInStabilizer();
+
             stabilizingToken.approve(address(dexPool), amountIn);
 
             // To get the expected tokens out, we need to get the index of the underlying token we wish to swap
@@ -246,70 +217,42 @@ contract PriceController is IPriceController, Ownable, AccessControl {
     }
 
     /// @notice set the oracle address for this contract
-    function setOracleAddress(address newOracleAddress)
-        external
-        onlyByOwnerGovernanceOrController
-    {
-        require(newOracleAddress != address(0), "Price Controller: zero address detected");
-        require(newOracleAddress != address(priceOracle), "Price Controller: same address detected");
+    function setOracleAddress(address newOracleAddress) external onlyOwner {
+        if (newOracleAddress == address(0)) revert ZeroAddress();
+        if (newOracleAddress == address(priceOracle)) revert SameAddress();
         priceOracle = DummyOracle(newOracleAddress);
         emit OracleAddressSet(address(priceOracle));
     }
 
-    /// @notice set the controller address
-    function setController(address newControllerAddress)
-        external
-        onlyByOwnerGovernanceOrController
-    {
-        require(newControllerAddress != address(0), "Price Controller: zero address detected");
-        require(
-            newControllerAddress != controllerAddress, "Price Controller: same address detected"
-        );
-        controllerAddress = newControllerAddress;
-        emit ControllerSet(newControllerAddress);
-    }
-
     /// @notice set the cooldown period between stabilize() runs
-    function setCooldownPeriod(uint256 newCooldownPeriod)
-        external
-        onlyByOwnerGovernanceOrController
-    {
-        require(
-            newCooldownPeriod >= 3600,
-            "Price Controller: cooldown period cannot be shorter then 1 hour"
-        );
-        require(newCooldownPeriod != cooldownPeriod, "Price Controller: same value detected");
+    function setCooldownPeriod(uint256 newCooldownPeriod) external onlyOwner {
+        if (newCooldownPeriod < 3600) revert CooldownPeriodAtLeastOneHour();
+        if (newCooldownPeriod == cooldownPeriod) revert SameValue();
         cooldownPeriod = newCooldownPeriod;
         emit CooldownPeriodUpdated(cooldownPeriod);
     }
 
     /// @notice set the price band in which stabilize will not perform any actions
-    function setPriceBand(uint256 newPriceBand) external onlyByOwnerGovernanceOrController {
-        require(newPriceBand > 0, "Price Controller: price band cannot be 0");
-        require(newPriceBand != priceBand, "Price Controller: same value detected");
+    function setPriceBand(uint256 newPriceBand) external onlyOwner {
+        if (newPriceBand == 0) revert ZeroValue();
+        if (newPriceBand == priceBand) revert SameValue();
         priceBand = newPriceBand;
         emit PriceBandUpdated(priceBand);
     }
 
     ///@notice set the fraction from the gap to be mitigated with the market
-    function setGapFraction(uint256 newGapFraction) external onlyByOwnerGovernanceOrController {
-        require(
-            newGapFraction > 0 && newGapFraction < FRACTION_PRECISION,
-            "Price Controller: value can only be between 0 to 100000"
-        );
-        require(newGapFraction != gapFraction, "Price Controller: same value detected");
+    function setGapFraction(uint256 newGapFraction) external onlyOwner {
+        if (newGapFraction == 0 || newGapFraction > FRACTION_PRECISION) revert ValueNotInRange();
+        if (newGapFraction == gapFraction) revert SameValue();
         gapFraction = newGapFraction;
         emit GapFractionUpdated(gapFraction);
     }
 
     /// @notice set the dex pool address that this contract interacts with
-    function setDexPool(address newDexPool) external onlyByOwnerGovernanceOrController {
-        require(newDexPool != address(0), "Price Controller: zero address detected");
-        require(
-            curveFactory.is_meta(newDexPool),
-            "Price Controller: address does not point to a metapool"
-        );
-        require(newDexPool != address(dexPool), "Price Controller: same address detected");
+    function setDexPool(address newDexPool) external onlyOwner {
+        if (newDexPool == address(0)) revert ZeroAddress();
+        if (!curveFactory.is_meta(newDexPool)) revert AddressDoNotPointToMetapool();
+        if (newDexPool == address(dexPool)) revert SameAddress();
 
         address[8] memory underlyingCoins = curveFactory.get_underlying_coins(newDexPool);
         bool isPhoPresent = false;
@@ -319,23 +262,19 @@ contract PriceController is IPriceController, Ownable, AccessControl {
                 break;
             }
         }
-        require(isPhoPresent, "Price Controller: $PHO is not present in the metapool");
+
+        if (!isPhoPresent) revert PHONotPresentInMetapool();
 
         dexPool = ICurvePool(newDexPool);
         emit DexPoolUpdated(newDexPool);
     }
 
     /// @notice set the stabilizing token address - has to be and underlying token of the base pool
-    function setStabilizingToken(address newStabilizingToken)
-        external
-        onlyByOwnerGovernanceOrController
-    {
-        require(newStabilizingToken != address(0), "Price Controller: zero address detected");
-        require(
-            newStabilizingToken != address(stabilizingToken),
-            "Price Controller: same address detected"
-        );
+    function setStabilizingToken(address newStabilizingToken) external onlyOwner {
+        if (newStabilizingToken == address(0)) revert ZeroAddress();
+        if (newStabilizingToken == address(stabilizingToken)) revert SameAddress();
         address[8] memory underlyingCoins = curveFactory.get_underlying_coins(address(dexPool));
+
         bool isTokenUnderlying = false;
         for (uint256 i = 0; i < underlyingCoins.length; i++) {
             if (underlyingCoins[i] == newStabilizingToken) {
@@ -343,7 +282,7 @@ contract PriceController is IPriceController, Ownable, AccessControl {
                 break;
             }
         }
-        require(isTokenUnderlying, "Price Controller: token is not an underlying in the base pool");
+        if (!isTokenUnderlying) revert TokenNotUnderlyingInMetapool();
 
         stabilizingToken = IERC20(newStabilizingToken);
         stabilizingTokenDecimals = IERC20Metadata(newStabilizingToken).decimals();
@@ -351,13 +290,15 @@ contract PriceController is IPriceController, Ownable, AccessControl {
     }
 
     ///@notice set the maximum slippage allowed in exchanges with the dex pool
-    function setMaxSlippage(uint256 newMaxSlippage) external onlyByOwnerGovernanceOrController {
-        require(
-            newMaxSlippage > 0 && newMaxSlippage < FRACTION_PRECISION,
-            "Price Controller: value can only be between 0 to 100000"
-        );
-        require(newMaxSlippage != maxSlippage, "Price Controller: same value detected");
+    function setMaxSlippage(uint256 newMaxSlippage) external onlyOwner {
+        if (newMaxSlippage == 0 || newMaxSlippage > FRACTION_PRECISION) revert ValueNotInRange();
+        if (newMaxSlippage == maxSlippage) revert SameValue();
         maxSlippage = newMaxSlippage;
         emit MaxSlippageUpdated(maxSlippage);
+    }
+
+    /// @notice onlyOwner access to _exchangeTokens
+    function exchangeTokens(bool phoIn, uint256 amountIn) public onlyOwner returns (uint256) {
+        return _exchangeTokens(phoIn, amountIn);
     }
 }
