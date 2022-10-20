@@ -118,8 +118,7 @@ contract ZeroCouponBondModule is ERC20, Ownable, ReentrancyGuard {
         _burn(msg.sender, redeemAmount);
 
         // transfer PHO to caller
-        moduleManager.mintPHO(redeemAmount);
-        pho.transfer(msg.sender, redeemAmount);
+        moduleManager.mintPHO(msg.sender, redeemAmount);
 
         emit BondRedeemed(msg.sender, redeemAmount);
     }
