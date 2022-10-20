@@ -17,11 +17,11 @@ interface IModuleManager {
     /// events
 
     event ModuleAdded(address indexed module);
-    event ModuleRemoved(address indexed module);
+    event ModuleDeprecated(address indexed module);
     event PHOCeilingUpdated(address indexed module, uint256 newPHOCeiling);
     event UpdatedModuleDelay(uint256 newDelay);
-    event ModuleMint(address indexed module, uint256 amount);
-    event ModuleBurn(address indexed module, uint256 amount);
+    event ModuleMint(address indexed module, address indexed to, uint256 amount);
+    event ModuleBurn(address indexed module, address indexed from, uint256 amount);
 
     enum Status {
         Unregistered,
@@ -36,10 +36,10 @@ interface IModuleManager {
         Status status;
     }
 
-    function mintPHO(uint256 _amount) external; // onlyModule
-    function burnPHO(uint256 _amount) external; // onlyModule
+    function mintPHO(address to, uint256 _amount) external; // onlyModule
+    function burnPHO(address from, uint256 _amount) external; // onlyModule
     function addModule(address _newModule) external; // onlyPHOGovernance
-    function removeModule(address _existingModule) external; // onlyPHOGovernance
+    function deprecateModule(address _existingModule) external; // onlyPHOGovernance
     function setPHOCeilingForModule(address _module, uint256 _newPHOCeiling) external; // onlyTONGovernance
     function setModuleDelay(uint256 _newDelay) external; // onlyPHOGovernance
 }
