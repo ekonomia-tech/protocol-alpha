@@ -69,8 +69,7 @@ contract StablecoinDepositModule is Ownable, ReentrancyGuard {
 
         issuedAmount[msg.sender] += scaledDepositAmount;
 
-        moduleManager.mintPHO(address(this), scaledDepositAmount);
-        pho.transfer(msg.sender, scaledDepositAmount);
+        moduleManager.mintPHO(msg.sender, scaledDepositAmount);
 
         emit StablecoinDeposited(address(stablecoin), msg.sender, depositAmount);
     }
@@ -86,8 +85,6 @@ contract StablecoinDepositModule is Ownable, ReentrancyGuard {
 
         // caller gives PHO
         ERC20(address(pho)).safeTransferFrom(msg.sender, address(this), redeemAmount);
-
-        // TODO: burnPho()
 
         // scale if decimals < 18
         uint256 scaledRedeemAmount = redeemAmount;
