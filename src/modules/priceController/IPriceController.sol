@@ -2,7 +2,6 @@
 pragma solidity ^0.8.13;
 
 interface IPriceController {
-    error NotSelf();
     error ZeroAddress();
     error SameAddress();
     error ZeroValue();

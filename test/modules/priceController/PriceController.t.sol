@@ -8,11 +8,34 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@modules/priceController/PriceController.sol";
 
 contract PriceControllerTest is BaseSetup {
+    error ZeroAddress();
+    error SameAddress();
+    error ZeroValue();
+    error SameValue();
+    error CooldownPeriodAtLeastOneHour();
+    error ValueNotInRange();
+    error CooldownNotSatisfied();
+    error NotEnoughBalanceInStabilizer();
+    error TokenNotUnderlyingInMetapool();
+    error AddressDoNotPointToMetapool();
+    error PHONotPresentInMetapool();
+
+    event OracleAddressSet(address indexed newOracleAddress);
+    event CooldownPeriodUpdated(uint256 newCooldownPeriod);
+    event PriceBandUpdated(uint256 newPriceBand);
+    event GapFractionUpdated(uint256 newGapFraction);
+    event TokensExchanged(
+        address indexed dexPool,
+        address indexed tokenSent,
+        uint256 amountSent,
+        address tokenReceived,
+        uint256 amountReceived
+    );
+    event DexPoolUpdated(address indexed newDexPool);
+    event StabilizingTokenUpdated(address indexed newStabilizingToken);
+    event MaxSlippageUpdated(uint256 newMaxSlippage);
+
     ICurvePool public curvePool;
-    // ICurvePool public fraxBP;
-    // ICurvePool public fraxBPPhoMetapool;
-    // IERC20 public fraxBPLP;
-    // ICurveFactory public curveFactory;
     PriceController public priceController;
 
     /// Contract relevant test constants
@@ -645,31 +668,4 @@ contract PriceControllerTest is BaseSetup {
         stabilized = priceController.stabilize();
         assertFalse(stabilized);
     }
-
-    error ZeroAddress();
-    error SameAddress();
-    error ZeroValue();
-    error SameValue();
-    error CooldownPeriodAtLeastOneHour();
-    error ValueNotInRange();
-    error CooldownNotSatisfied();
-    error NotEnoughBalanceInStabilizer();
-    error TokenNotUnderlyingInMetapool();
-    error AddressDoNotPointToMetapool();
-    error PHONotPresentInMetapool();
-
-    event OracleAddressSet(address indexed newOracleAddress);
-    event CooldownPeriodUpdated(uint256 newCooldownPeriod);
-    event PriceBandUpdated(uint256 newPriceBand);
-    event GapFractionUpdated(uint256 newGapFraction);
-    event TokensExchanged(
-        address indexed dexPool,
-        address indexed tokenSent,
-        uint256 amountSent,
-        address tokenReceived,
-        uint256 amountReceived
-    );
-    event DexPoolUpdated(address indexed newDexPool);
-    event StabilizingTokenUpdated(address indexed newStabilizingToken);
-    event MaxSlippageUpdated(uint256 newMaxSlippage);
 }
