@@ -2,7 +2,19 @@
 pragma solidity ^0.8.13;
 
 interface IPriceController {
-    event ControllerSet(address indexed newControllerAddress);
+    error NotSelf();
+    error ZeroAddress();
+    error SameAddress();
+    error ZeroValue();
+    error SameValue();
+    error CooldownPeriodAtLeastOneHour();
+    error ValueNotInRange();
+    error CooldownNotSatisfied();
+    error NotEnoughBalanceInStabilizer();
+    error TokenNotUnderlyingInMetapool();
+    error AddressDoNotPointToMetapool();
+    error PHONotPresentInMetapool();
+
     event OracleAddressSet(address indexed newOracleAddress);
     event CooldownPeriodUpdated(uint256 newCooldownPeriod);
     event PriceBandUpdated(uint256 newPriceBand);
@@ -18,7 +30,6 @@ interface IPriceController {
     event StabilizingTokenUpdated(address indexed newStabilizingToken);
     event MaxSlippageUpdated(uint256 newMaxSlippage);
 
-    function setController(address newControllerAddress) external;
     function setOracleAddress(address newOracleAddress) external;
     function setCooldownPeriod(uint256 newCooldownPeriod) external;
     function setPriceBand(uint256 newPriceBand) external;
