@@ -11,13 +11,10 @@ interface IPriceController {
     error CooldownNotSatisfied();
     error NotEnoughBalanceInStabilizer();
     error TokenNotUnderlyingInMetapool();
-    error AddressDoNotPointToMetapool();
-    error PHONotPresentInMetapool();
 
     event OracleAddressSet(address indexed newOracleAddress);
     event CooldownPeriodUpdated(uint256 newCooldownPeriod);
-    event PriceBandUpdated(uint256 newPriceBand);
-    event GapFractionUpdated(uint256 newGapFraction);
+    event PriceMitigationPercentageUpdated(uint256 newGapFraction);
     event TokensExchanged(
         address indexed dexPool,
         address indexed tokenSent,
@@ -25,15 +22,10 @@ interface IPriceController {
         address tokenReceived,
         uint256 amountReceived
     );
-    event DexPoolUpdated(address indexed newDexPool);
-    event StabilizingTokenUpdated(address indexed newStabilizingToken);
     event MaxSlippageUpdated(uint256 newMaxSlippage);
 
     function setOracleAddress(address newOracleAddress) external;
     function setCooldownPeriod(uint256 newCooldownPeriod) external;
-    function setPriceBand(uint256 newPriceBand) external;
-    function setGapFraction(uint256 newGapFraction) external;
-    function setDexPool(address newDexPool) external;
-    function setStabilizingToken(address newStabilizingToken) external;
+    function setPriceMitigationPercentage(uint256 newGapFraction) external;
     function setMaxSlippage(uint256 newMaxSlippage) external;
 }

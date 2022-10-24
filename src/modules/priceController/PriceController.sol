@@ -18,10 +18,10 @@ import "@oracle/DummyOracle.sol";
 
 contract PriceController is IPriceController, Ownable {
     /// The price band in which the price is allowed to fluctuate and will not trigger the balancing process
-    uint256 public priceBand;
+    uint256 public immutable priceBand;
 
     /// represents the fraction of the gap to be bridged
-    uint256 public gapFraction;
+    uint256 public priceMitigationPercentage;
 
     /// the cooldown period between the kicks to the stabilizing mechanism
     uint256 public cooldownPeriod;
@@ -32,20 +32,17 @@ contract PriceController is IPriceController, Ownable {
     /// representing the maximum slippage percentage in 10 ** 6;
     uint256 public maxSlippage;
 
-    uint256 stabilizingTokenDecimals;
-
     PHO public pho;
     DummyOracle public priceOracle;
     ICurvePool public dexPool;
-    ICurveFactory public curveFactory;
-    IERC20 public stabilizingToken;
+    ICurveFactory public curveFactory = ICurveFactory(0xB9fC157394Af804a3578134A6585C0dc9cc990d4);
+    IERC20 public usdc = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
     IModuleManager public moduleManager;
     address public kernel;
 
     uint256 private constant PRICE_TARGET = 10 ** 6;
     uint256 private constant PRICE_PRECISION = 10 ** 18;
-    uint256 private constant FRACTION_PRECISION = 10 ** 5;
-    uint256 private constant SLIPPAGE_PRECISION = 10 ** 6;
+    uint256 private constant PERCENTAGE_PRECISION = 10 ** 5;
 
     constructor(
         address _pho_address,
@@ -53,22 +50,20 @@ contract PriceController is IPriceController, Ownable {
         address _kernel,
         address _oracle_address,
         address _dex_pool_address,
-        address _stabilizing_token,
-        address _curve_factory,
         uint256 _cooldownPeriod,
         uint256 _priceBand,
-        uint256 _gapFraction,
+        uint256 _priceMitigationPercentage,
         uint256 _max_slippage
     ) {
         if (
             _pho_address == address(0) || _module_manager == address(0) || _kernel == address(0)
                 || _oracle_address == address(0) || _dex_pool_address == address(0)
-                || _stabilizing_token == address(0) || _curve_factory == address(0)
         ) revert ZeroAddress();
 
         if (_cooldownPeriod < 3600) revert CooldownPeriodAtLeastOneHour();
         if (
-            (_priceBand == 0 || _priceBand > 100000) || (_gapFraction == 0 || _gapFraction > 100000)
+            (_priceBand == 0 || _priceBand > 100000)
+                || (_priceMitigationPercentage == 0 || _priceMitigationPercentage > 100000)
                 || (_max_slippage == 0 || _max_slippage > 100000)
         ) {
             revert ValueNotInRange();
@@ -79,13 +74,10 @@ contract PriceController is IPriceController, Ownable {
         kernel = _kernel;
         priceOracle = DummyOracle(_oracle_address);
         dexPool = ICurvePool(_dex_pool_address);
-        stabilizingToken = IERC20(_stabilizing_token);
-        stabilizingTokenDecimals = IERC20Metadata(_stabilizing_token).decimals();
-        curveFactory = ICurveFactory(_curve_factory);
 
         cooldownPeriod = _cooldownPeriod;
         priceBand = _priceBand;
-        gapFraction = _gapFraction;
+        priceMitigationPercentage = _priceMitigationPercentage;
         maxSlippage = _max_slippage;
     }
 
@@ -99,27 +91,21 @@ contract PriceController is IPriceController, Ownable {
         uint256 phoPrice = priceOracle.getPHOUSDPrice();
 
         // Check if the current price is in the price band, received price gap and trend
-        (bool inBand, uint256 priceGap, bool trend) = checkPriceBand(phoPrice);
+        (uint256 diff, bool over) = checkPriceBand(phoPrice);
 
         // if the $PHO price is exactly 10**18 or the price is within the price band, reset cooldown and exit;
-        if (inBand) {
+        if (diff < priceBand) {
             lastCooldownReset = block.timestamp;
             return false;
         }
 
-        // Calculate the amount of tokens need to b exchanged
-        uint256 tokenAmount = calculateGapInToken(phoPrice, priceGap);
+        // Calculate the amount of tokens need to be exchanged
+        uint256 tokenAmount = marketToTargetDiff(phoPrice, diff);
 
-        uint256 amountReceived;
-
-        if (trend) {
-            // if the market price is >1 then mint pho and exchange pho for bpToken
-            moduleManager.mintPHO(address(this), tokenAmount);
-            amountReceived = _exchangeTokens(true, tokenAmount);
+        if (over) {
+            _mintAndSellPHO(tokenAmount);
         } else {
-            amountReceived = _exchangeTokens(false, tokenAmount);
-            pho.approve(address(kernel), amountReceived);
-            moduleManager.burnPHO(address(this), amountReceived);
+            _buyAndBurnPHO(tokenAmount / (10 ** 12));
         }
 
         lastCooldownReset = block.timestamp;
@@ -128,89 +114,76 @@ contract PriceController is IPriceController, Ownable {
 
     /// @notice Checks the if the current price is within the permitted price band and returns the priceGap from price target and the trend
     /// @param current_price the current price of pho
-    /// @return inBand returns whether the price is in the price band or not
-    /// @return priceGap The gap between the price target and the current price
-    /// @return trend over peg = true; under peg = false
-    function checkPriceBand(uint256 current_price) public view returns (bool, uint256, bool) {
-        uint256 priceGap;
-        bool inBand;
-        bool trend;
-
-        if (current_price < PRICE_TARGET) {
-            priceGap = PRICE_TARGET - current_price;
-            trend = false;
-        } else {
-            priceGap = current_price - PRICE_TARGET;
-            trend = true;
+    /// @return diff The gap between the price target and the current price
+    /// @return over over peg = true; under peg = false
+    function checkPriceBand(uint256 current_price) public pure returns (uint256, bool) {
+        if (current_price < PRICE_TARGET || current_price == PRICE_TARGET) {
+            return (PRICE_TARGET - current_price, false);
         }
-        inBand = priceGap < priceBand;
-        return (inBand, priceGap, trend);
+        return (current_price - PRICE_TARGET, true);
     }
 
-    /// @notice This function takes in the gap between the market price and the target price, fractionalizing it according to gapFraction parameter and converting it into amount of tokens to exchange.
+    /// @notice This function takes in the gap between the market price and the target price, fractionalizing it according to priceMitigationPercentage parameter and converting it into amount of tokens to exchange.
     /// @param price the PHO market price
-    /// @param priceGap the current price gap of PHO between the market price and the target price
+    /// @param diff the current price gap of PHO between the market price and the target price
 
-    function calculateGapInToken(uint256 price, uint256 priceGap) public view returns (uint256) {
+    function marketToTargetDiff(uint256 price, uint256 diff) public view returns (uint256) {
         uint256 totalSupply = pho.totalSupply();
-
-        uint256 percentageChange = priceGap * gapFraction / price;
-
-        return (totalSupply * percentageChange) / FRACTION_PRECISION;
+        uint256 percentageChange = diff * priceMitigationPercentage / price;
+        return (totalSupply * percentageChange) / PERCENTAGE_PRECISION;
     }
 
-    /// @notice abstracts the token exchange from the curve pool
-    /// @param phoIn determines wether the sent token is pho or not
-    /// @param amountIn the amount of the token being sent
-    /// @return tokensReceived the amount of tokens received back from the exchange
-    function _exchangeTokens(bool phoIn, uint256 amountIn) private returns (uint256) {
-        if (amountIn == 0) revert ZeroValue();
+    /// @notice mints $PHO and sells it to the market in return for collateral
+    /// @param phoAmount the amount of $PHO to mint and exchange
+    function _mintAndSellPHO(uint256 phoAmount) private returns (uint256) {
+        if (phoAmount == 0) revert ZeroValue();
 
-        uint256 minOut;
-        uint256 tokensReceived;
+        moduleManager.mintPHO(address(this), phoAmount);
+        pho.approve(address(dexPool), phoAmount);
 
-        if (phoIn) {
-            address basePool = curveFactory.get_base_pool(address(dexPool));
-            address basePoolLP = ICurvePool(basePool).lp_token();
-            (int128 phoIndex, int128 basePoolIndex,) =
-                curveFactory.get_coin_indices(address(dexPool), address(pho), address(basePoolLP));
+        address basePool = curveFactory.get_base_pool(address(dexPool));
+        address basePoolLP = ICurvePool(basePool).lp_token();
+        (int128 phoIndex, int128 basePoolIndex,) =
+            curveFactory.get_coin_indices(address(dexPool), address(pho), address(basePoolLP));
 
-            minOut =
-                dexPool.get_dy(phoIndex, basePoolIndex, amountIn) * maxSlippage / SLIPPAGE_PRECISION;
-            pho.approve(address(dexPool), amountIn);
-            tokensReceived = dexPool.exchange(phoIndex, basePoolIndex, amountIn, minOut);
+        uint256 minOut =
+            dexPool.get_dy(phoIndex, basePoolIndex, phoAmount) * maxSlippage / PERCENTAGE_PRECISION;
+        uint256 tokensReceived = dexPool.exchange(phoIndex, basePoolIndex, phoAmount, minOut);
 
-            emit TokensExchanged(
-                address(dexPool), address(pho), amountIn, basePoolLP, tokensReceived
-                );
-        } else {
-            // Make the function generic and able to receive any type of stabilizing token
-            if (stabilizingTokenDecimals != 18) {
-                amountIn = amountIn / (10 ** (18 - stabilizingTokenDecimals));
-            }
+        emit TokensExchanged(address(dexPool), address(pho), phoAmount, basePoolLP, tokensReceived);
 
-            uint256 stabilizingTokenBalance = stabilizingToken.balanceOf(address(this));
+        return tokensReceived;
+    }
 
-            if (stabilizingTokenBalance < amountIn) revert NotEnoughBalanceInStabilizer();
+    /// @notice buys $PHO back from the market and burns it
+    /// @param collateralAmount the amount of collateral to exchange for $PHO
+    function _buyAndBurnPHO(uint256 collateralAmount) private returns (uint256) {
+        if (collateralAmount == 0) revert ZeroValue();
 
-            stabilizingToken.approve(address(dexPool), amountIn);
+        if (usdc.balanceOf(address(this)) < collateralAmount) {
+            revert NotEnoughBalanceInStabilizer();
+        }
 
-            // To get the expected tokens out, we need to get the index of the underlying token we wish to swap
-            (int128 stabilizingTokenIndex, int128 phoIndex,) = curveFactory.get_coin_indices(
-                address(dexPool), address(stabilizingToken), address(pho)
+        usdc.approve(address(dexPool), collateralAmount);
+
+        // To get the expected tokens out, we need to get the index of the underlying token we wish to swap
+        (int128 usdcIndex, int128 phoIndex,) =
+            curveFactory.get_coin_indices(address(dexPool), address(usdc), address(pho));
+
+        // getting the expected $PHO from the swap by calling get_dy_underlying with the underlying token
+        uint256 minOut = dexPool.get_dy_underlying(usdcIndex, phoIndex, collateralAmount)
+            * maxSlippage / PERCENTAGE_PRECISION;
+        // exchange the underlying token of the base pool in the metapool for $PHO
+        uint256 tokensReceived =
+            dexPool.exchange_underlying(usdcIndex, phoIndex, collateralAmount, minOut);
+
+        emit TokensExchanged(
+            address(dexPool), address(usdc), collateralAmount, address(pho), tokensReceived
             );
 
-            // getting the expected $PHO from the swap by calling get_dy_underlying with the underlying token
-            minOut = dexPool.get_dy_underlying(stabilizingTokenIndex, phoIndex, amountIn)
-                * maxSlippage / SLIPPAGE_PRECISION;
-            // exchange the underlying token of the base pool in the metapool for $PHO
-            tokensReceived =
-                dexPool.exchange_underlying(stabilizingTokenIndex, phoIndex, amountIn, minOut);
+        pho.approve(address(kernel), tokensReceived);
+        moduleManager.burnPHO(address(this), tokensReceived);
 
-            emit TokensExchanged(
-                address(dexPool), address(stabilizingToken), amountIn, address(pho), tokensReceived
-                );
-        }
         return tokensReceived;
     }
 
@@ -230,73 +203,32 @@ contract PriceController is IPriceController, Ownable {
         emit CooldownPeriodUpdated(cooldownPeriod);
     }
 
-    /// @notice set the price band in which stabilize will not perform any actions
-    function setPriceBand(uint256 newPriceBand) external onlyOwner {
-        if (newPriceBand == 0) revert ZeroValue();
-        if (newPriceBand == priceBand) revert SameValue();
-        priceBand = newPriceBand;
-        emit PriceBandUpdated(priceBand);
-    }
-
     ///@notice set the fraction from the gap to be mitigated with the market
-    function setGapFraction(uint256 newGapFraction) external onlyOwner {
-        if (newGapFraction == 0 || newGapFraction > FRACTION_PRECISION) revert ValueNotInRange();
-        if (newGapFraction == gapFraction) revert SameValue();
-        gapFraction = newGapFraction;
-        emit GapFractionUpdated(gapFraction);
-    }
-
-    /// @notice set the dex pool address that this contract interacts with
-    function setDexPool(address newDexPool) external onlyOwner {
-        if (newDexPool == address(0)) revert ZeroAddress();
-        if (!curveFactory.is_meta(newDexPool)) revert AddressDoNotPointToMetapool();
-        if (newDexPool == address(dexPool)) revert SameAddress();
-
-        address[8] memory underlyingCoins = curveFactory.get_underlying_coins(newDexPool);
-        bool isPhoPresent = false;
-        for (uint256 i = 0; i < underlyingCoins.length; i++) {
-            if (underlyingCoins[i] == address(pho)) {
-                isPhoPresent = true;
-                break;
-            }
-        }
-
-        if (!isPhoPresent) revert PHONotPresentInMetapool();
-
-        dexPool = ICurvePool(newDexPool);
-        emit DexPoolUpdated(newDexPool);
-    }
-
-    /// @notice set the stabilizing token address - has to be and underlying token of the base pool
-    function setStabilizingToken(address newStabilizingToken) external onlyOwner {
-        if (newStabilizingToken == address(0)) revert ZeroAddress();
-        if (newStabilizingToken == address(stabilizingToken)) revert SameAddress();
-        address[8] memory underlyingCoins = curveFactory.get_underlying_coins(address(dexPool));
-
-        bool isTokenUnderlying = false;
-        for (uint256 i = 0; i < underlyingCoins.length; i++) {
-            if (underlyingCoins[i] == newStabilizingToken) {
-                isTokenUnderlying = true;
-                break;
-            }
-        }
-        if (!isTokenUnderlying) revert TokenNotUnderlyingInMetapool();
-
-        stabilizingToken = IERC20(newStabilizingToken);
-        stabilizingTokenDecimals = IERC20Metadata(newStabilizingToken).decimals();
-        emit StabilizingTokenUpdated(newStabilizingToken);
+    function setPriceMitigationPercentage(uint256 newPriceMitigationPercentage)
+        external
+        onlyOwner
+    {
+        if (
+            newPriceMitigationPercentage == 0 || newPriceMitigationPercentage > PERCENTAGE_PRECISION
+        ) revert ValueNotInRange();
+        if (newPriceMitigationPercentage == priceMitigationPercentage) revert SameValue();
+        priceMitigationPercentage = newPriceMitigationPercentage;
+        emit PriceMitigationPercentageUpdated(priceMitigationPercentage);
     }
 
     ///@notice set the maximum slippage allowed in exchanges with the dex pool
     function setMaxSlippage(uint256 newMaxSlippage) external onlyOwner {
-        if (newMaxSlippage == 0 || newMaxSlippage > FRACTION_PRECISION) revert ValueNotInRange();
+        if (newMaxSlippage == 0 || newMaxSlippage > PERCENTAGE_PRECISION) revert ValueNotInRange();
         if (newMaxSlippage == maxSlippage) revert SameValue();
         maxSlippage = newMaxSlippage;
         emit MaxSlippageUpdated(maxSlippage);
     }
 
-    /// @notice onlyOwner access to _exchangeTokens
-    function exchangeTokens(bool phoIn, uint256 amountIn) public onlyOwner returns (uint256) {
-        return _exchangeTokens(phoIn, amountIn);
+    function buyAndBurnPHO(uint256 collateralAmount) public onlyOwner returns (uint256) {
+        return _buyAndBurnPHO(collateralAmount);
+    }
+
+    function mintAndSellPHO(uint256 phoAmount) public onlyOwner returns (uint256) {
+        return _mintAndSellPHO(phoAmount);
     }
 }
