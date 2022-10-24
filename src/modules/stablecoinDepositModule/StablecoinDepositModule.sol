@@ -7,8 +7,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "../../protocol/interfaces/IPHO.sol";
-import "../../protocol/interfaces/IModuleManager.sol";
+import "@protocol/interfaces/IPHO.sol";
+import "@protocol/interfaces/IModuleManager.sol";
 
 /// @title StablecoinDepositModule
 /// @author Ekonomia: https://github.com/ekonomia-tech
@@ -19,10 +19,12 @@ contract StablecoinDepositModule is Ownable, ReentrancyGuard {
     /// Errors
     error ZeroAddressDetected();
     error CannotRedeemMoreThanDeposited();
+    error OverEighteenDecimalPlaces();
 
     /// State vars
     IModuleManager public moduleManager;
     address public stablecoin;
+    uint256 stablecoinDecimals;
     address public kernel;
     IPHO public pho;
     mapping(address => uint256) public issuedAmount;
@@ -33,9 +35,7 @@ contract StablecoinDepositModule is Ownable, ReentrancyGuard {
     event StablecoinDeposited(
         address indexed stablecoin, address indexed depositor, uint256 depositAmount
     );
-    event StablecoinRedeemed(
-        address indexed stablecoin, address indexed redeemer, uint256 redeemAmount
-    );
+    event PHORedeemed(address indexed redeemer, uint256 redeemAmount);
 
     modifier onlyModuleManager() {
         require(msg.sender == address(moduleManager), "Only ModuleManager");
@@ -52,6 +52,7 @@ contract StablecoinDepositModule is Ownable, ReentrancyGuard {
         }
         moduleManager = IModuleManager(_moduleManager);
         stablecoin = _stablecoin;
+        stablecoinDecimals = IERC20Metadata(stablecoin).decimals();
         kernel = _kernel;
         pho = IPHO(_pho);
     }
@@ -59,41 +60,48 @@ contract StablecoinDepositModule is Ownable, ReentrancyGuard {
     /// @notice user deposits their stablecoin
     /// @param depositAmount deposit amount (in stablecoin decimals)
     function depositStablecoin(uint256 depositAmount) external nonReentrant {
+        if (stablecoinDecimals > 18) {
+            revert OverEighteenDecimalPlaces();
+        }
         // scale if decimals < 18
         uint256 scaledDepositAmount = depositAmount;
-        uint256 stablecoinDecimals = IERC20Metadata(stablecoin).decimals();
+
+        // note: will fail on overflow when decimals > 18
         scaledDepositAmount = depositAmount * (10 ** (18 - stablecoinDecimals));
 
-        // transfer stablecoin
+        // transfer stablecoin from caller
         ERC20(stablecoin).safeTransferFrom(msg.sender, address(this), depositAmount);
 
         issuedAmount[msg.sender] += scaledDepositAmount;
 
+        // mint PHO
         moduleManager.mintPHO(msg.sender, scaledDepositAmount);
 
         emit StablecoinDeposited(address(stablecoin), msg.sender, depositAmount);
     }
 
     /// @notice user redeems PHO for their original stablecoin
-    /// @param redeemAmount redeem amount in terms of PHO - 18 decimals
+    /// @param redeemAmount redeem amount in terms of PHO, which is 18 decimals
     function redeemStablecoin(uint256 redeemAmount) external nonReentrant {
         if (redeemAmount > issuedAmount[msg.sender]) {
             revert CannotRedeemMoreThanDeposited();
         }
+        if (stablecoinDecimals > 18) {
+            revert OverEighteenDecimalPlaces();
+        }
 
         issuedAmount[msg.sender] -= redeemAmount;
 
-        // caller gives PHO
-        ERC20(address(pho)).safeTransferFrom(msg.sender, address(this), redeemAmount);
+        // burn PHO
+        moduleManager.burnPHO(msg.sender, redeemAmount);
 
         // scale if decimals < 18
         uint256 scaledRedeemAmount = redeemAmount;
-        uint256 stablecoinDecimals = IERC20Metadata(stablecoin).decimals();
         scaledRedeemAmount = redeemAmount / (10 ** (18 - stablecoinDecimals));
 
         // transfer stablecoin to caller
         ERC20(stablecoin).transfer(msg.sender, scaledRedeemAmount);
 
-        emit StablecoinRedeemed(address(stablecoin), msg.sender, redeemAmount);
+        emit PHORedeemed(msg.sender, redeemAmount);
     }
 }

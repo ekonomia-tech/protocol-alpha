@@ -70,7 +70,7 @@ contract ModuleManager is IModuleManager {
         }
         if (_amount == 0) revert ZeroValue();
         Module storage module = modules[msg.sender];
-        if ((module.phoMinted <= _amount)) revert ModuleBurnExceeded();
+        if ((module.phoMinted < _amount)) revert ModuleBurnExceeded();
         kernel.burnPHO(_from, _amount);
         module.phoMinted = module.phoMinted - _amount;
         emit ModuleBurn(msg.sender, _from, _amount);

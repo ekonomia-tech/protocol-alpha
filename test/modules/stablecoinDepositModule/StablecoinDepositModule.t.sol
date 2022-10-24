@@ -18,9 +18,7 @@ contract StablecoinDepositModuleTest is BaseSetup {
     event StablecoinDeposited(
         address indexed stablecoin, address indexed depositor, uint256 depositAmount
     );
-    event StablecoinRedeemed(
-        address indexed stablecoin, address indexed redeemer, uint256 redeemAmount
-    );
+    event PHORedeemed(address indexed redeemer, uint256 redeemAmount);
 
     enum Status {
         Unregistered,
@@ -75,17 +73,19 @@ contract StablecoinDepositModuleTest is BaseSetup {
         kernel.mintPHO(address(user1), ONE_HUNDRED_D18);
 
         // Approve sending USDC to USDC Deposit contract
-        vm.prank(user1);
+        vm.startPrank(user1);
         usdc.approve(address(usdcStablecoinDepositModule), TEN_THOUSAND_D6);
         // Approve sending DAI to DAI Deposit contract
-        vm.prank(user1);
         dai.approve(address(daiStablecoinDepositModule), TEN_THOUSAND_D18);
 
         // Allow sending PHO (redemptions) to each StablecoinDeposit contract
-        vm.prank(user1);
         pho.approve(address(usdcStablecoinDepositModule), TEN_THOUSAND_D18);
-        vm.prank(user1);
         pho.approve(address(daiStablecoinDepositModule), TEN_THOUSAND_D18);
+        vm.stopPrank();
+
+        // Approve PHO burnFrom() via moduleManager calling kernel
+        vm.prank(user1);
+        pho.approve(address(kernel), ONE_MILLION_D18);
     }
 
     // Cannot set any 0 addresses for constructor
@@ -93,7 +93,16 @@ contract StablecoinDepositModuleTest is BaseSetup {
         vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
         vm.prank(user1);
         usdcStablecoinDepositModule = new StablecoinDepositModule(
-            address(owner),
+            address(0),
+            address(usdc),
+            address(kernel),
+            address(pho)
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
+        vm.prank(user1);
+        usdcStablecoinDepositModule = new StablecoinDepositModule(
+            address(moduleManager),
             address(0),
             address(kernel),
             address(pho)
@@ -102,7 +111,7 @@ contract StablecoinDepositModuleTest is BaseSetup {
         vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
         vm.prank(user1);
         usdcStablecoinDepositModule = new StablecoinDepositModule(
-            address(owner),
+            address(moduleManager),
             address(usdc),
             address(0),
             address(pho)
@@ -111,7 +120,7 @@ contract StablecoinDepositModuleTest is BaseSetup {
         vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
         vm.prank(user1);
         usdcStablecoinDepositModule = new StablecoinDepositModule(
-            address(owner),
+            address(moduleManager),
             address(usdc),
             address(kernel),
             address(0)
@@ -148,10 +157,10 @@ contract StablecoinDepositModuleTest is BaseSetup {
         uint256 depositAmount = ONE_HUNDRED_D6;
         uint256 redeemAmount = depositAmount * 10 ** 12;
         vm.prank(user1);
-        usdcStablecoinDepositModule.depositStablecoin(depositAmount / 2);
+        usdcStablecoinDepositModule.depositStablecoin(depositAmount);
         vm.expectRevert(abi.encodeWithSelector(CannotRedeemMoreThanDeposited.selector));
         vm.prank(user1);
-        usdcStablecoinDepositModule.redeemStablecoin(redeemAmount);
+        usdcStablecoinDepositModule.redeemStablecoin(2 * redeemAmount);
     }
 
     // Test basic redeem with non 18 decimals
@@ -169,8 +178,10 @@ contract StablecoinDepositModuleTest is BaseSetup {
         uint256 phoBalanceUserBefore = pho.balanceOf(user1);
         uint256 phoDepositBalanceBefore = pho.balanceOf(address(usdcStablecoinDepositModule));
 
+        uint256 issuedAmountUserBefore = usdcStablecoinDepositModule.issuedAmount(user1);
+
         vm.expectEmit(true, true, true, true);
-        emit StablecoinRedeemed(address(usdc), user1, redeemAmount);
+        emit PHORedeemed(user1, redeemAmount);
         vm.prank(user1);
         usdcStablecoinDepositModule.redeemStablecoin(redeemAmount);
 
@@ -180,12 +191,20 @@ contract StablecoinDepositModuleTest is BaseSetup {
         uint256 phoBalanceUserAfter = pho.balanceOf(user1);
         uint256 phoDepositBalanceAfter = pho.balanceOf(address(usdcStablecoinDepositModule));
 
-        // Check that DAI and PHO balances before and after are same
+        uint256 issuedAmountUserAfter = usdcStablecoinDepositModule.issuedAmount(user1);
+
+        // Check that USDC and PHO balances before and after are expected
+
+        // User balance - USDC up and PHO down
         assertEq(usdcBalanceUserAfter, usdcBalanceUserBefore + depositAmount);
-        assertEq(usdcDepositModuleBalanceAfter, usdcDepositModuleBalanceBefore - depositAmount);
         assertEq(phoBalanceUserAfter, phoBalanceUserBefore - redeemAmount);
-        assertEq(phoDepositBalanceAfter, phoDepositBalanceBefore + redeemAmount);
-        assertEq(usdcStablecoinDepositModule.issuedAmount(user1), 0);
+
+        // Deposit module balance - USDC down and PHO same
+        assertEq(usdcDepositModuleBalanceAfter, usdcDepositModuleBalanceBefore - depositAmount);
+        assertEq(phoDepositBalanceAfter, phoDepositBalanceBefore);
+
+        // Check issued amount before and after
+        assertEq(issuedAmountUserBefore - issuedAmountUserAfter, redeemAmount);
     }
 
     // Test basic redeem with standard 18 decimals
@@ -202,6 +221,8 @@ contract StablecoinDepositModuleTest is BaseSetup {
         uint256 phoBalanceUserBefore = pho.balanceOf(user1);
         uint256 phoDepositBalanceBefore = pho.balanceOf(address(daiStablecoinDepositModule));
 
+        uint256 issuedAmountUserBefore = daiStablecoinDepositModule.issuedAmount(user1);
+
         vm.prank(user1);
         daiStablecoinDepositModule.redeemStablecoin(redeemAmount);
 
@@ -211,12 +232,19 @@ contract StablecoinDepositModuleTest is BaseSetup {
         uint256 phoBalanceUserAfter = pho.balanceOf(user1);
         uint256 phoDepositBalanceAfter = pho.balanceOf(address(daiStablecoinDepositModule));
 
-        // Check that DAI and PHO balances before and after are same
-        assertEq(daiBalanceUserAfter, daiBalanceUserBefore + depositAmount);
-        assertEq(daiDepositModuleBalanceAfter, daiDepositModuleBalanceBefore - depositAmount);
-        assertEq(phoBalanceUserAfter, phoBalanceUserBefore - redeemAmount);
-        assertEq(phoDepositBalanceAfter, phoDepositBalanceBefore + redeemAmount);
+        uint256 issuedAmountUserAfter = daiStablecoinDepositModule.issuedAmount(user1);
 
-        assertEq(daiStablecoinDepositModule.issuedAmount(user1), 0);
+        // Check that DAI and PHO balances before and after are expected
+
+        // User balance - DAI up and PHO down
+        assertEq(daiBalanceUserAfter, daiBalanceUserBefore + depositAmount);
+        assertEq(phoBalanceUserAfter, phoBalanceUserBefore - redeemAmount);
+
+        // Deposit module balance - DAI down and PHO same
+        assertEq(daiDepositModuleBalanceAfter, daiDepositModuleBalanceBefore - depositAmount);
+        assertEq(phoDepositBalanceAfter, phoDepositBalanceBefore);
+
+        // Check issued amount before and after
+        assertEq(issuedAmountUserBefore - issuedAmountUserAfter, redeemAmount);
     }
 }
