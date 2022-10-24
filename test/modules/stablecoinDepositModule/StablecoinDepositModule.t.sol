@@ -1,23 +1,20 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "forge-std/console2.sol";
 import "../../BaseSetup.t.sol";
-import "src/modules/stablecoinDepositModule/StablecoinDepositModule.sol";
-import "src/protocol/interfaces/IModuleManager.sol";
+import "@modules/stablecoinDepositModule/StablecoinDepositModule.sol";
+import "@protocol/interfaces/IModuleManager.sol";
 
 contract StablecoinDepositModuleTest is BaseSetup {
     /// Errors
     error ZeroAddressDetected();
     error CannotRedeemMoreThanDeposited();
-    error StablecoinNotWhitelisted();
+    error OverEighteenDecimalPlaces();
 
     /// Events
     event StablecoinWhitelisted(address indexed stablecoin);
     event StablecoinDelisted(address indexed stablecoin);
-    event StablecoinDeposited(
-        address indexed stablecoin, address indexed depositor, uint256 depositAmount
-    );
+    event StablecoinDeposited(address indexed depositor, uint256 depositAmount);
     event PHORedeemed(address indexed redeemer, uint256 redeemAmount);
 
     enum Status {
@@ -135,7 +132,7 @@ contract StablecoinDepositModuleTest is BaseSetup {
         vm.warp(block.timestamp + moduleDelay + 1);
         // deposit
         vm.expectEmit(true, true, true, true);
-        emit StablecoinDeposited(address(usdc), user1, depositAmount);
+        emit StablecoinDeposited(user1, depositAmount);
 
         vm.prank(user1);
         usdcStablecoinDepositModule.depositStablecoin(depositAmount);
@@ -179,6 +176,7 @@ contract StablecoinDepositModuleTest is BaseSetup {
         uint256 phoDepositBalanceBefore = pho.balanceOf(address(usdcStablecoinDepositModule));
 
         uint256 issuedAmountUserBefore = usdcStablecoinDepositModule.issuedAmount(user1);
+        uint256 phoTotalSupplyBefore = pho.totalSupply();
 
         vm.expectEmit(true, true, true, true);
         emit PHORedeemed(user1, redeemAmount);
@@ -192,6 +190,7 @@ contract StablecoinDepositModuleTest is BaseSetup {
         uint256 phoDepositBalanceAfter = pho.balanceOf(address(usdcStablecoinDepositModule));
 
         uint256 issuedAmountUserAfter = usdcStablecoinDepositModule.issuedAmount(user1);
+        uint256 phoTotalSupplyAfter = pho.totalSupply();
 
         // Check that USDC and PHO balances before and after are expected
 
@@ -205,6 +204,9 @@ contract StablecoinDepositModuleTest is BaseSetup {
 
         // Check issued amount before and after
         assertEq(issuedAmountUserBefore - issuedAmountUserAfter, redeemAmount);
+
+        // Check PHO total supply before and after
+        assertEq(phoTotalSupplyBefore - phoTotalSupplyAfter, redeemAmount);
     }
 
     // Test basic redeem with standard 18 decimals
@@ -222,6 +224,7 @@ contract StablecoinDepositModuleTest is BaseSetup {
         uint256 phoDepositBalanceBefore = pho.balanceOf(address(daiStablecoinDepositModule));
 
         uint256 issuedAmountUserBefore = daiStablecoinDepositModule.issuedAmount(user1);
+        uint256 phoTotalSupplyBefore = pho.totalSupply();
 
         vm.prank(user1);
         daiStablecoinDepositModule.redeemStablecoin(redeemAmount);
@@ -233,6 +236,7 @@ contract StablecoinDepositModuleTest is BaseSetup {
         uint256 phoDepositBalanceAfter = pho.balanceOf(address(daiStablecoinDepositModule));
 
         uint256 issuedAmountUserAfter = daiStablecoinDepositModule.issuedAmount(user1);
+        uint256 phoTotalSupplyAfter = pho.totalSupply();
 
         // Check that DAI and PHO balances before and after are expected
 
@@ -246,5 +250,8 @@ contract StablecoinDepositModuleTest is BaseSetup {
 
         // Check issued amount before and after
         assertEq(issuedAmountUserBefore - issuedAmountUserAfter, redeemAmount);
+
+        // Check PHO total supply before and after
+        assertEq(phoTotalSupplyBefore - phoTotalSupplyAfter, redeemAmount);
     }
 }

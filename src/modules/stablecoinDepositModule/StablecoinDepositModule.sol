@@ -32,9 +32,7 @@ contract StablecoinDepositModule is Ownable, ReentrancyGuard {
     /// Events
     event StablecoinWhitelisted(address indexed stablecoin);
     event StablecoinDelisted(address indexed stablecoin);
-    event StablecoinDeposited(
-        address indexed stablecoin, address indexed depositor, uint256 depositAmount
-    );
+    event StablecoinDeposited(address indexed depositor, uint256 depositAmount);
     event PHORedeemed(address indexed redeemer, uint256 redeemAmount);
 
     modifier onlyModuleManager() {
@@ -77,7 +75,7 @@ contract StablecoinDepositModule is Ownable, ReentrancyGuard {
         // mint PHO
         moduleManager.mintPHO(msg.sender, scaledDepositAmount);
 
-        emit StablecoinDeposited(address(stablecoin), msg.sender, depositAmount);
+        emit StablecoinDeposited(msg.sender, depositAmount);
     }
 
     /// @notice user redeems PHO for their original stablecoin
