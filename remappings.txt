@@ -1,0 +1,7 @@
+forge-std/=lib/forge-std/src/
+@openzeppelin=lib/openzeppelin-contracts/
+@chainlink=lib/chainlink/
+@protocol=src/protocol/
+@modules=src/modules/
+@external=src/external/
+@oracle=src/oracle/
