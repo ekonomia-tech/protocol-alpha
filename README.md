@@ -1,14 +1,7 @@
-# protocol-alpha
+# Protocol Alpha
+Alpha version of the Photon Finance Decentralized Stablecoin protocol. Photon is a modular, risk and profit separated decentralized stablecoin.
 
-Alpha version of a DeFi stablecoin protocol
-
-# What is the Protocol?
-
-- We are working on a DeFi stablecoin protocol. The stablecoin is algorithmically / partially backed by collateral.
-- We have our own novel ideas around reputation & other aspects of the protocol we are building.
-
-# Developer Notes
-
+## Setup and Building
 To start the project, clone the repo to your local machine using the following CLI commands:
 
 1. Clone the repo onto your local machine and install the submodules: `git clone --recursive <repo link>`
@@ -21,67 +14,31 @@ To start the project, clone the repo to your local machine using the following C
 
 3. Build the project and make sure everything compiles: `forge build`
 
-## Unit Tests Against Local Mainnet Fork
-
+## Testing Against Local Mainnet Fork
 To run unit tests against a non-persistent local mainnet fork, first make sure you have a `.env` file set up at the root (follow `.env.example` format) and populate the `RPC_URL` variable like so:
 
 `RPC_URL="<insert ETH RPC URL here>"`
 
 Make sure you are using latest version of foundry, so that it auto-sources `.env`, otherwise run (while in the root directory): `source .env`
 
-CLI command: `forge test`
+CLI command: `forge test -vvv`
 
-## VSCode
+You can also test individual contracts with the following:
+- `forge test --match-contract Kernel -vvv`
+- Where `Kernel` is the name of the contract
 
+## Deploying to the persistent mainnet fork on Render
+TODO!
+
+## Repo Configuration
+### VSCode
 If you are using Juan Blanco's [solidity](https://marketplace.visualstudio.com/items?itemName=JuanBlanco.solidity) extension on VSCode, you can use this settings:
 
-```ts
+```json
 {
-  "solidity.remappings": [
-    "forge-std/=lib/forge-std/src/",
-    "@openzeppelin=lib/openzeppelin-contracts/",
-    "@chainlink=lib/chainlink/",
-    "@protocol=src/protocol/",
-    "@modules=src/modules/",
-    "@external=src/external/",
-    "@oracle=src/oracle/"
-  ],
   "solidity.compileUsingRemoteVersion": "v0.8.13+commit.abaa5c0e"
 }
 ```
 
-## Hardhat
-
-### Running Locally
-
-Follow the CLI commands outlined below to deploy the vyper contracts on a local blockchain.
-
-First, install dependencies.
-```
-$ npm install
-```
-
-Second, open a new window and start the local blockchain using the below CLI command:
-```
-$ npx hardhat node
-```
-
-Third, open a new window where you will run the following command to deploy the vyper contracts to the local network.
-
-```
-$ npx hardhat run --network localhost scripts/hardhat/deployGaugeController.ts
-```
-
-### Reasoning for Hardhat
-
-Vyper compatibility with foundry is still in the works, so Hardhat is chosen as a working framework.
-
-Hardhat is only used with vyper contracts and contracts that interact with them. More information can be found on hardhat deployment [here](https://hardhat.org/hardhat-runner/docs/guides/deploying).
-
-```
-npx hardhat run --network <your-network> scripts/hardhat/deploy.js
-```
-
-### Vyper
-
-Inspiration for the hardhat-vyper setup: https://github.com/de33/hardhat-vyper-starter
+### Remappings
+In `remappings.txt` we have remapped the folder structure for cleaner imports. `remappings.txt` is read by `foundry` as well as Juan Blanco's Solidity extension, therefore eliminating the need for users to set local VScode settings for this repo.
