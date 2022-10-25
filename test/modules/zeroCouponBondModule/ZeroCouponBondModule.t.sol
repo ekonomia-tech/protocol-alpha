@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
+
 pragma solidity ^0.8.13;
 
 import "../../BaseSetup.t.sol";
@@ -8,14 +9,18 @@ import "src/modules/zeroCouponBondModule/ZeroCouponBondModule.sol";
 contract ZeroCouponBondModuleTest is BaseSetup {
     /// Errors
     error ZeroAddressDetected();
-    error TimestampMustBeInFuture();
+    error DepositWindowInvalid();
     error DepositTokenTooManyDecimals();
     error CannotDepositAfterWindowEnd();
     error MaturityNotReached();
     error CannotRedeemMoreThanIssued();
 
     /// Events
-    event BondIssued(address indexed depositor, uint256 depositAmount, uint256 mintAmount);
+    event BondIssued(
+        address indexed depositor,
+        uint256 depositAmount,
+        uint256 mintAmount
+    );
     event BondRedeemed(address indexed redeemer, uint256 redeemAmount);
     event InterestRateSet(uint256 interestRate);
 
@@ -32,20 +37,30 @@ contract ZeroCouponBondModuleTest is BaseSetup {
     uint256 public constant USDC_INTEREST_RATE = 5e5; // 5%
     uint256 public constant DAI_INTEREST_RATE = 4e5; // 4%
     uint256 public constant PHO_INTEREST_RATE = 3e5; // 3%
+    uint256 public USDC_DEPOSIT_WINDOW_OPEN;
+    uint256 public DAI_DEPOSIT_WINDOW_OPEN;
+    uint256 public PHO_DEPOSIT_WINDOW_OPEN;
     uint256 public USDC_DEPOSIT_WINDOW_END;
     uint256 public DAI_DEPOSIT_WINDOW_END;
     uint256 public PHO_DEPOSIT_WINDOW_END;
-    uint256 public USDC_MATURITY;
-    uint256 public DAI_MATURITY;
-    uint256 public PHO_MATURITY;
+
+    // Track balance for deposit tokens & PHO
+    struct DepositTokenBalance {
+        uint256 userDepositTokenBalance;
+        uint256 moduleDepositTokenBalance;
+        uint256 userPHOBalance;
+        uint256 modulePHOBalance;
+        uint256 userIssuedAmount;
+        uint256 totalPHOSupply;
+    }
 
     function setUp() public {
-        USDC_DEPOSIT_WINDOW_END = block.timestamp + 20;
-        DAI_DEPOSIT_WINDOW_END = block.timestamp + 20;
-        PHO_DEPOSIT_WINDOW_END = block.timestamp + 20;
-        USDC_MATURITY = block.timestamp + 1000;
-        DAI_MATURITY = block.timestamp + 1000;
-        PHO_MATURITY = block.timestamp + 1000;
+        USDC_DEPOSIT_WINDOW_OPEN = block.timestamp;
+        DAI_DEPOSIT_WINDOW_OPEN = block.timestamp;
+        PHO_DEPOSIT_WINDOW_OPEN = block.timestamp;
+        USDC_DEPOSIT_WINDOW_END = block.timestamp + 1000;
+        DAI_DEPOSIT_WINDOW_END = block.timestamp + 1000;
+        PHO_DEPOSIT_WINDOW_END = block.timestamp + 1000;
 
         usdcZeroCouponBondModule = new ZeroCouponBondModule(
             address(moduleManager),
@@ -55,8 +70,8 @@ contract ZeroCouponBondModuleTest is BaseSetup {
             USDC_BOND_TOKEN_NAME,
             USDC_BOND_TOKEN_SYMBOL,
             USDC_INTEREST_RATE,
-            USDC_DEPOSIT_WINDOW_END,
-            USDC_MATURITY
+            USDC_DEPOSIT_WINDOW_OPEN,
+            USDC_DEPOSIT_WINDOW_END
         );
 
         daiZeroCouponBondModule = new ZeroCouponBondModule(
@@ -67,8 +82,8 @@ contract ZeroCouponBondModuleTest is BaseSetup {
             DAI_BOND_TOKEN_NAME,
             DAI_BOND_TOKEN_SYMBOL,
             DAI_INTEREST_RATE,
-            DAI_DEPOSIT_WINDOW_END,
-            DAI_MATURITY
+            DAI_DEPOSIT_WINDOW_OPEN,
+            DAI_DEPOSIT_WINDOW_END
         );
 
         phoZeroCouponBondModule = new ZeroCouponBondModule(
@@ -79,8 +94,8 @@ contract ZeroCouponBondModuleTest is BaseSetup {
             PHO_BOND_TOKEN_NAME,
             PHO_BOND_TOKEN_SYMBOL,
             PHO_INTEREST_RATE,
-            PHO_DEPOSIT_WINDOW_END,
-            PHO_MATURITY
+            PHO_DEPOSIT_WINDOW_OPEN,
+            PHO_DEPOSIT_WINDOW_END
         );
 
         assertEq(usdcZeroCouponBondModule.totalSupply(), 0);
@@ -88,20 +103,27 @@ contract ZeroCouponBondModuleTest is BaseSetup {
         assertEq(phoZeroCouponBondModule.totalSupply(), 0);
 
         // Add module to ModuleManager
-        vm.prank(PHOGovernance);
+        vm.startPrank(PHOGovernance);
         moduleManager.addModule(address(usdcZeroCouponBondModule));
-        vm.prank(PHOGovernance);
         moduleManager.addModule(address(daiZeroCouponBondModule));
-        vm.prank(PHOGovernance);
         moduleManager.addModule(address(phoZeroCouponBondModule));
+        vm.stopPrank();
 
         // Increase PHO ceilings for modules
-        vm.prank(TONGovernance);
-        moduleManager.setPHOCeilingForModule(address(usdcZeroCouponBondModule), ONE_MILLION_D18);
-        vm.prank(TONGovernance);
-        moduleManager.setPHOCeilingForModule(address(daiZeroCouponBondModule), ONE_MILLION_D18);
-        vm.prank(TONGovernance);
-        moduleManager.setPHOCeilingForModule(address(phoZeroCouponBondModule), ONE_MILLION_D18);
+        vm.startPrank(TONGovernance);
+        moduleManager.setPHOCeilingForModule(
+            address(usdcZeroCouponBondModule),
+            ONE_MILLION_D18
+        );
+        moduleManager.setPHOCeilingForModule(
+            address(daiZeroCouponBondModule),
+            ONE_MILLION_D18
+        );
+        moduleManager.setPHOCeilingForModule(
+            address(phoZeroCouponBondModule),
+            ONE_MILLION_D18
+        );
+        vm.stopPrank();
 
         // Fund user with USDC
         vm.prank(richGuy);
@@ -114,20 +136,20 @@ contract ZeroCouponBondModuleTest is BaseSetup {
         kernel.mintPHO(address(user1), ONE_HUNDRED_D18);
 
         // Approve sending USDC to USDC ZCB contract
-        vm.prank(user1);
+        vm.startPrank(user1);
         usdc.approve(address(usdcZeroCouponBondModule), TEN_THOUSAND_D6);
         // Approve sending DAI to DAI ZCB contract
-        vm.prank(user1);
         dai.approve(address(daiZeroCouponBondModule), TEN_THOUSAND_D18);
         // Approve sending PHO to PHO ZCB contract
-        vm.prank(user1);
         pho.approve(address(phoZeroCouponBondModule), ONE_HUNDRED_D18);
+        vm.stopPrank();
     }
 
-    // Cannot set dispatcher to address(0)
-    function testCannotMakeZCBWithModuleManagerZeroAddress() public {
+    // Cannot set addresses to 0
+    function testCannotMakeZCBModuleWithZeroAddress() public {
+        vm.startPrank(user1);
+        // ModuleManager
         vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
-        vm.prank(user1);
         usdcZeroCouponBondModule = new ZeroCouponBondModule(
             address(0),
             address(kernel),
@@ -136,143 +158,248 @@ contract ZeroCouponBondModuleTest is BaseSetup {
             USDC_BOND_TOKEN_NAME,
             USDC_BOND_TOKEN_SYMBOL,
             USDC_INTEREST_RATE,
-            USDC_DEPOSIT_WINDOW_END,
-            USDC_MATURITY
+            USDC_DEPOSIT_WINDOW_OPEN,
+            USDC_DEPOSIT_WINDOW_END
         );
-    }
 
-    // Cannot set kernel to address(0)
-    function testCannotMakeZCBWithTellerZeroAddress() public {
+        // Kernel
         vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
-        vm.prank(user1);
         usdcZeroCouponBondModule = new ZeroCouponBondModule(
-            address(owner),
+            address(moduleManager),
             address(0),
             address(pho),
             address(usdc),
             USDC_BOND_TOKEN_NAME,
             USDC_BOND_TOKEN_SYMBOL,
             USDC_INTEREST_RATE,
-            USDC_DEPOSIT_WINDOW_END,
-            USDC_MATURITY
+            USDC_DEPOSIT_WINDOW_OPEN,
+            USDC_DEPOSIT_WINDOW_END
         );
-    }
 
-    // Cannot set pho to address(0)
-    function testCannotMakeZCBWithPHOZeroAddress() public {
+        // PHO
         vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
-        vm.prank(user1);
         usdcZeroCouponBondModule = new ZeroCouponBondModule(
-            address(owner),
+            address(moduleManager),
             address(kernel),
             address(0),
             address(usdc),
             USDC_BOND_TOKEN_NAME,
             USDC_BOND_TOKEN_SYMBOL,
             USDC_INTEREST_RATE,
-            USDC_DEPOSIT_WINDOW_END,
-            USDC_MATURITY
+            USDC_DEPOSIT_WINDOW_OPEN,
+            USDC_DEPOSIT_WINDOW_END
         );
-    }
 
-    // Cannot set pho to address(0)
-    function testCannotMakeZCBWithDepositTokenZeroAddress() public {
+        // Deposit Token
         vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
-        vm.prank(user1);
         usdcZeroCouponBondModule = new ZeroCouponBondModule(
-            address(owner),
+            address(moduleManager),
             address(kernel),
             address(pho),
             address(0),
             USDC_BOND_TOKEN_NAME,
             USDC_BOND_TOKEN_SYMBOL,
             USDC_INTEREST_RATE,
-            USDC_DEPOSIT_WINDOW_END,
-            USDC_MATURITY
+            USDC_DEPOSIT_WINDOW_OPEN,
+            USDC_DEPOSIT_WINDOW_END
         );
+
+        vm.stopPrank();
     }
+
+    /// Invalid deposit window
 
     // Cannot set depositWindowEnd <= block.timestamp
     function testCannotMakeZCBWithDepositWindowEndLow() public {
-        vm.expectRevert(abi.encodeWithSelector(TimestampMustBeInFuture.selector));
+        vm.expectRevert(abi.encodeWithSelector(DepositWindowInvalid.selector));
         vm.prank(user1);
         usdcZeroCouponBondModule = new ZeroCouponBondModule(
-            address(owner),
+            address(moduleManager),
             address(kernel),
             address(pho),
             address(usdc),
             USDC_BOND_TOKEN_NAME,
             USDC_BOND_TOKEN_SYMBOL,
             USDC_INTEREST_RATE,
-            block.timestamp,
-            USDC_MATURITY
-        );
-    }
-
-    // Cannot set maturityTimestamp <= block.timestamp
-    function testCannotMakeZCBWithMaturityTimestampLow() public {
-        vm.expectRevert(abi.encodeWithSelector(TimestampMustBeInFuture.selector));
-        vm.prank(user1);
-        usdcZeroCouponBondModule = new ZeroCouponBondModule(
-            address(owner),
-            address(kernel),
-            address(pho),
-            address(usdc),
-            USDC_BOND_TOKEN_NAME,
-            USDC_BOND_TOKEN_SYMBOL,
-            USDC_INTEREST_RATE,
-            USDC_DEPOSIT_WINDOW_END,
+            USDC_DEPOSIT_WINDOW_OPEN,
             block.timestamp
         );
     }
 
-    // Cannot set interest rate if not dispatcher
-    function testCannotSetInterestRateOnlyModuleManager() public {
-        vm.expectRevert("Only moduleManager");
+    // Cannot set depositWindowOpen >= depositWindowEnd
+    function testCannotMakeZCBWithDepositWindowOpenPastEnd() public {
+        vm.expectRevert(abi.encodeWithSelector(DepositWindowInvalid.selector));
         vm.prank(user1);
+        usdcZeroCouponBondModule = new ZeroCouponBondModule(
+            address(moduleManager),
+            address(kernel),
+            address(pho),
+            address(usdc),
+            USDC_BOND_TOKEN_NAME,
+            USDC_BOND_TOKEN_SYMBOL,
+            USDC_INTEREST_RATE,
+            USDC_DEPOSIT_WINDOW_END,
+            USDC_DEPOSIT_WINDOW_OPEN
+        );
+    }
+
+    // Cannot set interest rate if not ModuleManager
+    function testCannotSetInterestRateOnlyModuleManager() public {
+        vm.expectRevert("Only ModuleManager");
+        vm.prank(user1);
+        usdcZeroCouponBondModule.setInterestRate(3e5);
+    }
+
+    // Cannot set interest rate if not ModuleManager
+    function testBasicSetInterestRate() public {
+        vm.expectEmit(true, true, true, true);
+        emit InterestRateSet(3e5);
+        vm.prank(address(moduleManager));
         usdcZeroCouponBondModule.setInterestRate(3e5);
     }
 
     // Cannot deposit after window end
     function testCannotDepositAfterWindowEnd() public {
         uint256 depositAmount = ONE_HUNDRED_D6;
-        // deposit
+        // Deposit
         vm.warp(USDC_DEPOSIT_WINDOW_END + 1);
-        vm.expectRevert(abi.encodeWithSelector(CannotDepositAfterWindowEnd.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(CannotDepositAfterWindowEnd.selector)
+        );
         vm.prank(user1);
         usdcZeroCouponBondModule.depositBond(depositAmount);
     }
 
-    // Basic deposit for non-18 decimals
-    function testDepositBondUSDC() public {
+    // Basic deposit for non-18 decimals - full interest rate
+    function testDepositBondUSDCInterestRateFull() public {
         uint256 depositAmount = ONE_HUNDRED_D6;
-        uint256 expectedMint = ((depositAmount * (1e6 + USDC_INTEREST_RATE)) / 1e6) * 10 ** 12;
-        // deposit
-        vm.expectEmit(true, false, false, true);
-        emit BondIssued(user1, depositAmount, expectedMint);
-        vm.prank(user1);
-        usdcZeroCouponBondModule.depositBond(depositAmount);
-        // check expected mint amount
-        assertEq(usdcZeroCouponBondModule.totalSupply(), expectedMint);
-        assertEq(usdcZeroCouponBondModule.issuedAmount(user1), expectedMint);
+        uint256 expectedMint = ((depositAmount * (1e6 + USDC_INTEREST_RATE)) /
+            1e6) * 10**12;
+
+        _testDepositAnyModule(
+            depositAmount,
+            expectedMint,
+            usdcZeroCouponBondModule,
+            block.timestamp
+        );
     }
 
-    // Basic deposit for standard 18 decimals
-    function testDepositBondDAI() public {
+    // Basic deposit for standard 18 decimals - full interest rate
+    function testDepositBondDAIInterestRateFull() public {
         uint256 depositAmount = ONE_HUNDRED_D18;
-        // deposit
+        uint256 expectedMint = ((depositAmount * (1e6 + DAI_INTEREST_RATE)) /
+            1e6);
+
+        _testDepositAnyModule(
+            depositAmount,
+            expectedMint,
+            daiZeroCouponBondModule,
+            block.timestamp
+        );
+    }
+
+    // Basic deposit for non-18 decimals - half interest rate
+    function testDepositBondUSDCInterestRateHalf() public {
+        uint256 depositAmount = ONE_HUNDRED_D6;
+        uint256 expectedMint = ((depositAmount *
+            (1e6 + USDC_INTEREST_RATE / 2)) / 1e6) * 10**12;
+
+        uint256 duration = USDC_DEPOSIT_WINDOW_END - USDC_DEPOSIT_WINDOW_OPEN;
+        uint256 halfway = (USDC_DEPOSIT_WINDOW_END - duration / 2);
+
+        _testDepositAnyModule(
+            depositAmount,
+            expectedMint,
+            usdcZeroCouponBondModule,
+            halfway
+        );
+    }
+
+    // Basic deposit for standard 18 decimals - half interest rate
+    function testDepositBondDAIInterestRateHalf() public {
+        uint256 depositAmount = ONE_HUNDRED_D18;
+        uint256 expectedMint = ((depositAmount *
+            (1e6 + DAI_INTEREST_RATE / 2)) / 1e6);
+        uint256 duration = DAI_DEPOSIT_WINDOW_END - DAI_DEPOSIT_WINDOW_OPEN;
+        uint256 halfway = (DAI_DEPOSIT_WINDOW_END - duration / 2);
+
+        _testDepositAnyModule(
+            depositAmount,
+            expectedMint,
+            daiZeroCouponBondModule,
+            halfway
+        );
+    }
+
+    // Helper function to test deposit from any ZCB module
+    function _testDepositAnyModule(
+        uint256 _depositAmount,
+        uint256 _expectedMintAmount,
+        ZeroCouponBondModule _module,
+        uint256 _depositTimestamp
+    ) public {
+        // Stablecoin and PHO balances before
+        DepositTokenBalance memory before;
+        before.userDepositTokenBalance = _module.depositToken().balanceOf(
+            address(user1)
+        );
+        before.moduleDepositTokenBalance = _module.depositToken().balanceOf(
+            address(_module)
+        );
+        before.userPHOBalance = pho.balanceOf(user1);
+        before.modulePHOBalance = pho.balanceOf(address(_module));
+        before.userIssuedAmount = _module.issuedAmount(user1);
+        before.totalPHOSupply = pho.totalSupply();
+
+        // Deposit
+        vm.warp(_depositTimestamp);
+        vm.expectEmit(true, true, true, true);
+        emit BondIssued(user1, _depositAmount, _expectedMintAmount);
         vm.prank(user1);
-        daiZeroCouponBondModule.depositBond(depositAmount);
-        // check expected mint amount
-        uint256 expectedMint = ((depositAmount * (1e6 + DAI_INTEREST_RATE)) / 1e6);
-        assertEq(daiZeroCouponBondModule.totalSupply(), expectedMint);
-        assertEq(daiZeroCouponBondModule.issuedAmount(user1), expectedMint);
+        _module.depositBond(_depositAmount);
+
+        // Stablecoin and PHO balances after
+        DepositTokenBalance memory aft; // note that after is a reserved keyword
+        aft.userDepositTokenBalance = _module.depositToken().balanceOf(
+            address(user1)
+        );
+        aft.moduleDepositTokenBalance = _module.depositToken().balanceOf(
+            address(_module)
+        );
+        aft.modulePHOBalance = pho.balanceOf(address(_module));
+        aft.userPHOBalance = pho.balanceOf(user1);
+        aft.userIssuedAmount = _module.issuedAmount(user1);
+        aft.totalPHOSupply = pho.totalSupply();
+
+        // User balance - PHO same and depositToken down
+        assertEq(aft.userPHOBalance, before.userPHOBalance);
+        assertEq(
+            aft.userDepositTokenBalance + _depositAmount,
+            before.userDepositTokenBalance
+        );
+
+        // ZCB module balance - PHO same, depositToken up
+        assertEq(aft.modulePHOBalance, before.modulePHOBalance);
+        assertEq(
+            aft.moduleDepositTokenBalance,
+            before.moduleDepositTokenBalance + _depositAmount
+        );
+
+        // Check issued amount goes up
+        assertEq(
+            aft.userIssuedAmount,
+            before.userIssuedAmount + _expectedMintAmount
+        );
+
+        // Check PHO supply stays same
+        assertEq(aft.totalPHOSupply, before.totalPHOSupply);
     }
 
     // Cannot redeem bond before maturtity
     function testCannotRedeemBondBeforeMaturity() public {
         uint256 depositAmount = ONE_HUNDRED_D6;
-        uint256 redeemAmount = ((depositAmount * (1e6 + USDC_INTEREST_RATE)) / 1e6) * 10 ** 12;
+        uint256 redeemAmount = ((depositAmount * (1e6 + USDC_INTEREST_RATE)) /
+            1e6) * 10**12;
         vm.prank(user1);
         usdcZeroCouponBondModule.depositBond(depositAmount);
         vm.expectRevert(abi.encodeWithSelector(MaturityNotReached.selector));
@@ -283,97 +410,204 @@ contract ZeroCouponBondModuleTest is BaseSetup {
     // Cannot redeem more than issued
     function testCannotRedeemBondMoreThanIssued() public {
         uint256 depositAmount = ONE_HUNDRED_D6;
-        uint256 redeemAmount = ((depositAmount * (1e6 + USDC_INTEREST_RATE)) / 1e6) * 10 ** 12;
+        uint256 redeemAmount = ((depositAmount * (1e6 + USDC_INTEREST_RATE)) /
+            1e6) * 10**12;
         vm.warp(USDC_DEPOSIT_WINDOW_END);
         vm.prank(user1);
         usdcZeroCouponBondModule.depositBond(depositAmount / 2);
-        vm.warp(USDC_MATURITY);
-        vm.expectRevert(abi.encodeWithSelector(CannotRedeemMoreThanIssued.selector));
-        vm.prank(user1);
-        usdcZeroCouponBondModule.redeemBond(redeemAmount);
-    }
-
-    // Test basic redeem with non 18 decimals
-    function testRedeemBondUSDC() public {
-        uint256 depositAmount = ONE_HUNDRED_D6;
-        uint256 redeemAmount = ((depositAmount * (1e6 + USDC_INTEREST_RATE)) / 1e6) * 10 ** 12;
         vm.warp(USDC_DEPOSIT_WINDOW_END);
-
-        uint256 phoBalanceUserBefore = pho.balanceOf(user1);
-        uint256 phoZCBBalanceBefore = pho.balanceOf(address(usdcZeroCouponBondModule));
-
-        vm.prank(user1);
-        usdcZeroCouponBondModule.depositBond(depositAmount);
-
-        vm.warp(USDC_MATURITY);
-
+        vm.expectRevert(
+            abi.encodeWithSelector(CannotRedeemMoreThanIssued.selector)
+        );
         vm.prank(user1);
         usdcZeroCouponBondModule.redeemBond(redeemAmount);
-
-        uint256 phoBalanceUserAfter = pho.balanceOf(user1);
-        uint256 phoZCBBalanceAfter = pho.balanceOf(address(usdcZeroCouponBondModule));
-
-        assertEq(phoBalanceUserAfter, phoBalanceUserBefore + redeemAmount);
-
-        assertEq(usdcZeroCouponBondModule.issuedAmount(user1), 0);
     }
 
-    // Test basic redeem with standard 18 decimals
-    function testRedeemBondDAI() public {
-        uint256 depositAmount = ONE_HUNDRED_D18;
-        uint256 redeemAmount = ((depositAmount * (1e6 + DAI_INTEREST_RATE)) / 1e6);
-        vm.warp(DAI_DEPOSIT_WINDOW_END);
+    // Test basic redeem (full interest rate) with non 18 decimals
+    function testRedeemBondUSDCInterestRateFull() public {
+        uint256 depositAmount = ONE_HUNDRED_D6;
+        uint256 expectedMint = ((depositAmount * (1e6 + USDC_INTEREST_RATE)) /
+            1e6) * 10**12;
 
-        uint256 phoBalanceUserBefore = pho.balanceOf(user1);
-        uint256 phoZCBBalanceBefore = pho.balanceOf(address(daiZeroCouponBondModule));
+        _testDepositAnyModule(
+            depositAmount,
+            expectedMint,
+            usdcZeroCouponBondModule,
+            block.timestamp
+        );
 
-        vm.prank(user1);
-        daiZeroCouponBondModule.depositBond(depositAmount);
+        uint256 redeemAmount = ((depositAmount * (1e6 + USDC_INTEREST_RATE)) /
+            1e6) * 10**12;
+        uint256 redeemTimestamp = USDC_DEPOSIT_WINDOW_END;
 
-        vm.warp(DAI_MATURITY);
-
-        vm.prank(user1);
-        daiZeroCouponBondModule.redeemBond(redeemAmount);
-
-        vm.warp(DAI_MATURITY);
-
-        uint256 phoBalanceUserAfter = pho.balanceOf(user1);
-        uint256 phoZCBBalanceAfter = pho.balanceOf(address(daiZeroCouponBondModule));
-
-        assertEq(phoBalanceUserAfter, phoBalanceUserBefore + redeemAmount);
-
-        assertEq(daiZeroCouponBondModule.issuedAmount(user1), 0);
+        _testRedeemAnyModule(
+            redeemAmount,
+            usdcZeroCouponBondModule,
+            redeemTimestamp
+        );
     }
 
-    // Test basic redeem with with PHO
-    function testRedeemBondPHO() public {
-        uint256 depositAmount = ONE_HUNDRED_D18;
-        uint256 redeemAmount = ((depositAmount * (1e6 + PHO_INTEREST_RATE)) / 1e6);
+    // Test basic redeem (full interest rate) with non 18 decimals
+    function testRedeemBondUSDCInterestRateHalf() public {
+        uint256 depositAmount = ONE_HUNDRED_D6;
 
+        uint256 expectedMint = ((depositAmount *
+            (1e6 + USDC_INTEREST_RATE / 2)) / 1e6) * 10**12;
+
+        // Deposit at T/2 (midway)
+        uint256 depositTimestamp = USDC_DEPOSIT_WINDOW_END -
+            (USDC_DEPOSIT_WINDOW_END - USDC_DEPOSIT_WINDOW_OPEN) /
+            2;
+
+        _testDepositAnyModule(
+            depositAmount,
+            expectedMint,
+            usdcZeroCouponBondModule,
+            depositTimestamp
+        );
+
+        uint256 redeemAmount = ((depositAmount *
+            (1e6 + USDC_INTEREST_RATE / 2)) / 1e6) * 10**12;
+        uint256 redeemTimestamp = USDC_DEPOSIT_WINDOW_END;
+
+        _testRedeemAnyModule(
+            redeemAmount,
+            usdcZeroCouponBondModule,
+            redeemTimestamp
+        );
+    }
+
+    // Test basic redeem (full interest rate) with non 18 decimals
+    function testRedeemBondDAIInterestRateFull() public {
+        uint256 depositAmount = ONE_HUNDRED_D18;
+        uint256 expectedMint = ((depositAmount * (1e6 + DAI_INTEREST_RATE)) /
+            1e6);
+
+        _testDepositAnyModule(
+            depositAmount,
+            expectedMint,
+            daiZeroCouponBondModule,
+            block.timestamp
+        );
+
+        uint256 redeemAmount = ((depositAmount * (1e6 + DAI_INTEREST_RATE)) /
+            1e6);
+        uint256 redeemTimestamp = DAI_DEPOSIT_WINDOW_END;
+
+        _testRedeemAnyModule(
+            redeemAmount,
+            daiZeroCouponBondModule,
+            redeemTimestamp
+        );
+    }
+
+    // Private function to redeem deposit from any ZCB module
+    function _testRedeemAnyModule(
+        uint256 _redeemAmount,
+        ZeroCouponBondModule _module,
+        uint256 _redeemTimestamp
+    ) public {
+        // Stablecoin and PHO balances before
+        DepositTokenBalance memory before;
+        before.userDepositTokenBalance = _module.depositToken().balanceOf(
+            address(user1)
+        );
+        before.moduleDepositTokenBalance = _module.depositToken().balanceOf(
+            address(_module)
+        );
+        before.userPHOBalance = pho.balanceOf(user1);
+        before.modulePHOBalance = pho.balanceOf(address(_module));
+        before.userIssuedAmount = _module.issuedAmount(user1);
+        before.totalPHOSupply = pho.totalSupply();
+
+        // redeem
+        vm.warp(_redeemTimestamp);
+        vm.expectEmit(true, true, true, true);
+        emit BondRedeemed(user1, _redeemAmount);
+        vm.prank(user1);
+        _module.redeemBond(_redeemAmount);
+
+        // Stablecoin and PHO balances after
+        DepositTokenBalance memory aft; // note that after is a reserved keyword
+        aft.userDepositTokenBalance = _module.depositToken().balanceOf(
+            address(user1)
+        );
+        aft.moduleDepositTokenBalance = _module.depositToken().balanceOf(
+            address(_module)
+        );
+        aft.modulePHOBalance = pho.balanceOf(address(_module));
+        aft.userPHOBalance = pho.balanceOf(user1);
+        aft.userIssuedAmount = _module.issuedAmount(user1);
+        aft.totalPHOSupply = pho.totalSupply();
+
+        // User balance - PHO up and depositToken same
+        assertEq(aft.userPHOBalance, before.userPHOBalance + _redeemAmount);
+        assertEq(aft.userDepositTokenBalance, before.userDepositTokenBalance);
+
+        // ZCB module balance - PHO same, depositToken same
+        assertEq(aft.modulePHOBalance, before.modulePHOBalance);
+        assertEq(
+            aft.moduleDepositTokenBalance,
+            before.moduleDepositTokenBalance
+        );
+
+        // Check issued amount goes down
+        assertEq(aft.userIssuedAmount, before.userIssuedAmount - _redeemAmount);
+
+        // Check PHO supply increases
+        assertEq(aft.totalPHOSupply, before.totalPHOSupply + _redeemAmount);
+    }
+
+    // Test basic redeem for PHO (full interest rate)
+    // Note: Custom vs. _testRedeemAnyModule since PHO is depositToken
+    function testRedeemBondPHOInterestRateFull() public {
+        uint256 depositAmount = ONE_HUNDRED_D18;
+        uint256 redeemAmount = ((depositAmount * (1e6 + PHO_INTEREST_RATE)) /
+            1e6);
         vm.warp(PHO_DEPOSIT_WINDOW_END);
 
+        // PHO balances before
         uint256 phoBalanceUserBefore = pho.balanceOf(user1);
-        uint256 phoZCBBalanceBefore = pho.balanceOf(address(phoZeroCouponBondModule));
+        uint256 phoZCBBalanceBefore = pho.balanceOf(
+            address(phoZeroCouponBondModule)
+        );
 
         vm.prank(user1);
         phoZeroCouponBondModule.depositBond(depositAmount);
 
-        uint256 phoBalanceUserAfterDeposit = pho.balanceOf(user1);
-        uint256 phoZCBBalanceAfterDeposit = pho.balanceOf(address(phoZeroCouponBondModule));
+        uint256 issuedAmountUserBefore = phoZeroCouponBondModule.issuedAmount(
+            user1
+        );
+        uint256 phoTotalSupplyBefore = pho.totalSupply();
 
-        assertEq(phoBalanceUserAfterDeposit, phoBalanceUserBefore - depositAmount);
-        assertEq(phoZCBBalanceAfterDeposit, phoZCBBalanceBefore + depositAmount);
-
-        vm.warp(PHO_MATURITY);
+        vm.warp(DAI_DEPOSIT_WINDOW_END);
 
         vm.prank(user1);
         phoZeroCouponBondModule.redeemBond(redeemAmount);
 
-        uint256 phoBalanceUserAfterRedeem = pho.balanceOf(user1);
-        uint256 phoZCBBalanceAfterRedeem = pho.balanceOf(address(phoZeroCouponBondModule));
+        // PHO balances after
+        uint256 phoBalanceUserAfter = pho.balanceOf(user1);
+        uint256 phoZCBBalanceAfter = pho.balanceOf(
+            address(phoZeroCouponBondModule)
+        );
 
-        assertEq(phoBalanceUserAfterRedeem, phoBalanceUserAfterDeposit + redeemAmount);
+        uint256 issuedAmountUserAfter = phoZeroCouponBondModule.issuedAmount(
+            user1
+        );
+        uint256 phoTotalSupplyAfter = pho.totalSupply();
 
-        assertEq(phoZeroCouponBondModule.issuedAmount(user1), 0);
+        // Check that PHO balances before and after are expected
+
+        // User balance - PHO should be redeemAmount
+        assertEq(phoBalanceUserAfter, redeemAmount);
+
+        // ZCB module balance -  PHO unchanged
+        assertEq(phoZCBBalanceAfter, phoZCBBalanceBefore + depositAmount);
+
+        // Check issued amount before and after
+        assertEq(issuedAmountUserBefore - issuedAmountUserAfter, redeemAmount);
+
+        // Check PHO total supply before and after
+        assertEq(phoTotalSupplyAfter, phoTotalSupplyBefore + redeemAmount);
     }
 }
