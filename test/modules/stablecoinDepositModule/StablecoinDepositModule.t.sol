@@ -15,28 +15,13 @@ contract StablecoinDepositModuleTest is BaseSetup {
     event StablecoinDeposited(address indexed depositor, uint256 depositAmount);
     event PHORedeemed(address indexed redeemer, uint256 redeemAmount);
 
-    enum Status {
-        Unregistered,
-        Registered,
-        Deprecated
-    }
-
-    // Needed for stack too deep errors
-    struct Before {
-        uint256 userStable;
-        uint256 moduleStable;
-        uint256 userPHO;
-        uint256 userIssued;
-        uint256 totalPHO;
-    }
-
-    // Needed for stack too deep errors
-    struct After {
-        uint256 userStable;
-        uint256 moduleStable;
-        uint256 userPHO;
-        uint256 userIssued;
-        uint256 totalPHO;
+    // Track balance for stablecoins and PHO
+    struct StablecoinBalance {
+        uint256 userStablecoinBalance;
+        uint256 moduleStablecoinBalance;
+        uint256 userPHOBalance;
+        uint256 userIssuedAmount;
+        uint256 totalPHOSupply;
     }
 
     StablecoinDepositModule public usdcStablecoinDepositModule;
@@ -160,14 +145,14 @@ contract StablecoinDepositModuleTest is BaseSetup {
             _depositAmount * 10 ** (PHO_DECIMALS - _module.stablecoinDecimals());
 
         // Stablecoin and PHO balances before
-        Before memory before;
-        before.userStable = _module.stablecoin().balanceOf(address(user1));
-        before.moduleStable = _module.stablecoin().balanceOf(address(_module));
-        before.userPHO = pho.balanceOf(user1);
-        before.userIssued = _module.issuedAmount(user1);
-        before.totalPHO = pho.totalSupply();
+        StablecoinBalance memory before;
+        before.userStablecoinBalance = _module.stablecoin().balanceOf(address(user1));
+        before.moduleStablecoinBalance = _module.stablecoin().balanceOf(address(_module));
+        before.userPHOBalance = pho.balanceOf(user1);
+        before.userIssuedAmount = _module.issuedAmount(user1);
+        before.totalPHOSupply = pho.totalSupply();
 
-        // deposit
+        // Deposit
         vm.warp(block.timestamp + moduleDelay + 1);
         vm.expectEmit(true, true, true, true);
         emit StablecoinDeposited(user1, _depositAmount);
@@ -175,22 +160,25 @@ contract StablecoinDepositModuleTest is BaseSetup {
         _module.depositStablecoin(_depositAmount);
 
         // Stablecoin and PHO balances after
-        After memory aft; // note that after is a reserved keyword
-        aft.userStable = _module.stablecoin().balanceOf(address(user1));
-        aft.moduleStable = _module.stablecoin().balanceOf(address(_module));
-        aft.userPHO = pho.balanceOf(user1);
-        aft.userIssued = _module.issuedAmount(user1);
-        aft.totalPHO = pho.totalSupply();
+        StablecoinBalance memory aft; // note that after is a reserved keyword
+        aft.userStablecoinBalance = _module.stablecoin().balanceOf(address(user1));
+        aft.moduleStablecoinBalance = _module.stablecoin().balanceOf(address(_module));
+        aft.userPHOBalance = pho.balanceOf(user1);
+        aft.userIssuedAmount = _module.issuedAmount(user1);
+        aft.totalPHOSupply = pho.totalSupply();
 
         // User balance - PHO up and stablecoin down
-        assertEq(aft.userStable + _depositAmount, before.userStable);
-        assertEq(aft.userPHO, before.userPHO + expectedIssuedAmount);
+        assertEq(aft.userStablecoinBalance + _depositAmount, before.userStablecoinBalance);
+        assertEq(aft.userPHOBalance, before.userPHOBalance + expectedIssuedAmount);
+
         // Deposit module balance - stablecoin up
-        assertEq(aft.moduleStable, before.moduleStable + _depositAmount);
+        assertEq(aft.moduleStablecoinBalance, before.moduleStablecoinBalance + _depositAmount);
+
         // Check issued amount goes up
-        assertEq(before.userIssued + expectedIssuedAmount, aft.userIssued);
+        assertEq(aft.userIssuedAmount, before.userIssuedAmount + expectedIssuedAmount);
+
         // Check PHO total supply goes up
-        assertEq(before.totalPHO + expectedIssuedAmount, aft.totalPHO);
+        assertEq(aft.totalPHOSupply, before.totalPHOSupply + expectedIssuedAmount);
     }
 
     // Cannot redeem more than issued
@@ -227,12 +215,12 @@ contract StablecoinDepositModuleTest is BaseSetup {
             _redeemAmount / 10 ** (PHO_DECIMALS - _module.stablecoinDecimals());
 
         // Stablecoin and PHO balances before
-        Before memory before;
-        before.userStable = _module.stablecoin().balanceOf(address(user1));
-        before.moduleStable = _module.stablecoin().balanceOf(address(_module));
-        before.userPHO = pho.balanceOf(user1);
-        before.userIssued = _module.issuedAmount(user1);
-        before.totalPHO = pho.totalSupply();
+        StablecoinBalance memory before;
+        before.userStablecoinBalance = _module.stablecoin().balanceOf(address(user1));
+        before.moduleStablecoinBalance = _module.stablecoin().balanceOf(address(_module));
+        before.userPHOBalance = pho.balanceOf(user1);
+        before.userIssuedAmount = _module.issuedAmount(user1);
+        before.totalPHOSupply = pho.totalSupply();
 
         vm.expectEmit(true, true, true, true);
         emit PHORedeemed(user1, _redeemAmount);
@@ -240,21 +228,26 @@ contract StablecoinDepositModuleTest is BaseSetup {
         _module.redeemStablecoin(_redeemAmount);
 
         // Stablecoin and PHO balances after
-        After memory aft; // note that after is a reserved keyword
-        aft.userStable = _module.stablecoin().balanceOf(address(user1));
-        aft.moduleStable = _module.stablecoin().balanceOf(address(_module));
-        aft.userPHO = pho.balanceOf(user1);
-        aft.userIssued = _module.issuedAmount(user1);
-        aft.totalPHO = pho.totalSupply();
+        StablecoinBalance memory aft; // note that after is a reserved keyword
+        aft.userStablecoinBalance = _module.stablecoin().balanceOf(address(user1));
+        aft.moduleStablecoinBalance = _module.stablecoin().balanceOf(address(_module));
+        aft.userPHOBalance = pho.balanceOf(user1);
+        aft.userIssuedAmount = _module.issuedAmount(user1);
+        aft.totalPHOSupply = pho.totalSupply();
 
         // User balance - Stablecoin up and PHO down
-        assertEq(aft.userStable, before.userStable + expectedStablecoinReturn);
-        assertEq(aft.moduleStable, before.moduleStable - expectedStablecoinReturn);
+        assertEq(aft.userStablecoinBalance, before.userStablecoinBalance + expectedStablecoinReturn);
+        assertEq(aft.userPHOBalance, before.userPHOBalance - _redeemAmount);
+
         // Deposit module balance - Stablecoin down
-        assertEq(aft.userPHO, before.userPHO - _redeemAmount);
+        assertEq(
+            aft.moduleStablecoinBalance, before.moduleStablecoinBalance - expectedStablecoinReturn
+        );
+
         // Check issued amount before and after
-        assertEq(before.userIssued - aft.userIssued, _redeemAmount);
+        assertEq(aft.userIssuedAmount + _redeemAmount, before.userIssuedAmount);
+
         // Check PHO total supply before and after
-        assertEq(before.totalPHO - aft.totalPHO, _redeemAmount);
+        assertEq(aft.totalPHOSupply, before.totalPHOSupply - _redeemAmount);
     }
 }
