@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.13;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -14,7 +13,7 @@ import "@protocol/interfaces/IModuleManager.sol";
 /// @author Ekonomia: https://github.com/ekonomia-tech
 /// @notice Accepts specific stablecoin 1:1 i.e. LUSD, DAI, etc.
 contract StablecoinDepositModule is Ownable, ReentrancyGuard {
-    using SafeERC20 for ERC20;
+    using SafeERC20 for IERC20Metadata;
 
     /// Errors
     error ZeroAddressDetected();
@@ -23,8 +22,8 @@ contract StablecoinDepositModule is Ownable, ReentrancyGuard {
 
     /// State vars
     IModuleManager public moduleManager;
-    address public stablecoin;
-    uint256 stablecoinDecimals;
+    IERC20Metadata public stablecoin;
+    uint256 public stablecoinDecimals;
     address public kernel;
     IPHO public pho;
     mapping(address => uint256) public issuedAmount;
@@ -49,8 +48,8 @@ contract StablecoinDepositModule is Ownable, ReentrancyGuard {
             revert ZeroAddressDetected();
         }
         moduleManager = IModuleManager(_moduleManager);
-        stablecoin = _stablecoin;
-        stablecoinDecimals = IERC20Metadata(stablecoin).decimals();
+        stablecoin = IERC20Metadata(_stablecoin);
+        stablecoinDecimals = stablecoin.decimals();
         kernel = _kernel;
         pho = IPHO(_pho);
     }
@@ -68,7 +67,7 @@ contract StablecoinDepositModule is Ownable, ReentrancyGuard {
         scaledDepositAmount = depositAmount * (10 ** (18 - stablecoinDecimals));
 
         // transfer stablecoin from caller
-        ERC20(stablecoin).safeTransferFrom(msg.sender, address(this), depositAmount);
+        stablecoin.safeTransferFrom(msg.sender, address(this), depositAmount);
 
         issuedAmount[msg.sender] += scaledDepositAmount;
 
@@ -98,7 +97,7 @@ contract StablecoinDepositModule is Ownable, ReentrancyGuard {
         scaledRedeemAmount = redeemAmount / (10 ** (18 - stablecoinDecimals));
 
         // transfer stablecoin to caller
-        ERC20(stablecoin).transfer(msg.sender, scaledRedeemAmount);
+        stablecoin.transfer(msg.sender, scaledRedeemAmount);
 
         emit PHORedeemed(msg.sender, redeemAmount);
     }
