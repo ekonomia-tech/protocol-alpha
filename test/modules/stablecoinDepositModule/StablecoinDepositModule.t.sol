@@ -9,11 +9,9 @@ contract StablecoinDepositModuleTest is BaseSetup {
     /// Errors
     error ZeroAddressDetected();
     error CannotRedeemMoreThanDeposited();
-    error OverEighteenDecimalPlaces();
+    error OverEighteenDecimals();
 
     /// Events
-    event StablecoinWhitelisted(address indexed stablecoin);
-    event StablecoinDelisted(address indexed stablecoin);
     event StablecoinDeposited(address indexed depositor, uint256 depositAmount);
     event PHORedeemed(address indexed redeemer, uint256 redeemAmount);
 
@@ -96,11 +94,10 @@ contract StablecoinDepositModuleTest is BaseSetup {
         // Allow sending PHO (redemptions) to each StablecoinDeposit contract
         pho.approve(address(usdcStablecoinDepositModule), TEN_THOUSAND_D18);
         pho.approve(address(daiStablecoinDepositModule), TEN_THOUSAND_D18);
-        vm.stopPrank();
 
         // Approve PHO burnFrom() via moduleManager calling kernel
-        vm.prank(user1);
         pho.approve(address(kernel), ONE_MILLION_D18);
+        vm.stopPrank();
     }
 
     // Cannot set any 0 addresses for constructor
