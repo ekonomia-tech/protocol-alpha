@@ -53,7 +53,9 @@ contract ModuleManager is IModuleManager {
     function mintPHO(address _to, uint256 _amount) external override onlyModule {
         if (_amount == 0) revert ZeroValue();
         Module storage module = modules[msg.sender];
-        if (module.phoMinted + _amount > module.phoCeiling) revert ModuleCeilingExceeded();
+        if (module.phoMinted + _amount > module.phoCeiling) {
+            revert ModuleCeilingExceeded();
+        }
         module.phoMinted = module.phoMinted + _amount;
         kernel.mintPHO(_to, _amount);
         emit ModuleMint(msg.sender, _to, _amount);
@@ -68,7 +70,7 @@ contract ModuleManager is IModuleManager {
         }
         if (_amount == 0) revert ZeroValue();
         Module storage module = modules[msg.sender];
-        if ((module.phoMinted <= _amount)) revert ModuleBurnExceeded();
+        if ((module.phoMinted < _amount)) revert ModuleBurnExceeded();
         kernel.burnPHO(_from, _amount);
         module.phoMinted = module.phoMinted - _amount;
         emit ModuleBurn(msg.sender, _from, _amount);
@@ -110,8 +112,12 @@ contract ModuleManager is IModuleManager {
     {
         Module memory module = modules[_module];
         if (_module == address(0)) revert ZeroAddress();
-        if (module.status == Status.Unregistered) revert UnregisteredModule(_module);
-        if (module.status == Status.Deprecated) revert DeprecatedModule(_module);
+        if (module.status == Status.Unregistered) {
+            revert UnregisteredModule(_module);
+        }
+        if (module.status == Status.Deprecated) {
+            revert DeprecatedModule(_module);
+        }
         // TODO - Commented out until kernel has PHOCeiling and totalPHOMinted uncommented
         // if (
         //     kernel.PHOCeiling()

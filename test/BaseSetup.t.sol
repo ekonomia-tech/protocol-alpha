@@ -66,10 +66,14 @@ abstract contract BaseSetup is Test {
     address public constant PRICEFEED_USDCUSD = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
     address public constant PRICEFEED_FRAXUSD = 0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD;
 
+    uint256 public constant USDC_DECIMALS = 6;
+    uint256 public constant DAI_DECIMALS = 18;
+    uint256 public constant PHO_DECIMALS = 18;
+
     uint256 public constant ONE_D6 = 10 ** 6;
+    uint256 public constant ONE_HUNDRED_D6 = 100 * 10 ** 6;
     uint256 public constant ONE_HUNDRED_D18 = 100 * 10 ** 18;
     uint256 public constant ONE_THOUSAND_D18 = 1000 * 10 ** 18;
-    uint256 public constant ONE_HUNDRED_D6 = 100 * 10 ** 6;
     uint256 public constant ONE_THOUSAND_D6 = 1000 * 10 ** 6;
     uint256 public constant TEN_THOUSAND_D18 = 10000 * 10 ** 18;
     uint256 public constant TEN_THOUSAND_D6 = 10000 * 10 ** 6;
@@ -127,6 +131,7 @@ abstract contract BaseSetup is Test {
 
         dai = IERC20(DAI_ADDRESS);
         usdc = IUSDC(USDC_ADDRESS);
+        dai = IERC20(DAI_ADDRESS);
         frax = IERC20(FRAX_ADDRESS);
 
         priceFeed = new ChainlinkPriceFeed(PRECISION_DIFFERENCE);
