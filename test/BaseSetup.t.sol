@@ -63,6 +63,10 @@ abstract contract BaseSetup is Test {
     address public constant PRICEFEED_USDCUSD = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
     address public constant PRICEFEED_FRAXUSD = 0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD;
 
+    uint256 public constant USDC_DECIMALS = 6;
+    uint256 public constant DAI_DECIMALS = 18;
+    uint256 public constant PHO_DECIMALS = 18;
+
     uint256 public constant ONE_D6 = 10 ** 6;
     uint256 public constant ONE_HUNDRED_D6 = 100 * 10 ** 6;
     uint256 public constant ONE_HUNDRED_D18 = 100 * 10 ** 18;
