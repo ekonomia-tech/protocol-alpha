@@ -27,6 +27,7 @@ abstract contract BaseSetup is Test {
     Kernel public kernel;
     DummyOracle public priceOracle;
     ChainlinkPriceFeed public priceFeed;
+    IERC20 dai;
     IUSDC usdc;
     IERC20 frax;
     IERC20 mpl;
@@ -47,6 +48,7 @@ abstract contract BaseSetup is Test {
     address public module1 = address(5);
     address public richGuy = 0x72A53cDBBcc1b9efa39c834A540550e23463AAcB;
     address public mplWhale = 0xd6d4Bcde6c816F17889f1Dd3000aF0261B03a196;
+    address public daiWhale = 0xc08a8a9f809107c5A7Be6d90e315e4012c99F39a;
     address public metaPoolFactoryAddress = 0xB9fC157394Af804a3578134A6585C0dc9cc990d4;
     address public fraxRichGuy = 0xd3d176F7e4b43C70a68466949F6C64F06Ce75BB9;
 
@@ -57,13 +59,19 @@ abstract contract BaseSetup is Test {
     address public constant FRAXBP_LP_TOKEN = 0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC;
     address public constant FRAXBP_POOL = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
     address public constant FRAXBP_LUSD = 0x497CE58F34605B9944E6b15EcafE6b001206fd25;
+    address public constant DAI_ADDRESS = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
 
     address public constant ETH_NULL_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address public constant PRICEFEED_ETHUSD = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address public constant PRICEFEED_USDCUSD = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
     address public constant PRICEFEED_FRAXUSD = 0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD;
 
+    uint256 public constant USDC_DECIMALS = 6;
+    uint256 public constant DAI_DECIMALS = 18;
+    uint256 public constant PHO_DECIMALS = 18;
+
     uint256 public constant ONE_D6 = 10 ** 6;
+    uint256 public constant ONE_HUNDRED_D6 = 100 * 10 ** 6;
     uint256 public constant ONE_HUNDRED_D18 = 100 * 10 ** 18;
     uint256 public constant ONE_THOUSAND_D18 = 1000 * 10 ** 18;
     uint256 public constant ONE_THOUSAND_D6 = 1000 * 10 ** 6;
@@ -122,6 +130,7 @@ abstract contract BaseSetup is Test {
         pho.setKernel(address(kernel));
 
         usdc = IUSDC(USDC_ADDRESS);
+        dai = IERC20(DAI_ADDRESS);
         frax = IERC20(FRAX_ADDRESS);
 
         mpl = IERC20(MPL_ADDRESS);
@@ -163,6 +172,26 @@ abstract contract BaseSetup is Test {
     ) internal {
         _getUSDC(_owner, _amountIn);
         _approveUSDC(_owner, _spender, _amountOut);
+    }
+
+    function _getDAI(address to, uint256 _amount) internal {
+        vm.prank(daiWhale);
+        dai.transfer(to, _amount);
+    }
+
+    function _approveDAI(address _owner, address _spender, uint256 _amount) internal {
+        vm.prank(_owner);
+        dai.approve(_spender, _amount);
+    }
+
+    function _fundAndApproveDAI(
+        address _owner,
+        address _spender,
+        uint256 _amountIn,
+        uint256 _amountOut
+    ) internal {
+        _getDAI(_owner, _amountIn);
+        _approveDAI(_owner, _spender, _amountOut);
     }
 
     function _getTON(address _to, uint256 _amount) internal {
@@ -274,6 +303,8 @@ interface IUSDC {
     function mint(address to, uint256 amount) external;
 
     function approve(address spender, uint256 amount) external returns (bool);
+
+    function transfer(address to, uint256 amount) external;
 
     function configureMinter(address minter, uint256 minterAllowedAmount) external;
 
