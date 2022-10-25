@@ -1,27 +1,23 @@
 // SPDX-License-Identifier: UNLICENSED
+
 pragma solidity ^0.8.13;
 
-//import "forge-std/console2.sol";
+import "forge-std/console2.sol";
 import "../../BaseSetup.t.sol";
-import "src/modules/mapleDepositModule/MapleDepositModule.sol";
-import "src/modules/mapleDepositModule/IMplRewards.sol";
-import "src/protocol/interfaces/IModuleManager.sol";
+import "@modules/mapleDepositModule/MapleDepositModule.sol";
+import "@modules/mapleDepositModule/IMplRewards.sol";
 
 contract MapleDepositModuleTest is BaseSetup {
     /// Errors
     error ZeroAddressDetected();
     error CannotRedeemMoreThanDeposited();
-    error MapleNotWhitelisted();
+    error NotEighteenDecimals();
+    error CannotStakeMoreThanDeposited();
+    error CannotWithdrawMoreThanStaked();
 
     /// Events
-    event MapleWhitelisted(address indexed maple);
-    event MapleDelisted(address indexed maple);
-    event MapleDeposited(
-        address indexed maple, address indexed depositor, uint256 depositAmount, uint256 phoMinted
-    );
-    event MapleRedeemed(
-        address indexed maple, address indexed redeemer, uint256 redeemAmount, uint256 mplRedeemed
-    );
+    event MapleDeposited(address indexed depositor, uint256 depositAmount, uint256 phoMinted);
+    event MapleRedeemed(address indexed redeemer, uint256 redeemAmount, uint256 mplRedeemed);
 
     MapleDepositModule public mapleDepositModule;
     IMplRewards public mplRewards;
@@ -29,8 +25,8 @@ contract MapleDepositModuleTest is BaseSetup {
     uint256 public moduleDelay;
 
     function setUp() public {
-        // TODO: change this address
-        mplRewards = IMplRewards(0xed320Bf569E5F3c4e9313391708ddBFc58e296bb);
+        // Orthogonal
+        mplRewards = IMplRewards(0x7869D7a3B074b5fa484dc04798E254c9C06A5e90);
         vm.prank(owner);
         mapleDepositModule = new MapleDepositModule(
             address(moduleManager),
@@ -72,8 +68,9 @@ contract MapleDepositModuleTest is BaseSetup {
 
     // Cannot set any 0 addresses for constructor
     function testCannotMakeMapleDepositModuleWithZeroAddress() public {
+        vm.startPrank(user1);
+
         vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
-        vm.prank(user1);
         mapleDepositModule = new MapleDepositModule(
             address(0),
             address(mpl),
@@ -84,7 +81,6 @@ contract MapleDepositModuleTest is BaseSetup {
         );
 
         vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
-        vm.prank(user1);
         mapleDepositModule = new MapleDepositModule(
             address(moduleManager),
             address(0),
@@ -95,7 +91,6 @@ contract MapleDepositModuleTest is BaseSetup {
         );
 
         vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
-        vm.prank(user1);
         mapleDepositModule = new MapleDepositModule(
             address(moduleManager),
             address(usdc),
@@ -106,7 +101,6 @@ contract MapleDepositModuleTest is BaseSetup {
         );
 
         vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
-        vm.prank(user1);
         mapleDepositModule = new MapleDepositModule(
             address(moduleManager),
             address(usdc),
@@ -117,7 +111,6 @@ contract MapleDepositModuleTest is BaseSetup {
         );
 
         vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
-        vm.prank(user1);
         mapleDepositModule = new MapleDepositModule(
             address(moduleManager),
             address(usdc),
@@ -128,7 +121,6 @@ contract MapleDepositModuleTest is BaseSetup {
         );
 
         vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
-        vm.prank(user1);
         mapleDepositModule = new MapleDepositModule(
             address(moduleManager),
             address(usdc),
@@ -137,18 +129,62 @@ contract MapleDepositModuleTest is BaseSetup {
             address(priceOracle),
             address(0)
         );
+
+        vm.stopPrank();
+    }
+
+    // Cannot set non 18 decimals for MPL token
+    function testCannotMakeMapleDepositModuleWithNonEighteenDecimals() public {
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(NotEighteenDecimals.selector));
+        mapleDepositModule = new MapleDepositModule(
+            address(moduleManager),
+            address(usdc),
+            address(kernel),
+            address(pho),
+            address(priceOracle),
+            address(mplRewards)
+        );
     }
 
     // Basic deposit
-    function testDepositMapleDAI() public {
+    function testDepositMaple() public {
         uint256 depositAmount = ONE_HUNDRED_D18;
         uint256 expectedIssuedAmount = depositAmount * (priceOracle.getMPLPHOPrice() / (10 ** 18));
-        // deposit
+        // Deposit
         vm.expectEmit(true, true, true, true);
-        emit MapleDeposited(address(mpl), user1, depositAmount, expectedIssuedAmount);
+        emit MapleDeposited(user1, depositAmount, expectedIssuedAmount);
         vm.prank(user1);
         mapleDepositModule.depositMaple(depositAmount);
         assertEq(mapleDepositModule.issuedAmount(user1), expectedIssuedAmount);
+    }
+
+    // Cannot stake more than deposited
+    function testCannotStakeMapleMoreThanDeposited() public {
+        uint256 depositAmount = ONE_HUNDRED_D18;
+        uint256 expectedIssuedAmount = depositAmount * (priceOracle.getMPLPHOPrice() / (10 ** 18));
+        // Deposit
+        vm.prank(user1);
+        mapleDepositModule.depositMaple(depositAmount);
+
+        // Attempt stake
+        vm.expectRevert(abi.encodeWithSelector(CannotStakeMoreThanDeposited.selector));
+        vm.prank(user1);
+        mapleDepositModule.stakeMaple(depositAmount + 1);
+    }
+
+    // Cannot withdraw more than staked
+    function testCannotWithdrawMapleMoreThanStaked() public {
+        uint256 depositAmount = ONE_HUNDRED_D18;
+        uint256 expectedIssuedAmount = depositAmount * (priceOracle.getMPLPHOPrice() / (10 ** 18));
+        // Deposit
+        vm.prank(user1);
+        mapleDepositModule.depositMaple(depositAmount);
+
+        // Attempt stake
+        vm.expectRevert(abi.encodeWithSelector(CannotWithdrawMoreThanStaked.selector));
+        vm.prank(user1);
+        mapleDepositModule.withdrawMaple(1);
     }
 
     // Cannot redeem more than issued
@@ -170,22 +206,26 @@ contract MapleDepositModuleTest is BaseSetup {
         vm.prank(user1);
         mapleDepositModule.depositMaple(depositAmount);
 
-        // DAI and PHO balances before
+        // MPL and PHO balances before
         uint256 mplBalanceUserBefore = mpl.balanceOf(address(user1));
         uint256 mplDepositModuleBalanceBefore = mpl.balanceOf(address(mapleDepositModule));
         uint256 phoBalanceUserBefore = pho.balanceOf(user1);
         uint256 phoDepositBalanceBefore = pho.balanceOf(address(mapleDepositModule));
 
+        uint256 expectedMplRedeemed = redeemAmount / (priceOracle.getMPLPHOPrice() / (10 ** 18));
+
+        vm.expectEmit(true, true, true, true);
+        emit MapleRedeemed(user1, redeemAmount, expectedMplRedeemed);
         vm.prank(user1);
         mapleDepositModule.redeemMaple(redeemAmount);
 
-        // DAI and PHO balances after
+        // MPL and PHO balances after
         uint256 mplBalanceUserAfter = mpl.balanceOf(address(user1));
         uint256 mplDepositModuleBalanceAfter = mpl.balanceOf(address(mapleDepositModule));
         uint256 phoBalanceUserAfter = pho.balanceOf(user1);
         uint256 phoDepositBalanceAfter = pho.balanceOf(address(mapleDepositModule));
 
-        // Check that DAI and PHO balances before and after are same
+        // Check that MPL and PHO balances before and after are same
         assertEq(mplBalanceUserAfter, mplBalanceUserBefore + depositAmount);
         assertEq(mplDepositModuleBalanceAfter, mplDepositModuleBalanceBefore - depositAmount);
         assertEq(phoBalanceUserAfter, phoBalanceUserBefore - redeemAmount);
