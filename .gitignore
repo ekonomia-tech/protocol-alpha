@@ -6,10 +6,8 @@
 out/
 cache/
 scripts/curve/logs
+broadcast/
 
 # Code Editors
 .vscode
 
-# hardhat/npm
-node_modules/
-artifacts/
