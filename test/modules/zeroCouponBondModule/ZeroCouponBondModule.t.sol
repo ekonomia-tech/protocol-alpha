@@ -3,17 +3,17 @@
 pragma solidity ^0.8.13;
 
 import "../../BaseSetup.t.sol";
-import "src/protocol/contracts/TON.sol";
-import "src/modules/zeroCouponBondModule/ZeroCouponBondModule.sol";
+import "@protocol/contracts/TON.sol";
+import "@modules/zeroCouponBondModule/ZeroCouponBondModule.sol";
 
 contract ZeroCouponBondModuleTest is BaseSetup {
     /// Errors
     error ZeroAddressDetected();
     error DepositWindowInvalid();
-    error DepositTokenTooManyDecimals();
+    error OverEighteenDecimals();
     error CannotDepositBeforeWindowOpen();
     error CannotDepositAfterWindowEnd();
-    error MaturityNotReached();
+    error CannotRedeemBeforeWindowEnd();
     error CannotRedeemMoreThanIssued();
 
     /// Events
@@ -372,14 +372,14 @@ contract ZeroCouponBondModuleTest is BaseSetup {
         assertEq(aft.totalPHOSupply, before.totalPHOSupply);
     }
 
-    // Cannot redeem bond before maturtity
-    function testCannotRedeemBondBeforeMaturity() public {
+    // Cannot redeem bond before window end
+    function testCannotRedeemBondBeforeWindowEnd() public {
         uint256 depositAmount = ONE_HUNDRED_D6;
         uint256 redeemAmount = ((depositAmount * (1e6 + USDC_INTEREST_RATE)) / 1e6) * 10 ** 12;
         vm.warp(USDC_DEPOSIT_WINDOW_OPEN);
         vm.prank(user1);
         usdcZeroCouponBondModule.depositBond(depositAmount);
-        vm.expectRevert(abi.encodeWithSelector(MaturityNotReached.selector));
+        vm.expectRevert(abi.encodeWithSelector(CannotRedeemBeforeWindowEnd.selector));
         vm.prank(user1);
         usdcZeroCouponBondModule.redeemBond(redeemAmount);
     }

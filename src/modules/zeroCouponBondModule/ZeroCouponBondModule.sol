@@ -16,10 +16,10 @@ contract ZeroCouponBondModule is ERC20, Ownable, ReentrancyGuard {
     /// Errors
     error ZeroAddressDetected();
     error DepositWindowInvalid();
-    error DepositTokenTooManyDecimals();
+    error OverEighteenDecimals();
     error CannotDepositBeforeWindowOpen();
     error CannotDepositAfterWindowEnd();
-    error MaturityNotReached();
+    error CannotRedeemBeforeWindowEnd();
     error CannotRedeemMoreThanIssued();
 
     /// State vars
@@ -72,7 +72,7 @@ contract ZeroCouponBondModule is ERC20, Ownable, ReentrancyGuard {
         depositToken = IERC20Metadata(_depositToken);
         depositTokenDecimals = depositToken.decimals();
         if (depositTokenDecimals > 18) {
-            revert DepositTokenTooManyDecimals();
+            revert OverEighteenDecimals();
         }
         pho = IPHO(_pho);
         moduleManager = IModuleManager(_moduleManager);
@@ -115,7 +115,7 @@ contract ZeroCouponBondModule is ERC20, Ownable, ReentrancyGuard {
     /// @param redeemAmount redeem amount - 18 decimals
     function redeemBond(uint256 redeemAmount) external nonReentrant {
         if (block.timestamp < depositWindowEnd) {
-            revert MaturityNotReached();
+            revert CannotRedeemBeforeWindowEnd();
         }
         if (redeemAmount > issuedAmount[msg.sender]) {
             revert CannotRedeemMoreThanIssued();
