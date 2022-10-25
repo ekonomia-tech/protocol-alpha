@@ -17,6 +17,7 @@ contract ZeroCouponBondModule is ERC20, Ownable, ReentrancyGuard {
     error ZeroAddressDetected();
     error DepositWindowInvalid();
     error DepositTokenTooManyDecimals();
+    error CannotDepositBeforeWindowOpen();
     error CannotDepositAfterWindowEnd();
     error MaturityNotReached();
     error CannotRedeemMoreThanIssued();
@@ -62,7 +63,10 @@ contract ZeroCouponBondModule is ERC20, Ownable, ReentrancyGuard {
         ) {
             revert ZeroAddressDetected();
         }
-        if (_depositWindowEnd <= block.timestamp || _depositWindowOpen >= _depositWindowEnd) {
+        if (
+            _depositWindowOpen <= block.timestamp || _depositWindowEnd <= block.timestamp
+                || _depositWindowOpen >= _depositWindowEnd
+        ) {
             revert DepositWindowInvalid();
         }
         depositToken = IERC20Metadata(_depositToken);
@@ -81,12 +85,15 @@ contract ZeroCouponBondModule is ERC20, Ownable, ReentrancyGuard {
     /// @notice user deposits for bond
     /// @param depositAmount deposit amount (in depositToken decimals)
     function depositBond(uint256 depositAmount) external nonReentrant {
+        if (block.timestamp < depositWindowOpen) {
+            revert CannotDepositBeforeWindowOpen();
+        }
         if (block.timestamp > depositWindowEnd) {
             revert CannotDepositAfterWindowEnd();
         }
+
         // scale if decimals < 18
-        uint256 scaledDepositAmount = depositAmount;
-        scaledDepositAmount = depositAmount * (10 ** (18 - depositTokenDecimals));
+        uint256 scaledDepositAmount = depositAmount * (10 ** (18 - depositTokenDecimals));
 
         // transfer depositToken
         depositToken.transferFrom(msg.sender, address(this), depositAmount);
