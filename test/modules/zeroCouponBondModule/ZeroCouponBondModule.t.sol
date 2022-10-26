@@ -378,7 +378,6 @@ contract ZeroCouponBondModuleTest is BaseSetup {
     // Cannot redeem bond before window end
     function testCannotRedeemBondBeforeWindowEnd() public {
         uint256 depositAmount = ONE_HUNDRED_D6;
-        uint256 redeemAmount = ((depositAmount * (1e6 + USDC_INTEREST_RATE)) / 1e6) * USDC_SCALE;
         vm.warp(USDC_DEPOSIT_WINDOW_OPEN);
         vm.prank(user1);
         usdcZeroCouponBondModule.depositBond(depositAmount);
@@ -491,7 +490,6 @@ contract ZeroCouponBondModuleTest is BaseSetup {
         vm.warp(PHO_DEPOSIT_WINDOW_END);
 
         // PHO balances before
-        uint256 phoBalanceUserBefore = pho.balanceOf(user1);
         uint256 phoZCBBalanceBefore = pho.balanceOf(address(phoZeroCouponBondModule));
 
         vm.prank(user1);
