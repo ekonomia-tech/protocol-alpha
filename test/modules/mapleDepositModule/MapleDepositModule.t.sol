@@ -173,6 +173,25 @@ contract MapleDepositModuleTest is BaseSetup {
         mapleDepositModule.stakeMaple(depositAmount + 1);
     }
 
+    // Basic stake test
+    function testStakeBasic() public {
+        uint256 depositAmount = ONE_HUNDRED_D18;
+        uint256 expectedIssuedAmount = depositAmount * (priceOracle.getMPLPHOPrice() / (10 ** 18));
+        // Deposit
+        vm.prank(user1);
+        mapleDepositModule.depositMaple(depositAmount);
+
+        // Attempt stake
+        uint256 currRewardsBalance = mplRewards.balanceOf(user1);
+        console2.log("this is currRewardsBalance: ", currRewardsBalance);
+
+        vm.prank(user1);
+        mapleDepositModule.stakeMaple(depositAmount);
+
+        uint256 finalRewardsBalance = mplRewards.balanceOf(user1);
+        console2.log("this is finalRewardsBalance: ", finalRewardsBalance);
+    }
+
     // Cannot withdraw more than staked
     function testCannotWithdrawMapleMoreThanStaked() public {
         uint256 depositAmount = ONE_HUNDRED_D18;
@@ -185,6 +204,23 @@ contract MapleDepositModuleTest is BaseSetup {
         vm.expectRevert(abi.encodeWithSelector(CannotWithdrawMoreThanStaked.selector));
         vm.prank(user1);
         mapleDepositModule.withdrawMaple(1);
+    }
+
+    // Basic withdraw test
+    function testWithdrawBasic() public {
+        uint256 depositAmount = ONE_HUNDRED_D18;
+        uint256 expectedIssuedAmount = depositAmount * (priceOracle.getMPLPHOPrice() / (10 ** 18));
+        // Deposit
+        vm.prank(user1);
+        mapleDepositModule.depositMaple(depositAmount);
+
+        // Attempt stake
+        vm.prank(user1);
+        mapleDepositModule.stakeMaple(depositAmount);
+
+        // Attempt withdraw
+        // vm.prank(user1);
+        // mapleDepositModule.withdrawMaple(depositAmount);
     }
 
     // Cannot redeem more than issued

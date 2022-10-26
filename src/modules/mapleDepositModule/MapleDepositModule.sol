@@ -126,7 +126,7 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
             revert CannotStakeMoreThanDeposited();
         }
         stakedAmount[msg.sender] += amount;
-        mplRewards.stake(amount);
+        //mplRewards.stake(amount);
     }
 
     /// @notice withdraw via MplRewards
