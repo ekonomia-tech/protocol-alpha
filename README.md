@@ -48,15 +48,14 @@ To deploy the code onto a persistent mainnet fork, first make sure you have a `.
 # Deploy Price Controller module
 
 To deploy the price controller:
-1. make sure `Addresses.sol` is filled with:
+1. follow the `Addresses.example` template to update `Addresses.sol`:
 - ```kernelAddress```
 - ```moduleManagerAddress```
 - ```phoAddress```
 - ```tonAddress```
-follow the `Addresses.example` template.
 
 2. deploy a curve pool by running the following command:
--- ```forge script scripts/DeployCurvePool.s.sol:DeployCurvePool --fork-url $FORK_URL --broadcast --json  --private-key $PRIVATE_KEY -vvvv```
+- ```forge script scripts/DeployCurvePool.s.sol:DeployCurvePool --fork-url $FORK_URL --broadcast --json  --private-key $PRIVATE_KEY -vvvv```
 3. copy the curve pool address from the printed log
 4. run cast command to checksum the pool address
 - ```cast to-checksum-address <pool address>```
