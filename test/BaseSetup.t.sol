@@ -47,6 +47,8 @@ abstract contract BaseSetup is Test {
     address public module1 = address(5);
     address public richGuy = 0x72A53cDBBcc1b9efa39c834A540550e23463AAcB;
     address public daiWhale = 0xc08a8a9f809107c5A7Be6d90e315e4012c99F39a;
+    address public fraxBPLPToken = 0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC;
+    address public fraxBPAddress = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
     address public metaPoolFactoryAddress = 0xB9fC157394Af804a3578134A6585C0dc9cc990d4;
     address public fraxRichGuy = 0xd3d176F7e4b43C70a68466949F6C64F06Ce75BB9;
 
@@ -56,6 +58,7 @@ abstract contract BaseSetup is Test {
     address public constant FRAXBP_LP_TOKEN = 0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC;
     address public constant FRAXBP_POOL = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
     address public constant FRAXBP_LUSD = 0x497CE58F34605B9944E6b15EcafE6b001206fd25;
+    address public constant weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant DAI_ADDRESS = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
 
     address public constant ETH_NULL_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
@@ -126,6 +129,7 @@ abstract contract BaseSetup is Test {
 
         pho.setKernel(address(kernel));
 
+        dai = IERC20(DAI_ADDRESS);
         usdc = IUSDC(USDC_ADDRESS);
         dai = IERC20(DAI_ADDRESS);
         frax = IERC20(FRAX_ADDRESS);
