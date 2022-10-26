@@ -8,42 +8,24 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@protocol/interfaces/IPHO.sol";
 import "@protocol/interfaces/IModuleManager.sol";
+import "./IZeroCouponBondModule.sol";
 
 /// @title ZeroCouponBondModule
 /// @author Ekonomia: https://github.com/ekonomia-tech
 /// @notice Example of simple fixed-expiry zero-coupon bond
-contract ZeroCouponBondModule is ERC20, Ownable, ReentrancyGuard {
-    /// Errors
-    error ZeroAddressDetected();
-    error DepositWindowInvalid();
-    error OverEighteenDecimals();
-    error CannotDepositBeforeWindowOpen();
-    error CannotDepositAfterWindowEnd();
-    error CannotRedeemBeforeWindowEnd();
-    error CannotRedeemMoreThanIssued();
-
+contract ZeroCouponBondModule is ERC20, IZeroCouponBondModule, Ownable, ReentrancyGuard {
     /// State vars
     IModuleManager public moduleManager;
     address public kernel;
-    IPHO public pho; // depositors recieve PHO
+    IPHO public pho; // depositors receive PHO
     IERC20Metadata public depositToken; // assuming stablecoin deposits
     uint256 public interestRate; // 10 ** 6 scale
     uint256 public constant INTEREST_RATE_PRECISION = 1e6;
     uint256 public depositWindowOpen; // earliest time to deposit
-    uint256 public depositWindowEnd; // latest time to deposit - maturity
+    uint256 public depositWindowEnd; // acts as latest time to deposit as well as bond maturity time
     uint256 public duration;
     uint8 public depositTokenDecimals;
     mapping(address => uint256) public issuedAmount;
-
-    /// Events
-    event BondIssued(address indexed depositor, uint256 depositAmount, uint256 mintAmount);
-    event BondRedeemed(address indexed redeemer, uint256 redeemAmount);
-    event InterestRateSet(uint256 interestRate);
-
-    modifier onlyModuleManager() {
-        require(msg.sender == address(moduleManager), "Only ModuleManager");
-        _;
-    }
 
     /// Constructor
     constructor(
@@ -63,10 +45,7 @@ contract ZeroCouponBondModule is ERC20, Ownable, ReentrancyGuard {
         ) {
             revert ZeroAddressDetected();
         }
-        if (
-            _depositWindowOpen <= block.timestamp || _depositWindowEnd <= block.timestamp
-                || _depositWindowOpen >= _depositWindowEnd
-        ) {
+        if (_depositWindowEnd <= _depositWindowOpen || _depositWindowOpen <= block.timestamp) {
             revert DepositWindowInvalid();
         }
         depositToken = IERC20Metadata(_depositToken);
@@ -82,9 +61,9 @@ contract ZeroCouponBondModule is ERC20, Ownable, ReentrancyGuard {
         duration = _depositWindowEnd - _depositWindowOpen;
     }
 
-    /// @notice user deposits for bond
-    /// @param depositAmount deposit amount (in depositToken decimals)
-    function depositBond(uint256 depositAmount) external nonReentrant {
+    /// @notice User deposits for bond
+    /// @param depositAmount Deposit amount (in depositToken decimals)
+    function depositBond(uint256 depositAmount) external override nonReentrant {
         if (block.timestamp < depositWindowOpen) {
             revert CannotDepositBeforeWindowOpen();
         }
@@ -99,9 +78,9 @@ contract ZeroCouponBondModule is ERC20, Ownable, ReentrancyGuard {
         depositToken.transferFrom(msg.sender, address(this), depositAmount);
 
         // mint ZCB to caller - adjusted interest rate
-        uint256 adjustedInterestRate = block.timestamp > depositWindowOpen
-            ? ((interestRate * (block.timestamp - depositWindowOpen)) / duration)
-            : interestRate;
+        uint256 adjustedInterestRate = block.timestamp == depositWindowOpen
+            ? interestRate
+            : ((interestRate * (block.timestamp - depositWindowOpen)) / duration);
         uint256 mintAmount = (
             scaledDepositAmount * (INTEREST_RATE_PRECISION + adjustedInterestRate)
         ) / INTEREST_RATE_PRECISION;
@@ -111,15 +90,13 @@ contract ZeroCouponBondModule is ERC20, Ownable, ReentrancyGuard {
         emit BondIssued(msg.sender, depositAmount, mintAmount);
     }
 
-    /// @notice user redeems their bond
-    /// @param redeemAmount redeem amount - 18 decimals
-    function redeemBond(uint256 redeemAmount) external nonReentrant {
+    /// @notice User redeems their bond (full amount)
+    function redeemBond() external override nonReentrant {
         if (block.timestamp < depositWindowEnd) {
             revert CannotRedeemBeforeWindowEnd();
         }
-        if (redeemAmount > issuedAmount[msg.sender]) {
-            revert CannotRedeemMoreThanIssued();
-        }
+
+        uint256 redeemAmount = issuedAmount[msg.sender];
 
         issuedAmount[msg.sender] -= redeemAmount;
 
@@ -132,9 +109,12 @@ contract ZeroCouponBondModule is ERC20, Ownable, ReentrancyGuard {
         emit BondRedeemed(msg.sender, redeemAmount);
     }
 
-    /// @notice set interest rate
-    /// @param _interestRate interest rate to set
-    function setInterestRate(uint256 _interestRate) external onlyModuleManager {
+    /// @notice Set interest rate
+    /// @param _interestRate Interest rate to set
+    function setInterestRate(uint256 _interestRate) external {
+        if (msg.sender != address(moduleManager)) {
+            revert OnlyModuleManager();
+        }
         interestRate = _interestRate;
         emit InterestRateSet(_interestRate);
     }
