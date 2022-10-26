@@ -5,9 +5,12 @@
 # Forge
 out/
 cache/
-scripts/curve/logs
 broadcast/
+scripts/Addresses.sol
 
 # Code Editors
 .vscode
+
+
+
 

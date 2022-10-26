@@ -54,6 +54,8 @@ contract PriceControllerTest is BaseSetup {
 
         fraxBPPhoMetapool = ICurvePool(_deployFraxBPPHOPool());
 
+        console.log(address(fraxBPPhoMetapool));
+
         vm.prank(owner);
         priceController =
         new PriceController(address(pho), address(moduleManager), address(kernel), address(priceOracle), address(fraxBPPhoMetapool), 1 weeks, 10 ** 4, 50000,99000);
