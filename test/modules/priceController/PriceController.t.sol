@@ -17,7 +17,6 @@ contract PriceControllerTest is BaseSetup {
     error CooldownNotSatisfied();
     error NotEnoughBalanceInStabilizer();
 
-
     event OracleAddressSet(address indexed newOracleAddress);
     event CooldownPeriodUpdated(uint256 newCooldownPeriod);
     event PriceMitigationPercentageUpdated(uint256 newPriceMitigationPercentage);
@@ -260,8 +259,8 @@ contract PriceControllerTest is BaseSetup {
         assertEq(gapToMitigate, diff / 2);
 
         uint256 diffs = priceController.marketToTargetDiff(phoPrice, diff);
-        uint256 expectedGapInTokens =
-            phoTotalSupply * (gapToMitigate * PERCENTAGE_PRECISION / phoPrice) / PERCENTAGE_PRECISION;
+        uint256 expectedGapInTokens = phoTotalSupply
+            * (gapToMitigate * PERCENTAGE_PRECISION / phoPrice) / PERCENTAGE_PRECISION;
 
         assertEq(diffs, expectedGapInTokens);
     }
@@ -285,8 +284,8 @@ contract PriceControllerTest is BaseSetup {
         assertEq(gapToMitigate, diff / 2);
 
         uint256 diffs = priceController.marketToTargetDiff(phoPrice, diff);
-        uint256 expectedGapInTokens =
-            phoTotalSupply * (gapToMitigate * PERCENTAGE_PRECISION / phoPrice) / PERCENTAGE_PRECISION;
+        uint256 expectedGapInTokens = phoTotalSupply
+            * (gapToMitigate * PERCENTAGE_PRECISION / phoPrice) / PERCENTAGE_PRECISION;
 
         assertEq(diffs, expectedGapInTokens);
     }
@@ -348,8 +347,7 @@ contract PriceControllerTest is BaseSetup {
 
         /// d18 used to mimic the output of GapInToken function
         uint256 usdcToExchange = ONE_THOUSAND_D6;
-        uint256 expectedPho =
-            dexPool.get_dy_underlying(usdcIndex, phoIndex, usdcToExchange);
+        uint256 expectedPho = dexPool.get_dy_underlying(usdcIndex, phoIndex, usdcToExchange);
 
         vm.expectEmit(true, true, false, false);
         emit TokensExchanged(
@@ -397,9 +395,8 @@ contract PriceControllerTest is BaseSetup {
     /// stabilize
 
     function testStabilizeOverPegOutBand() public {
-        (int128 phoIndex, int128 fraxBPLPIndex,) = curveFactory.get_coin_indices(
-            address(dexPool), address(pho), address(fraxBPLP)
-        );
+        (int128 phoIndex, int128 fraxBPLPIndex,) =
+            curveFactory.get_coin_indices(address(dexPool), address(pho), address(fraxBPLP));
 
         uint256 phoTotalSupplyBefore = dexPool.balances(0);
         uint256 fraxBPPriceControllerBalanceBefore = fraxBPLP.balanceOf(address(priceController));
@@ -408,8 +405,7 @@ contract PriceControllerTest is BaseSetup {
         uint256 phoPrice = priceOracle.getPHOUSDPrice();
         (uint256 diff, bool over) = priceController.checkPriceBand(phoPrice);
         uint256 priceMitigationPart = priceController.marketToTargetDiff(phoPrice, diff);
-        uint256 expectedFraxBP =
-            dexPool.get_dy(phoIndex, fraxBPLPIndex, priceMitigationPart);
+        uint256 expectedFraxBP = dexPool.get_dy(phoIndex, fraxBPLPIndex, priceMitigationPart);
 
         vm.prank(owner);
         bool stabilized = priceController.stabilize();

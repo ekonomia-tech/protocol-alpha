@@ -134,7 +134,7 @@ contract PriceController is IPriceController, Ownable {
         return (totalSupply * percentageChange) / PERCENTAGE_PRECISION;
     }
 
-    // @notice TODO - need to figure out the proper visibility of this function. We will have to take onlyOwner away, but for now we keep it in for testing. 
+    // @notice TODO - need to figure out the proper visibility of this function. We will have to take onlyOwner away, but for now we keep it in for testing.
     function buyAndBurnPHO(uint256 collateralAmount) public onlyOwner returns (uint256) {
         return _buyAndBurnPHO(collateralAmount);
     }
@@ -161,7 +161,7 @@ contract PriceController is IPriceController, Ownable {
         return tokensReceived;
     }
 
-    // @notice TODO - need to figure out the proper visibility of this function. We will have to take onlyOwner away, but for now we keep it in for testing. 
+    // @notice TODO - need to figure out the proper visibility of this function. We will have to take onlyOwner away, but for now we keep it in for testing.
     function mintAndSellPHO(uint256 phoAmount) public onlyOwner returns (uint256) {
         return _mintAndSellPHO(phoAmount);
     }
