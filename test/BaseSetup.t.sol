@@ -31,6 +31,7 @@ abstract contract BaseSetup is Test {
     IUSDC usdc;
     IERC20 frax;
     IERC20 mpl;
+    IERC20 weth;
     IERC20 fraxBPLP;
     ICurvePool fraxBP;
     ICurveFactory curveFactory;
@@ -49,6 +50,7 @@ abstract contract BaseSetup is Test {
     address public richGuy = 0x72A53cDBBcc1b9efa39c834A540550e23463AAcB;
     address public mplWhale = 0xd6d4Bcde6c816F17889f1Dd3000aF0261B03a196;
     address public daiWhale = 0xc08a8a9f809107c5A7Be6d90e315e4012c99F39a;
+    address public wethWhale = 0x2F0b23f53734252Bda2277357e97e1517d6B042A;
     address public fraxBPLPToken = 0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC;
     address public fraxBPAddress = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
     address public metaPoolFactoryAddress = 0xB9fC157394Af804a3578134A6585C0dc9cc990d4;
@@ -61,7 +63,7 @@ abstract contract BaseSetup is Test {
     address public constant FRAXBP_LP_TOKEN = 0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC;
     address public constant FRAXBP_POOL = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
     address public constant FRAXBP_LUSD = 0x497CE58F34605B9944E6b15EcafE6b001206fd25;
-    address public constant weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address public constant WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant DAI_ADDRESS = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
 
     address public constant ETH_NULL_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
@@ -138,6 +140,7 @@ abstract contract BaseSetup is Test {
         frax = IERC20(FRAX_ADDRESS);
 
         mpl = IERC20(MPL_ADDRESS);
+        weth = IERC20(WETH_ADDRESS);
 
         priceFeed = new ChainlinkPriceFeed(PRECISION_DIFFERENCE);
 
@@ -256,6 +259,26 @@ abstract contract BaseSetup is Test {
     ) internal {
         _getMPL(_owner, _amountIn);
         _approveMPL(_owner, _spender, _amountOut);
+    }
+
+    function _getWETH(address _to, uint256 _amount) internal {
+        vm.prank(wethWhale);
+        weth.transfer(_to, _amount);
+    }
+
+    function _approveWETH(address _owner, address _spender, uint256 _amount) internal {
+        vm.prank(_owner);
+        weth.approve(_spender, _amount);
+    }
+
+    function _fundAndApproveWETH(
+        address _owner,
+        address _spender,
+        uint256 _amountIn,
+        uint256 _amountOut
+    ) internal {
+        _getWETH(_owner, _amountIn);
+        _approveWETH(_owner, _spender, _amountOut);
     }
 
     function _deployFraxBPPHOPool() internal returns (address) {
