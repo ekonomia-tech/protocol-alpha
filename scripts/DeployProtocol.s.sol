@@ -8,10 +8,7 @@ import "@protocol/contracts/TON.sol";
 import "@protocol/contracts/Kernel.sol";
 import "@protocol/contracts/ModuleManager.sol";
 import "@oracle/ChainlinkPriceFeed.sol";
-import "@governance/PHOGovernorBravoDelegate.sol";
-import "@governance/PHOGovernorBravoDelegator.sol";
-import "@governance/TONGovernorBravoDelegate.sol";
-import "@governance/TONGovernorBravoDelegator.sol";
+import "./DeployGovernance.s.sol";
 import "./Addresses.sol";
 
 /// Script to deploy protocol (PHO, TON, Kernel, ModuleManager)
@@ -23,26 +20,20 @@ contract DeployProtocol is Script, Addresses {
     Kernel public kernel;
     ModuleManager public moduleManager;
     ChainlinkPriceFeed public chainlinkOracle;
-    
-    TONGovernorBravoDelegator public tonGovernorDelegator;
-    PHOGovernorBravoDelegator public phoGovernorDelegator;
-    TONGovernorBravoDelegate public tonGovernorDelegate;
-    PHOGovernorBravoDelegate public phoGovernorDelegate; 
 
     function run() external {
         vm.startBroadcast();
 
+        // TODO - somehow call DeployGovernance.run(); to set up all the governance and assign the proper addresses for phoGovernance and tonGovernance
+
         phoGovernance = msg.sender;
         tonGovernance = msg.sender;
+
+
 
         pho = new PHO("PHO", "PHO");
         ton = new TON("TON", "TON");
 
-        // // instantiate new governance contracts, although this could be done outside of this I guess.
-        // tonGovernorDelegate = new TONGovernorBravoDelegate();
-        // phoGovernorDelegate = new PHOGovernorBravoDelegate();
-
-        // TODO - for all of these important contracts, we would assign the new governance then.
         kernel = new Kernel(address(pho), tonGovernance);
         moduleManager = new ModuleManager(
             address(kernel),
