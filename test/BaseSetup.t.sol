@@ -13,6 +13,8 @@ import "@oracle/IPHOOracle.sol";
 import "@oracle/DummyOracle.sol";
 import "@external/curve/ICurvePool.sol";
 import "@external/curve/ICurveFactory.sol";
+import "@governance/PHOGovernorBravoDelegate.sol";
+import "@governance/PHOGovernorBravoDelegator.sol";
 
 abstract contract BaseSetup is Test {
     struct Balance {
@@ -34,11 +36,15 @@ abstract contract BaseSetup is Test {
     ICurvePool fraxBP;
     ICurveFactory curveFactory;
     ICurvePool fraxBPPhoMetapool;
+
+    PHOGovernorBravoDelegate public phoGovernanceDelegate;
+    PHOGovernorBravoDelegator public phoGovernanceDelegator;
     address public TONGovernance = address(105);
-    address public PHOGovernance = address(106);
+    address public PHOGovernance;
 
     address public owner = 0xed320Bf569E5F3c4e9313391708ddBFc58e296bb;
-    address public timelock_address = address(100);
+    address public PHO_timelock_address = address(100);
+    address public TON_timelock_address = address(103);
     address public controller = address(101);
     address public user1 = address(1);
     address public user2 = address(2);
@@ -112,6 +118,20 @@ abstract contract BaseSetup is Test {
         priceOracle = new DummyOracle();
         pho = new PHO("PHO", "PHO");
         ton = new TON("TON", "TON");
+
+        // TODO - set up governance here
+        // set up PHO Governance
+        phoGovernanceDelegate = new PHOGovernorBravoDelegate(); 
+        PHOGovernance = address(phoGovernanceDelegate);
+        phoGovernanceDelegator = new PHOGovernorBravoDelegator(PHO_timelock_address, address(pho), owner, PHOGovernance, 21600, 14400, ONE_HUNDRED_THOUSAND_D18); //PHOGovernorBravoDelegate is initialized here too through Delegator constructor
+        console.log("Admin for governance: %s, timelock: %s", phoGovernanceDelegate.admin(), PHO_timelock_address);
+        // phoGovernanceDelegate._initiate(PHOGovernance); // input our own governorBravo that we just created bc we aren't upgrading from governorAlpha
+
+        console.log("CHECKS: votingPeriod: %s, votingDelay: %s, proposalThreshold: %s", phoGovernanceDelegate.votingPeriod(), phoGovernanceDelegate.votingDelay(), phoGovernanceDelegate.proposalThreshold());
+
+        console.log("CHECKS: ProposedImplementation: %s, ActualImplementation: %s", address(phoGovernanceDelegate), phoGovernanceDelegator.implementation());
+        
+        // TODO - setup TON Governance here
 
         kernel = new Kernel(address(pho), TONGovernance);
 
