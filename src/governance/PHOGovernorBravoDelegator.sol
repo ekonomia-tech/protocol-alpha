@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.10;
 
-import "./GovernorBravoInterfaces.sol";
+import "./PHOGovernorBravoInterfaces.sol";
 
-contract GovernorBravoDelegator is GovernorBravoDelegatorStorage, GovernorBravoEvents {
+contract PHOGovernorBravoDelegator is GovernorBravoDelegatorStorage, GovernorBravoEvents {
 	constructor(
 			address timelock_,
-			address comp_,
+			address pho_,
 			address admin_,
 	        address implementation_,
 	        uint votingPeriod_,
@@ -18,7 +18,7 @@ contract GovernorBravoDelegator is GovernorBravoDelegatorStorage, GovernorBravoE
 
         delegateTo(implementation_, abi.encodeWithSignature("initialize(address,address,uint256,uint256,uint256)",
                                                             timelock_,
-                                                            comp_,
+                                                            pho_,
                                                             votingPeriod_,
                                                             votingDelay_,
                                                             proposalThreshold_));

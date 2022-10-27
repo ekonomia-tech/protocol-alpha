@@ -5,3 +5,4 @@ forge-std/=lib/forge-std/src/
 @modules=src/modules/
 @external=src/external/
 @oracle=src/oracle/
+@governance=src/governance/
