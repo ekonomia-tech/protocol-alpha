@@ -10,7 +10,6 @@ interface IPriceController {
     error ValueNotInRange();
     error CooldownNotSatisfied();
     error NotEnoughBalanceInStabilizer();
-    error TokenNotUnderlyingInMetapool();
 
     event OracleAddressSet(address indexed newOracleAddress);
     event CooldownPeriodUpdated(uint256 newCooldownPeriod);
@@ -24,6 +23,7 @@ interface IPriceController {
     );
     event MaxSlippageUpdated(uint256 newMaxSlippage);
 
+    function stabilize() external returns (bool);
     function setOracleAddress(address newOracleAddress) external;
     function setCooldownPeriod(uint256 newCooldownPeriod) external;
     function setPriceMitigationPercentage(uint256 newGapFraction) external;

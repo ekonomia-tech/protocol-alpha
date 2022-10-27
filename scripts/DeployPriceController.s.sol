@@ -14,12 +14,8 @@ import "./Addresses.sol";
 /// Script to deploy protocol (PHO, TON, Kernel, ModuleManager)
 contract DeployPriceController is Script, Addresses {
 
-    IPHO public pho = IPHO(phoAddress);
-    IKernel public kernel = IKernel(kernelAddress);
-    IModuleManager public moduleManager = IModuleManager(moduleManagerAddress);
-    ChainlinkPriceFeed public chainlinkOracle = ChainlinkPriceFeed(chainlinkOracleAddress);
     PriceController public priceController;
-
+    
     function run() external {
         vm.startBroadcast();
         

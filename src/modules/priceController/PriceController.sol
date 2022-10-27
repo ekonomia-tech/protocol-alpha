@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@external/curve/ICurvePool.sol";
 import "@external/curve/ICurveFactory.sol";
-import "@protocol/contracts/PHO.sol";
+import "@protocol/interfaces/IPHO.sol";
 import "@protocol/interfaces/IModuleManager.sol";
 import "@modules/priceController/IPriceController.sol";
 import "@oracle/DummyOracle.sol";
@@ -32,7 +32,7 @@ contract PriceController is IPriceController, Ownable {
     /// representing the maximum slippage percentage in 10 ** 6;
     uint256 public maxSlippage;
 
-    PHO public pho;
+    IPHO public pho;
     DummyOracle public priceOracle;
     ICurvePool public dexPool;
     ICurveFactory public curveFactory = ICurveFactory(0xB9fC157394Af804a3578134A6585C0dc9cc990d4);
@@ -43,54 +43,55 @@ contract PriceController is IPriceController, Ownable {
     uint256 private constant PRICE_TARGET = 10 ** 6;
     uint256 private constant PRICE_PRECISION = 10 ** 18;
     uint256 private constant PERCENTAGE_PRECISION = 10 ** 5;
+    uint256 private constant USDC_SCALE = 10 ** 12;
 
     constructor(
-        address _pho_address,
-        address _module_manager,
+        address _phoAddress,
+        address _moduleManager,
         address _kernel,
-        address _oracle_address,
-        address _dex_pool_address,
+        address _oracleAddress,
+        address _dexPoolAddress,
         uint256 _cooldownPeriod,
         uint256 _priceBand,
         uint256 _priceMitigationPercentage,
-        uint256 _max_slippage
+        uint256 _maxSlippage
     ) {
         if (
-            _pho_address == address(0) || _module_manager == address(0) || _kernel == address(0)
-                || _oracle_address == address(0) || _dex_pool_address == address(0)
+            _phoAddress == address(0) || _moduleManager == address(0) || _kernel == address(0)
+                || _oracleAddress == address(0) || _dexPoolAddress == address(0)
         ) revert ZeroAddress();
 
         if (_cooldownPeriod < 3600) revert CooldownPeriodAtLeastOneHour();
         if (
             (_priceBand == 0 || _priceBand > 100000)
                 || (_priceMitigationPercentage == 0 || _priceMitigationPercentage > 100000)
-                || (_max_slippage == 0 || _max_slippage > 100000)
+                || (_maxSlippage == 0 || _maxSlippage > 100000)
         ) {
             revert ValueNotInRange();
         }
 
-        pho = PHO(_pho_address);
-        moduleManager = IModuleManager(_module_manager);
+        pho = IPHO(_phoAddress);
+        moduleManager = IModuleManager(_moduleManager);
         kernel = _kernel;
-        priceOracle = DummyOracle(_oracle_address);
-        dexPool = ICurvePool(_dex_pool_address);
+        priceOracle = DummyOracle(_oracleAddress);
+        dexPool = ICurvePool(_dexPoolAddress);
 
         cooldownPeriod = _cooldownPeriod;
         priceBand = _priceBand;
         priceMitigationPercentage = _priceMitigationPercentage;
-        maxSlippage = _max_slippage;
+        maxSlippage = _maxSlippage;
     }
 
-    /// @notice this function checks the price on the market and stabilizes it according to the gap that has to be bridged.
+    /// @notice this function checks the price on the market and stabilizes it according to the price gap
     /// @return bool representing if a stabilization process was executed or not
-    /// The function will not bridge the whole gap, but a certain part of it to make sure the bridging will not oversell/overbuy.
+    /// The function will not close the whole gap, but a certain part of it to make sure it will not oversell/overbuy.
     function stabilize() external returns (bool) {
         if (block.timestamp - lastCooldownReset <= cooldownPeriod) revert CooldownNotSatisfied();
 
         // Get the current price of PHO from the price oracle abstraction
         uint256 phoPrice = priceOracle.getPHOUSDPrice();
 
-        // Check if the current price is in the price band, received price gap and trend
+        // Check if the current price is over the price band, and returns the difference between market price and desired price
         (uint256 diff, bool over) = checkPriceBand(phoPrice);
 
         // if the $PHO price is exactly 10**18 or the price is within the price band, reset cooldown and exit;
@@ -105,7 +106,7 @@ contract PriceController is IPriceController, Ownable {
         if (over) {
             _mintAndSellPHO(tokenAmount);
         } else {
-            _buyAndBurnPHO(tokenAmount / (10 ** 12));
+            _buyAndBurnPHO(tokenAmount / USDC_SCALE);
         }
 
         lastCooldownReset = block.timestamp;
@@ -127,10 +128,15 @@ contract PriceController is IPriceController, Ownable {
     /// @param price the PHO market price
     /// @param diff the current price gap of PHO between the market price and the target price
 
-    function marketToTargetDiff(uint256 price, uint256 diff) public view returns (uint256) {
-        uint256 totalSupply = pho.totalSupply();
+    function marketToTargetDiff(uint256 price, uint256 diff) public returns (uint256) {
+        uint256 totalSupply = dexPool.balances(0);
         uint256 percentageChange = diff * priceMitigationPercentage / price;
         return (totalSupply * percentageChange) / PERCENTAGE_PRECISION;
+    }
+
+    // @notice TODO - need to figure out the proper visibility of this function. We will have to take onlyOwner away, but for now we keep it in for testing. 
+    function buyAndBurnPHO(uint256 collateralAmount) public onlyOwner returns (uint256) {
+        return _buyAndBurnPHO(collateralAmount);
     }
 
     /// @notice mints $PHO and sells it to the market in return for collateral
@@ -153,6 +159,11 @@ contract PriceController is IPriceController, Ownable {
         emit TokensExchanged(address(dexPool), address(pho), phoAmount, basePoolLP, tokensReceived);
 
         return tokensReceived;
+    }
+
+    // @notice TODO - need to figure out the proper visibility of this function. We will have to take onlyOwner away, but for now we keep it in for testing. 
+    function mintAndSellPHO(uint256 phoAmount) public onlyOwner returns (uint256) {
+        return _mintAndSellPHO(phoAmount);
     }
 
     /// @notice buys $PHO back from the market and burns it
@@ -203,7 +214,9 @@ contract PriceController is IPriceController, Ownable {
         emit CooldownPeriodUpdated(cooldownPeriod);
     }
 
-    ///@notice set the fraction from the gap to be mitigated with the market
+    /// @notice Set the priceMitigationPercentage, which determines how
+    /// much PHO the controller can mint or burn to close the price gap.
+    /// (i.e. 50% would allow the controller to mint a price of $1.06 to $1.03
     function setPriceMitigationPercentage(uint256 newPriceMitigationPercentage)
         external
         onlyOwner
@@ -222,13 +235,5 @@ contract PriceController is IPriceController, Ownable {
         if (newMaxSlippage == maxSlippage) revert SameValue();
         maxSlippage = newMaxSlippage;
         emit MaxSlippageUpdated(maxSlippage);
-    }
-
-    function buyAndBurnPHO(uint256 collateralAmount) public onlyOwner returns (uint256) {
-        return _buyAndBurnPHO(collateralAmount);
-    }
-
-    function mintAndSellPHO(uint256 phoAmount) public onlyOwner returns (uint256) {
-        return _mintAndSellPHO(phoAmount);
     }
 }

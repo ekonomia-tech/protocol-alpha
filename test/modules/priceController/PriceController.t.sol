@@ -16,9 +16,7 @@ contract PriceControllerTest is BaseSetup {
     error ValueNotInRange();
     error CooldownNotSatisfied();
     error NotEnoughBalanceInStabilizer();
-    error TokenNotUnderlyingInMetapool();
-    error AddressDoNotPointToMetapool();
-    error PHONotPresentInMetapool();
+
 
     event OracleAddressSet(address indexed newOracleAddress);
     event CooldownPeriodUpdated(uint256 newCooldownPeriod);
@@ -33,17 +31,18 @@ contract PriceControllerTest is BaseSetup {
     event StabilizingTokenUpdated(address indexed newStabilizingToken);
     event MaxSlippageUpdated(uint256 newMaxSlippage);
 
-    ICurvePool public curvePool;
+    ICurvePool public dexPool;
     PriceController public priceController;
 
     /// Contract relevant test constants
 
-    uint256 public constant OverPegOutBand = 103 * (10 ** 4);
-    uint256 public constant OverPegInBand = 1005 * (10 ** 3);
-    uint256 public constant UnderPegOutBand = 98 * (10 ** 4);
-    uint256 public constant UnderPegInBand = 995 * (10 ** 3);
-    uint256 public constant priceTarget = 10 ** 6;
-    uint256 public constant fractionPrecision = 10 ** 5;
+    uint256 public constant OVER_PEG_OUT_BAND = 103 * (10 ** 4);
+    uint256 public constant OVER_PEG_IN_BAND = 1005 * (10 ** 3);
+    uint256 public constant UNDER_PEG_OUT_BAND = 98 * (10 ** 4);
+    uint256 public constant UNDER_PEG_IN_BAND = 995 * (10 ** 3);
+    uint256 public constant PRICE_TARGET = 10 ** 6;
+    uint256 public constant PERCENTAGE_PRECISION = 10 ** 5;
+    uint256 public constant USDC_SCALE = 10 ** 12;
 
     function setUp() public {
         fraxBPLP = IERC20(FRAXBP_LP_TOKEN);
@@ -52,13 +51,11 @@ contract PriceControllerTest is BaseSetup {
 
         _fundAndApproveUSDC(owner, address(fraxBP), TEN_THOUSAND_D6, TEN_THOUSAND_D6);
 
-        fraxBPPhoMetapool = ICurvePool(_deployFraxBPPHOPool());
-
-        console.log(address(fraxBPPhoMetapool));
+        dexPool = ICurvePool(_deployFraxBPPHOPool());
 
         vm.prank(owner);
         priceController =
-        new PriceController(address(pho), address(moduleManager), address(kernel), address(priceOracle), address(fraxBPPhoMetapool), 1 weeks, 10 ** 4, 50000,99000);
+        new PriceController(address(pho), address(moduleManager), address(kernel), address(priceOracle), address(dexPool), 1 weeks, 10 ** 4, 50000,99000);
 
         vm.prank(PHOGovernance);
         moduleManager.addModule(address(priceController));
@@ -71,7 +68,7 @@ contract PriceControllerTest is BaseSetup {
 
         _fundAndApproveUSDC(
             address(priceController),
-            address(fraxBPPhoMetapool),
+            address(dexPool),
             ONE_HUNDRED_THOUSAND_D6,
             ONE_HUNDRED_THOUSAND_D6
         );
@@ -214,31 +211,31 @@ contract PriceControllerTest is BaseSetup {
         bool over;
 
         /// Over peg, out of band, 3 cents above
-        priceOracle.setPHOUSDPrice(OverPegOutBand);
+        priceOracle.setPHOUSDPrice(OVER_PEG_OUT_BAND);
         (diff, over) = priceController.checkPriceBand(priceOracle.getPHOUSDPrice());
 
-        assertEq(diff, OverPegOutBand - priceTarget);
+        assertEq(diff, OVER_PEG_OUT_BAND - PRICE_TARGET);
         assertEq(over, true);
 
         /// Over peg, in band, 0.5 cents
-        priceOracle.setPHOUSDPrice(OverPegInBand);
+        priceOracle.setPHOUSDPrice(OVER_PEG_IN_BAND);
         (diff, over) = priceController.checkPriceBand(priceOracle.getPHOUSDPrice());
 
-        assertEq(diff, OverPegInBand - priceTarget);
+        assertEq(diff, OVER_PEG_IN_BAND - PRICE_TARGET);
         assertEq(over, true);
 
         // Under peg, out of band, 2 cents
-        priceOracle.setPHOUSDPrice(UnderPegOutBand);
+        priceOracle.setPHOUSDPrice(UNDER_PEG_OUT_BAND);
         (diff, over) = priceController.checkPriceBand(priceOracle.getPHOUSDPrice());
 
-        assertEq(diff, priceTarget - UnderPegOutBand);
+        assertEq(diff, PRICE_TARGET - UNDER_PEG_OUT_BAND);
         assertEq(over, false);
 
         // Under peg, in band, 0.5 cents
-        priceOracle.setPHOUSDPrice(UnderPegInBand);
+        priceOracle.setPHOUSDPrice(UNDER_PEG_IN_BAND);
         (diff, over) = priceController.checkPriceBand(priceOracle.getPHOUSDPrice());
 
-        assertEq(diff, priceTarget - UnderPegInBand);
+        assertEq(diff, PRICE_TARGET - UNDER_PEG_IN_BAND);
         assertEq(over, false);
     }
 
@@ -252,19 +249,19 @@ contract PriceControllerTest is BaseSetup {
     /// change in percentage required to reach = 1.456%
     /// totalSupply * change = 1456$
     function testMarketToTargetDiffOverPeg() public {
-        priceOracle.setPHOUSDPrice(OverPegOutBand);
+        priceOracle.setPHOUSDPrice(OVER_PEG_OUT_BAND);
         uint256 phoPrice = priceOracle.getPHOUSDPrice();
-        uint256 phoTotalSupply = pho.totalSupply();
+        uint256 phoTotalSupply = dexPool.balances(0);
         (uint256 diff, bool over) = priceController.checkPriceBand(phoPrice);
 
         uint256 gapToMitigate =
-            (diff * priceController.priceMitigationPercentage()) / fractionPrecision;
+            (diff * priceController.priceMitigationPercentage()) / PERCENTAGE_PRECISION;
         /// Assuming over is 50%
         assertEq(gapToMitigate, diff / 2);
 
         uint256 diffs = priceController.marketToTargetDiff(phoPrice, diff);
         uint256 expectedGapInTokens =
-            phoTotalSupply * (gapToMitigate * fractionPrecision / phoPrice) / fractionPrecision;
+            phoTotalSupply * (gapToMitigate * PERCENTAGE_PRECISION / phoPrice) / PERCENTAGE_PRECISION;
 
         assertEq(diffs, expectedGapInTokens);
     }
@@ -277,19 +274,19 @@ contract PriceControllerTest is BaseSetup {
     /// change in percentage required to reach = 1.02%
     /// totalSupply * change = 1020$
     function testMarketToTargetDiffUnderPeg() public {
-        priceOracle.setPHOUSDPrice(UnderPegOutBand);
+        priceOracle.setPHOUSDPrice(UNDER_PEG_OUT_BAND);
         uint256 phoPrice = priceOracle.getPHOUSDPrice();
-        uint256 phoTotalSupply = pho.totalSupply();
+        uint256 phoTotalSupply = dexPool.balances(0);
         (uint256 diff, bool over) = priceController.checkPriceBand(phoPrice);
 
         uint256 gapToMitigate =
-            (diff * priceController.priceMitigationPercentage()) / fractionPrecision;
+            (diff * priceController.priceMitigationPercentage()) / PERCENTAGE_PRECISION;
         /// Assuming over is 50%
         assertEq(gapToMitigate, diff / 2);
 
         uint256 diffs = priceController.marketToTargetDiff(phoPrice, diff);
         uint256 expectedGapInTokens =
-            phoTotalSupply * (gapToMitigate * fractionPrecision / phoPrice) / fractionPrecision;
+            phoTotalSupply * (gapToMitigate * PERCENTAGE_PRECISION / phoPrice) / PERCENTAGE_PRECISION;
 
         assertEq(diffs, expectedGapInTokens);
     }
@@ -297,22 +294,22 @@ contract PriceControllerTest is BaseSetup {
     /// _mintAndSellPHO()
 
     function testMintAndSellPHO() public {
-        uint256 fraxBPPoolBalanceBefore = fraxBPPhoMetapool.balances(1);
-        uint256 phoPoolBalanceBefore = fraxBPPhoMetapool.balances(0);
+        uint256 fraxBPPoolBalanceBefore = dexPool.balances(1);
+        uint256 phoPoolBalanceBefore = dexPool.balances(0);
         uint256 fraxBPPriceControllerBalanceBefore = fraxBPLP.balanceOf(address(priceController));
 
         uint256 phoToExchange = ONE_THOUSAND_D18;
-        uint256 minExpected = fraxBPPhoMetapool.get_dy(0, 1, phoToExchange);
+        uint256 minExpected = dexPool.get_dy(0, 1, phoToExchange);
 
         vm.expectEmit(true, true, false, true);
         emit TokensExchanged(
-            address(fraxBPPhoMetapool), address(pho), phoToExchange, address(fraxBPLP), minExpected
+            address(dexPool), address(pho), phoToExchange, address(fraxBPLP), minExpected
             );
         vm.prank(owner);
         uint256 tokensReceived = priceController.mintAndSellPHO(phoToExchange);
 
-        uint256 fraxBPPoolBalanceAfter = fraxBPPhoMetapool.balances(1);
-        uint256 phoPoolBalanceAfter = fraxBPPhoMetapool.balances(0);
+        uint256 fraxBPPoolBalanceAfter = dexPool.balances(1);
+        uint256 phoPoolBalanceAfter = dexPool.balances(0);
         uint256 fraxBPPriceControllerBalanceAfter = fraxBPLP.balanceOf(address(priceController));
         uint256 phoPriceControllerBalanceAfter = pho.balanceOf(address(priceController));
 
@@ -342,9 +339,9 @@ contract PriceControllerTest is BaseSetup {
 
     function testBuyAndBurnPHO() public {
         (int128 usdcIndex, int128 phoIndex,) =
-            curveFactory.get_coin_indices(address(fraxBPPhoMetapool), address(usdc), address(pho));
+            curveFactory.get_coin_indices(address(dexPool), address(usdc), address(pho));
         uint256[8] memory underlyingBalancesBefore =
-            curveFactory.get_underlying_balances(address(fraxBPPhoMetapool));
+            curveFactory.get_underlying_balances(address(dexPool));
 
         uint256 phoPoolBalanceBefore = underlyingBalancesBefore[uint128(phoIndex)];
         uint256 usdcPriceControllerBalanceBefore = usdc.balanceOf(address(priceController));
@@ -352,17 +349,17 @@ contract PriceControllerTest is BaseSetup {
         /// d18 used to mimic the output of GapInToken function
         uint256 usdcToExchange = ONE_THOUSAND_D6;
         uint256 expectedPho =
-            fraxBPPhoMetapool.get_dy_underlying(usdcIndex, phoIndex, usdcToExchange);
+            dexPool.get_dy_underlying(usdcIndex, phoIndex, usdcToExchange);
 
         vm.expectEmit(true, true, false, false);
         emit TokensExchanged(
-            address(fraxBPPhoMetapool), address(usdc), usdcToExchange, address(pho), expectedPho
+            address(dexPool), address(usdc), usdcToExchange, address(pho), expectedPho
             );
         vm.prank(owner);
         uint256 tokensReceived = priceController.buyAndBurnPHO(usdcToExchange);
 
         uint256[8] memory underlyingBalancesAfter =
-            curveFactory.get_underlying_balances(address(fraxBPPhoMetapool));
+            curveFactory.get_underlying_balances(address(dexPool));
 
         uint256 phoPoolBalanceAfter = underlyingBalancesAfter[uint128(phoIndex)];
         uint256 usdcPriceControllerBalanceAfter = usdc.balanceOf(address(priceController));
@@ -401,23 +398,23 @@ contract PriceControllerTest is BaseSetup {
 
     function testStabilizeOverPegOutBand() public {
         (int128 phoIndex, int128 fraxBPLPIndex,) = curveFactory.get_coin_indices(
-            address(fraxBPPhoMetapool), address(pho), address(fraxBPLP)
+            address(dexPool), address(pho), address(fraxBPLP)
         );
 
-        uint256 phoTotalSupplyBefore = pho.totalSupply();
+        uint256 phoTotalSupplyBefore = dexPool.balances(0);
         uint256 fraxBPPriceControllerBalanceBefore = fraxBPLP.balanceOf(address(priceController));
 
-        priceOracle.setPHOUSDPrice(OverPegOutBand);
+        priceOracle.setPHOUSDPrice(OVER_PEG_OUT_BAND);
         uint256 phoPrice = priceOracle.getPHOUSDPrice();
         (uint256 diff, bool over) = priceController.checkPriceBand(phoPrice);
         uint256 priceMitigationPart = priceController.marketToTargetDiff(phoPrice, diff);
         uint256 expectedFraxBP =
-            fraxBPPhoMetapool.get_dy(phoIndex, fraxBPLPIndex, priceMitigationPart);
+            dexPool.get_dy(phoIndex, fraxBPLPIndex, priceMitigationPart);
 
         vm.prank(owner);
         bool stabilized = priceController.stabilize();
 
-        uint256 phoTotalSupplyAfter = pho.totalSupply();
+        uint256 phoTotalSupplyAfter = dexPool.balances(0);
         uint256 fraxBPPriceControllerBalanceAfter = fraxBPLP.balanceOf(address(priceController));
 
         assertEq(phoTotalSupplyAfter, phoTotalSupplyBefore + priceMitigationPart);
@@ -429,28 +426,28 @@ contract PriceControllerTest is BaseSetup {
 
     function testStabilizeUnderPegOutBand() public {
         (int128 usdcIndex, int128 phoIndex,) =
-            curveFactory.get_coin_indices(address(fraxBPPhoMetapool), address(usdc), address(pho));
+            curveFactory.get_coin_indices(address(dexPool), address(usdc), address(pho));
 
-        uint256 phoTotalSupplyBefore = pho.totalSupply();
+        uint256 phoTotalSupplyBefore = dexPool.balances(0);
         uint256 usdcPriceControllerBalanceBefore = usdc.balanceOf(address(priceController));
 
-        priceOracle.setPHOUSDPrice(UnderPegOutBand);
+        priceOracle.setPHOUSDPrice(UNDER_PEG_OUT_BAND);
         uint256 phoPrice = priceOracle.getPHOUSDPrice();
         (uint256 diff, bool over) = priceController.checkPriceBand(phoPrice);
         uint256 priceMitigationPart = priceController.marketToTargetDiff(phoPrice, diff);
         uint256 expectedPho =
-            fraxBPPhoMetapool.get_dy_underlying(usdcIndex, phoIndex, priceMitigationPart / 10 ** 12);
+            dexPool.get_dy_underlying(usdcIndex, phoIndex, priceMitigationPart / USDC_SCALE);
 
         vm.prank(owner);
         bool stabilized = priceController.stabilize();
 
-        uint256 phoTotalSupplyAfter = pho.totalSupply();
+        uint256 phoTotalSupplyAfter = dexPool.balances(0);
         uint256 usdcPriceControllerBalanceAfter = usdc.balanceOf(address(priceController));
 
         assertApproxEqAbs(phoTotalSupplyAfter, phoTotalSupplyBefore - expectedPho, 10 ** 18);
         assertEq(
             usdcPriceControllerBalanceBefore,
-            usdcPriceControllerBalanceAfter + (priceMitigationPart / 10 ** 12)
+            usdcPriceControllerBalanceAfter + (priceMitigationPart / USDC_SCALE)
         );
         assertTrue(priceController.lastCooldownReset() - block.timestamp < 3600);
         assertTrue(stabilized);
@@ -464,7 +461,7 @@ contract PriceControllerTest is BaseSetup {
     }
 
     function testStabilizePriceInBandOverPeg() public {
-        priceOracle.setPHOUSDPrice(OverPegInBand);
+        priceOracle.setPHOUSDPrice(OVER_PEG_IN_BAND);
         vm.prank(owner);
         bool stabilized = priceController.stabilize();
 
@@ -473,7 +470,7 @@ contract PriceControllerTest is BaseSetup {
     }
 
     function testStabilizePriceInBandUnderPeg() public {
-        priceOracle.setPHOUSDPrice(UnderPegInBand);
+        priceOracle.setPHOUSDPrice(UNDER_PEG_IN_BAND);
         vm.prank(owner);
         bool stabilized = priceController.stabilize();
 
@@ -489,7 +486,7 @@ contract PriceControllerTest is BaseSetup {
 
         vm.warp(block.timestamp + 100);
 
-        priceOracle.setPHOUSDPrice(OverPegOutBand);
+        priceOracle.setPHOUSDPrice(OVER_PEG_OUT_BAND);
         vm.expectRevert(abi.encodeWithSelector(CooldownNotSatisfied.selector));
         vm.prank(owner);
         stabilized = priceController.stabilize();
