@@ -123,14 +123,19 @@ abstract contract BaseSetup is Test {
         // set up PHO Governance
         phoGovernanceDelegate = new PHOGovernorBravoDelegate(); 
         PHOGovernance = address(phoGovernanceDelegate);
+
         phoGovernanceDelegator = new PHOGovernorBravoDelegator(PHO_timelock_address, address(pho), owner, PHOGovernance, 21600, 14400, ONE_HUNDRED_THOUSAND_D18); //PHOGovernorBravoDelegate is initialized here too through Delegator constructor
-        console.log("Admin for governance: %s, timelock: %s", phoGovernanceDelegate.admin(), PHO_timelock_address);
+
+        (bool success, ) = address(phoGovernanceDelegator).call(
+            abi.encodeWithSignature("_initiate(address)", PHOGovernance)
+        );
+
         // phoGovernanceDelegate._initiate(PHOGovernance); // input our own governorBravo that we just created bc we aren't upgrading from governorAlpha
-
+        console.log("Admin for delegator: %s, owner: %s",phoGovernanceDelegator.admin(), owner);
+        console.log(", Admin for delegate: %s, timelock: %s", phoGovernanceDelegate.admin(), PHO_timelock_address);
         console.log("CHECKS: votingPeriod: %s, votingDelay: %s, proposalThreshold: %s", phoGovernanceDelegate.votingPeriod(), phoGovernanceDelegate.votingDelay(), phoGovernanceDelegate.proposalThreshold());
-
+        console.log("CHECKS: phoGovernanceDelegator: %s", address(phoGovernanceDelegator));
         console.log("CHECKS: ProposedImplementation: %s, ActualImplementation: %s", address(phoGovernanceDelegate), phoGovernanceDelegator.implementation());
-        
         // TODO - setup TON Governance here
 
         kernel = new Kernel(address(pho), TONGovernance);

@@ -16,6 +16,7 @@ contract PHOGovernorBravoDelegator is GovernorBravoDelegatorStorage, GovernorBra
         // Admin set to msg.sender for initialization
         admin = msg.sender;
 
+        // NOTE: if I'm understanding thisi correctly, implementation is being the delegate. It represents Delegator. Delegator encoded the `data`. `data` is as seen below. 
         delegateTo(implementation_, abi.encodeWithSignature("initialize(address,address,uint256,uint256,uint256)",
                                                             timelock_,
                                                             pho_,
