@@ -79,6 +79,7 @@ abstract contract BaseSetup is Test {
     uint256 public constant TEN_THOUSAND_D6 = 10000 * 10 ** 6;
 
     uint256 public constant ONE_HUNDRED_THOUSAND_D18 = 100000 * 10 ** 18;
+    uint256 public constant ONE_HUNDRED_THOUSAND_D6 = 100000 * 10 ** 6;
     uint256 public constant ONE_MILLION_D6 = 1000000 * 10 ** 6;
     uint256 public constant ONE_MILLION_D18 = 1000000 * 10 ** 18;
 

@@ -2,11 +2,18 @@
 pragma solidity ^0.8.13;
 
 interface IPriceController {
-    event ControllerSet(address indexed newControllerAddress);
+    error ZeroAddress();
+    error SameAddress();
+    error ZeroValue();
+    error SameValue();
+    error CooldownPeriodAtLeastOneHour();
+    error ValueNotInRange();
+    error CooldownNotSatisfied();
+    error NotEnoughBalanceInStabilizer();
+
     event OracleAddressSet(address indexed newOracleAddress);
     event CooldownPeriodUpdated(uint256 newCooldownPeriod);
-    event PriceBandUpdated(uint256 newPriceBand);
-    event GapFractionUpdated(uint256 newGapFraction);
+    event PriceMitigationPercentageUpdated(uint256 newGapFraction);
     event TokensExchanged(
         address indexed dexPool,
         address indexed tokenSent,
@@ -14,16 +21,13 @@ interface IPriceController {
         address tokenReceived,
         uint256 amountReceived
     );
-    event DexPoolUpdated(address indexed newDexPool);
-    event StabilizingTokenUpdated(address indexed newStabilizingToken);
     event MaxSlippageUpdated(uint256 newMaxSlippage);
 
-    function setController(address newControllerAddress) external;
+    function stabilize() external returns (bool);
+    function checkPriceBand(uint256 current_price) external returns (uint256, bool);
+    function marketToTargetDiff(uint256 price, uint256 diff) external returns (uint256);
     function setOracleAddress(address newOracleAddress) external;
     function setCooldownPeriod(uint256 newCooldownPeriod) external;
-    function setPriceBand(uint256 newPriceBand) external;
-    function setGapFraction(uint256 newGapFraction) external;
-    function setDexPool(address newDexPool) external;
-    function setStabilizingToken(address newStabilizingToken) external;
+    function setPriceMitigationPercentage(uint256 newGapFraction) external;
     function setMaxSlippage(uint256 newMaxSlippage) external;
 }
