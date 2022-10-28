@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 
 /// @title PHOTON protocol stablecoin
 /// @author Ekonomia: https://github.com/Ekonomia
-// TODO - not sure if we can work with OZ extensions to achieve the same type of token type here. The question is that we would have to set up PHO && TON like so: contract PHO is IPHO, ERC20VotesComp {} <-- The issue here is that I'm not sure if we would have to have one extension only. Can we also have ERC20Burnable? It seems weird to me that OZ would design their contracts in a way that you could only have one extension. But it looks, based off of the errors I'm seeing coming up when trying to inherit both, that is the case.  If so, it looks like ERC20Burnable doesn't have a lot to it though, so we can just add those functions into the PHO && TON implementation contracts directly. 
+// TODO - not sure if we can work with OZ extensions to achieve the same type of token type here. The question is that we would have to set up PHO && TON like so: contract PHO is IPHO, ERC20VotesComp {} <-- The issue here is that I'm not sure if we would have to have one extension only. Can we also have ERC20Burnable? It seems weird to me that OZ would design their contracts in a way that you could only have one extension. But it looks, based off of the errors I'm seeing coming up when trying to inherit both, that is the case.  If so, it looks like ERC20Burnable doesn't have a lot to it though, so we can just add those functions into the PHO && TON implementation contracts directly.
 contract PHO is IPHO, ERC20Burnable, ERC20VotesComp, Ownable {
     address public kernel;
 
@@ -19,7 +19,10 @@ contract PHO is IPHO, ERC20Burnable, ERC20VotesComp, Ownable {
         _;
     }
 
-    constructor(string memory _name, string memory _symbol) ERC20(_name, _symbol) ERC20Permit(_name) {}
+    constructor(string memory _name, string memory _symbol)
+        ERC20(_name, _symbol)
+        ERC20Permit(_name)
+    {}
 
     /// @notice mint new $PHO tokens
     /// @param to the user to mint $PHO to
@@ -45,26 +48,25 @@ contract PHO is IPHO, ERC20Burnable, ERC20VotesComp, Ownable {
      *
      * Emits a {DelegateVotesChanged} event.
      */
-    function _afterTokenTransfer(
-        address from,
-        address to,
-        uint256 amount
-    ) internal virtual override (ERC20, ERC20Votes) {
+    function _afterTokenTransfer(address from, address to, uint256 amount)
+        internal
+        virtual
+        override (ERC20, ERC20Votes)
+    {
         super._afterTokenTransfer(from, to, amount);
     }
 
-        /**
+    /**
      * @dev Snapshots the totalSupply after it has been decreased.
      */
-    function _burn(address account, uint256 amount) internal virtual override(ERC20, ERC20Votes) {
+    function _burn(address account, uint256 amount) internal virtual override (ERC20, ERC20Votes) {
         super._burn(account, amount);
     }
 
     /**
      * @dev Snapshots the totalSupply after it has been increased.
      */
-    function _mint(address account, uint256 amount) internal virtual override(ERC20, ERC20Votes) {
+    function _mint(address account, uint256 amount) internal virtual override (ERC20, ERC20Votes) {
         super._mint(account, amount);
     }
-
 }

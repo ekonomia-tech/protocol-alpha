@@ -55,56 +55,68 @@ abstract contract BaseSetup is Test {
     address public daiWhale = 0xc08a8a9f809107c5A7Be6d90e315e4012c99F39a;
     address public fraxBPLPToken = 0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC;
     address public fraxBPAddress = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
-    address public metaPoolFactoryAddress = 0xB9fC157394Af804a3578134A6585C0dc9cc990d4;
+    address public metaPoolFactoryAddress =
+        0xB9fC157394Af804a3578134A6585C0dc9cc990d4;
     address public fraxRichGuy = 0xd3d176F7e4b43C70a68466949F6C64F06Ce75BB9;
 
-    address public constant USDC_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-    address public constant FRAX_ADDRESS = 0x853d955aCEf822Db058eb8505911ED77F175b99e;
-    address public constant FRAXBP_ADDRESS = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
-    address public constant FRAXBP_LP_TOKEN = 0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC;
-    address public constant FRAXBP_POOL = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
-    address public constant FRAXBP_LUSD = 0x497CE58F34605B9944E6b15EcafE6b001206fd25;
+    address public constant USDC_ADDRESS =
+        0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address public constant FRAX_ADDRESS =
+        0x853d955aCEf822Db058eb8505911ED77F175b99e;
+    address public constant FRAXBP_ADDRESS =
+        0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
+    address public constant FRAXBP_LP_TOKEN =
+        0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC;
+    address public constant FRAXBP_POOL =
+        0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
+    address public constant FRAXBP_LUSD =
+        0x497CE58F34605B9944E6b15EcafE6b001206fd25;
     address public constant weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    address public constant DAI_ADDRESS = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    address public constant DAI_ADDRESS =
+        0x6B175474E89094C44Da98b954EedeAC495271d0F;
 
-    address public constant ETH_NULL_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-    address public constant PRICEFEED_ETHUSD = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
-    address public constant PRICEFEED_USDCUSD = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
-    address public constant PRICEFEED_FRAXUSD = 0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD;
+    address public constant ETH_NULL_ADDRESS =
+        0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    address public constant PRICEFEED_ETHUSD =
+        0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+    address public constant PRICEFEED_USDCUSD =
+        0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
+    address public constant PRICEFEED_FRAXUSD =
+        0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD;
 
     uint256 public constant USDC_DECIMALS = 6;
     uint256 public constant DAI_DECIMALS = 18;
     uint256 public constant PHO_DECIMALS = 18;
 
-    uint256 public constant ONE_D6 = 10 ** 6;
-    uint256 public constant ONE_HUNDRED_D6 = 100 * 10 ** 6;
-    uint256 public constant ONE_HUNDRED_D18 = 100 * 10 ** 18;
-    uint256 public constant ONE_THOUSAND_D18 = 1000 * 10 ** 18;
-    uint256 public constant ONE_THOUSAND_D6 = 1000 * 10 ** 6;
-    uint256 public constant TEN_THOUSAND_D18 = 10000 * 10 ** 18;
-    uint256 public constant TEN_THOUSAND_D6 = 10000 * 10 ** 6;
+    uint256 public constant ONE_D6 = 10**6;
+    uint256 public constant ONE_HUNDRED_D6 = 100 * 10**6;
+    uint256 public constant ONE_HUNDRED_D18 = 100 * 10**18;
+    uint256 public constant ONE_THOUSAND_D18 = 1000 * 10**18;
+    uint256 public constant ONE_THOUSAND_D6 = 1000 * 10**6;
+    uint256 public constant TEN_THOUSAND_D18 = 10000 * 10**18;
+    uint256 public constant TEN_THOUSAND_D6 = 10000 * 10**6;
 
     uint256 public constant ONE_HUNDRED_THOUSAND_D18 = 100000 * 10 ** 18;
     uint256 public constant ONE_HUNDRED_THOUSAND_D6 = 100000 * 10 ** 6;
     uint256 public constant ONE_MILLION_D6 = 1000000 * 10 ** 6;
     uint256 public constant ONE_MILLION_D18 = 1000000 * 10 ** 18;
 
-    uint256 public constant OVERPEG = (10 ** 6) + 6000;
-    uint256 public constant UNDERPEG = (10 ** 6) - (6000);
+    uint256 public constant OVERPEG = (10**6) + 6000;
+    uint256 public constant UNDERPEG = (10**6) - (6000);
 
-    uint256 public constant GENESIS_SUPPLY_D18 = 100000000 * 10 ** 18;
+    uint256 public constant GENESIS_SUPPLY_D18 = 100000000 * 10**18;
 
-    uint256 public constant PRICE_PRECISION = 10 ** 6;
-    uint256 public constant DECIMALS_DIFFERENCE = 10 ** 12;
-    uint256 public constant PHO_PRICE_PRECISION = 10 ** 18;
-    uint256 public constant FEED_PRECISION = 10 ** 10;
+    uint256 public constant PRICE_PRECISION = 10**6;
+    uint256 public constant DECIMALS_DIFFERENCE = 10**12;
+    uint256 public constant PHO_PRICE_PRECISION = 10**18;
+    uint256 public constant FEED_PRECISION = 10**10;
 
     // phoOracle specific
     uint256 public constant PRICE_THRESHOLD = 100000; // 10%, since 10 ** 6 (1000000) = 100%
     uint256 public constant PRECISION_DIFFERENCE = 10;
     uint256 public period = 1 weeks;
 
-    uint256 public constant POOL_CEILING = (2 ** 256) - 1;
+    uint256 public constant POOL_CEILING = (2**256) - 1;
 
     constructor() {
         string memory RPC_URL = vm.envString("RPC_URL");
@@ -121,21 +133,153 @@ abstract contract BaseSetup is Test {
 
         // TODO - set up governance here
         // set up PHO Governance
-        phoGovernanceDelegate = new PHOGovernorBravoDelegate(); 
+        phoGovernanceDelegate = new PHOGovernorBravoDelegate();
         PHOGovernance = address(phoGovernanceDelegate);
 
-        phoGovernanceDelegator = new PHOGovernorBravoDelegator(PHO_timelock_address, address(pho), owner, PHOGovernance, 21600, 14400, ONE_HUNDRED_THOUSAND_D18); //PHOGovernorBravoDelegate is initialized here too through Delegator constructor
+        phoGovernanceDelegator = new PHOGovernorBravoDelegator(
+            PHO_timelock_address,
+            address(pho),
+            owner,
+            PHOGovernance,
+            21600,
+            14400,
+            ONE_HUNDRED_THOUSAND_D18
+        ); //PHOGovernorBravoDelegate is initialized here too through Delegator constructor
 
-        (bool success, ) = address(phoGovernanceDelegator).call(
-            abi.encodeWithSignature("_initiate(address)", PHOGovernance)
+        // Checking values
+        (bool votingDelaySuccess, bytes memory votingDelayResult) = address(
+            phoGovernanceDelegator
+        ).call(abi.encodeWithSignature("votingDelay()"));
+
+        uint256 votingDelay = abi.decode(votingDelayResult, (uint256));
+        console.log("THIS IS votingDelay: ", votingDelay);
+
+        (
+            bool initialProposalIdSuccess,
+            bytes memory initialProposalIdResult
+        ) = address(phoGovernanceDelegator).call(
+                abi.encodeWithSignature("initialProposalId()")
+            );
+
+        uint256 initialProposalId = abi.decode(
+            initialProposalIdResult,
+            (uint256)
         );
+        console.log("Original initialProposalId: ", initialProposalId);
 
-        // phoGovernanceDelegate._initiate(PHOGovernance); // input our own governorBravo that we just created bc we aren't upgrading from governorAlpha
-        console.log("Admin for delegator: %s, owner: %s",phoGovernanceDelegator.admin(), owner);
-        console.log(", Admin for delegate: %s, timelock: %s", phoGovernanceDelegate.admin(), PHO_timelock_address);
-        console.log("CHECKS: votingPeriod: %s, votingDelay: %s, proposalThreshold: %s", phoGovernanceDelegate.votingPeriod(), phoGovernanceDelegate.votingDelay(), phoGovernanceDelegate.proposalThreshold());
-        console.log("CHECKS: phoGovernanceDelegator: %s", address(phoGovernanceDelegator));
-        console.log("CHECKS: ProposedImplementation: %s, ActualImplementation: %s", address(phoGovernanceDelegate), phoGovernanceDelegator.implementation());
+        (bool proposalCountSuccess, bytes memory proposalCountResult) = address(
+            phoGovernanceDelegator
+        ).call(abi.encodeWithSignature("proposalCount()"));
+
+        uint256 proposalCount = abi.decode(proposalCountResult, (uint256));
+        console.log("THIS IS proposalCount : ", proposalCount);
+
+        // Call Initiate() - note the timelock.acceptAdmin() fails
+
+        (bool initiateSuccess, bytes memory initiateResult) = address(
+            phoGovernanceDelegator
+        ).call(abi.encodeWithSignature("_initiate(address)", PHOGovernance));
+
+        console.log("THIS IS initiateSuccess: ", initiateSuccess);
+
+        (
+            bool newInitialProposalIdSuccess,
+            bytes memory newInitialProposalIdResult
+        ) = address(phoGovernanceDelegator).call(
+                abi.encodeWithSignature("initialProposalId()")
+            );
+
+        uint256 newInitialProposalId = abi.decode(
+            newInitialProposalIdResult,
+            (uint256)
+        );
+        console.log("UPDATED newInitialProposalId: ", newInitialProposalId);
+
+        // Propose - note require for proposal threshold is commented out
+
+        address[] memory targets = new address[](1);
+        targets[0] = owner;
+
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+
+        string[] memory signatures = new string[](1);
+        signatures[0] = "getBalanceOf(address)";
+
+        bytes[] memory callDatas = new bytes[](1);
+        callDatas[0] = abi.encode("address", owner);
+
+        string memory description = "do nothing";
+
+        (bool proposeSuccess, bytes memory proposeResult) = address(
+            phoGovernanceDelegator
+        ).call(
+                abi.encodeWithSignature(
+                    "propose(address[],uint256[],string[],bytes[],string)",
+                    targets,
+                    values,
+                    signatures,
+                    callDatas,
+                    description
+                )
+            );
+
+        console.log("THIS IS proposeSuccess: ", proposeSuccess);
+
+        // (bool incrementSuccess, bytes memory incrementResult) = address(
+        //     phoGovernanceDelegator
+        // ).call(
+        //         abi.encodeWithSignature(
+        //             "incrementProposalCount(address[],uint256[],string[],bytes[],string)",
+        //             targets,
+        //             values,
+        //             signatures,
+        //             callDatas,
+        //             description
+        //         )
+        //     );
+
+        // console.log("THIS IS incrementSuccess: ", incrementSuccess);
+
+        (
+            bool newProposalCountSuccess,
+            bytes memory newProposalCountResult
+        ) = address(phoGovernanceDelegator).call(
+                abi.encodeWithSignature("proposalCount()")
+            );
+
+        uint256 newProposalCount = abi.decode(
+            newProposalCountResult,
+            (uint256)
+        );
+        console.log("THIS IS newProposalCount : ", newProposalCount);
+
+        //phoGovernanceDelegate._initiate(PHOGovernance); // input our own governorBravo that we just created bc we aren't upgrading from governorAlpha
+        console.log(
+            "Admin for delegator: %s, owner: %s",
+            phoGovernanceDelegator.admin(),
+            owner
+        );
+        console.log(
+            ", Admin for delegate: %s, timelock: %s",
+            phoGovernanceDelegate.admin(),
+            PHO_timelock_address
+        );
+        console.log(
+            "CHECKS: votingPeriod: %s, votingDelay: %s, proposalThreshold: %s",
+            phoGovernanceDelegate.votingPeriod(),
+            phoGovernanceDelegate.votingDelay(),
+            phoGovernanceDelegate.proposalThreshold()
+        );
+        console.log(
+            "CHECKS: phoGovernanceDelegator: %s",
+            address(phoGovernanceDelegator)
+        );
+        console.log(
+            "CHECKS: ProposedImplementation: %s, ActualImplementation: %s",
+            address(phoGovernanceDelegate),
+            phoGovernanceDelegator.implementation()
+        );
         // TODO - setup TON Governance here
 
         kernel = new Kernel(address(pho), TONGovernance);
@@ -169,7 +313,11 @@ abstract contract BaseSetup is Test {
 
     /// Helpers
 
-    function _getAccountBalance(address _account) internal view returns (Balance memory) {
+    function _getAccountBalance(address _account)
+        internal
+        view
+        returns (Balance memory)
+    {
         uint256 usdcBalance = usdc.balanceOf(_account);
         uint256 phoBalance = pho.balanceOf(_account);
         uint256 tonBalance = ton.balanceOf(_account);
@@ -184,7 +332,11 @@ abstract contract BaseSetup is Test {
         usdc.mint(to, _amount);
     }
 
-    function _approveUSDC(address _owner, address _spender, uint256 _amount) internal {
+    function _approveUSDC(
+        address _owner,
+        address _spender,
+        uint256 _amount
+    ) internal {
         vm.prank(_owner);
         usdc.approve(_spender, _amount);
     }
@@ -204,7 +356,11 @@ abstract contract BaseSetup is Test {
         dai.transfer(to, _amount);
     }
 
-    function _approveDAI(address _owner, address _spender, uint256 _amount) internal {
+    function _approveDAI(
+        address _owner,
+        address _spender,
+        uint256 _amount
+    ) internal {
         vm.prank(_owner);
         dai.approve(_spender, _amount);
     }
@@ -224,7 +380,11 @@ abstract contract BaseSetup is Test {
         ton.transfer(_to, _amount);
     }
 
-    function _approveTON(address _owner, address _spender, uint256 _amount) internal {
+    function _approveTON(
+        address _owner,
+        address _spender,
+        uint256 _amount
+    ) internal {
         vm.prank(_owner);
         ton.approve(_spender, _amount);
     }
@@ -244,7 +404,11 @@ abstract contract BaseSetup is Test {
         frax.transfer(_to, _amount);
     }
 
-    function _approveFRAX(address _owner, address _spender, uint256 _amount) internal {
+    function _approveFRAX(
+        address _owner,
+        address _spender,
+        uint256 _amount
+    ) internal {
         vm.prank(_owner);
         frax.approve(_spender, _amount);
     }
@@ -266,7 +430,12 @@ abstract contract BaseSetup is Test {
         frax = IERC20(FRAX_ADDRESS);
         fraxBPLP = IERC20(FRAXBP_LP_TOKEN);
 
-        _fundAndApproveUSDC(owner, address(fraxBP), TEN_THOUSAND_D6, TEN_THOUSAND_D6);
+        _fundAndApproveUSDC(
+            owner,
+            address(fraxBP),
+            TEN_THOUSAND_D6,
+            TEN_THOUSAND_D6
+        );
 
         uint256[2] memory fraxBPmetaLiquidity;
         fraxBPmetaLiquidity[0] = TEN_THOUSAND_D18; // frax
@@ -283,7 +452,13 @@ abstract contract BaseSetup is Test {
         fraxBP.add_liquidity(fraxBPmetaLiquidity, 0);
 
         address fraxBPPhoMetapoolAddress = curveFactory.deploy_metapool(
-            address(fraxBP), "FRAXBP/PHO", "FRAXBPPHO", address(pho), 200, 4000000, 0
+            address(fraxBP),
+            "FRAXBP/PHO",
+            "FRAXBPPHO",
+            address(pho),
+            200,
+            4000000,
+            0
         );
 
         fraxBPPhoMetapool = ICurvePool(fraxBPPhoMetapoolAddress);
@@ -311,7 +486,8 @@ interface IUSDC {
 
     function transfer(address to, uint256 amount) external;
 
-    function configureMinter(address minter, uint256 minterAllowedAmount) external;
+    function configureMinter(address minter, uint256 minterAllowedAmount)
+        external;
 
     function masterMinter() external view returns (address);
 }
