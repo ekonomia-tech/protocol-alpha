@@ -87,6 +87,7 @@ contract PriceController is IPriceController, Ownable {
     /// The function will not close the whole gap, but a certain part of it to make sure it will not oversell/overbuy.
     function stabilize() external returns (bool) {
         if (block.timestamp - lastCooldownReset <= cooldownPeriod) revert CooldownNotSatisfied();
+        lastCooldownReset = block.timestamp;
 
         // Get the current price of PHO from the price oracle abstraction
         uint256 phoPrice = priceOracle.getPHOUSDPrice();
@@ -96,7 +97,6 @@ contract PriceController is IPriceController, Ownable {
 
         // if the $PHO price is exactly 10**18 or the price is within the price band, reset cooldown and exit;
         if (diff < priceBand) {
-            lastCooldownReset = block.timestamp;
             return false;
         }
 
@@ -108,8 +108,6 @@ contract PriceController is IPriceController, Ownable {
         } else {
             _buyAndBurnPHO(tokenAmount / USDC_SCALE);
         }
-
-        lastCooldownReset = block.timestamp;
         return true;
     }
 
@@ -135,8 +133,8 @@ contract PriceController is IPriceController, Ownable {
     }
 
     // @notice TODO - need to figure out the proper visibility of this function. We will have to take onlyOwner away, but for now we keep it in for testing.
-    function buyAndBurnPHO(uint256 collateralAmount) public onlyOwner returns (uint256) {
-        return _buyAndBurnPHO(collateralAmount);
+    function mintAndSellPHO(uint256 phoAmount) public onlyOwner returns (uint256) {
+        return _mintAndSellPHO(phoAmount);
     }
 
     /// @notice mints $PHO and sells it to the market in return for collateral
@@ -162,8 +160,8 @@ contract PriceController is IPriceController, Ownable {
     }
 
     // @notice TODO - need to figure out the proper visibility of this function. We will have to take onlyOwner away, but for now we keep it in for testing.
-    function mintAndSellPHO(uint256 phoAmount) public onlyOwner returns (uint256) {
-        return _mintAndSellPHO(phoAmount);
+    function buyAndBurnPHO(uint256 collateralAmount) public onlyOwner returns (uint256) {
+        return _buyAndBurnPHO(collateralAmount);
     }
 
     /// @notice buys $PHO back from the market and burns it

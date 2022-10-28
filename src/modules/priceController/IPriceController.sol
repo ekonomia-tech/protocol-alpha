@@ -24,6 +24,8 @@ interface IPriceController {
     event MaxSlippageUpdated(uint256 newMaxSlippage);
 
     function stabilize() external returns (bool);
+    function checkPriceBand(uint256 current_price) external returns (uint256, bool);
+    function marketToTargetDiff(uint256 price, uint256 diff) external returns (uint256);
     function setOracleAddress(address newOracleAddress) external;
     function setCooldownPeriod(uint256 newCooldownPeriod) external;
     function setPriceMitigationPercentage(uint256 newGapFraction) external;

@@ -251,7 +251,7 @@ contract PriceControllerTest is BaseSetup {
         priceOracle.setPHOUSDPrice(OVER_PEG_OUT_BAND);
         uint256 phoPrice = priceOracle.getPHOUSDPrice();
         uint256 phoTotalSupply = dexPool.balances(0);
-        (uint256 diff, bool over) = priceController.checkPriceBand(phoPrice);
+        (uint256 diff,) = priceController.checkPriceBand(phoPrice);
 
         uint256 gapToMitigate =
             (diff * priceController.priceMitigationPercentage()) / PERCENTAGE_PRECISION;
@@ -276,7 +276,7 @@ contract PriceControllerTest is BaseSetup {
         priceOracle.setPHOUSDPrice(UNDER_PEG_OUT_BAND);
         uint256 phoPrice = priceOracle.getPHOUSDPrice();
         uint256 phoTotalSupply = dexPool.balances(0);
-        (uint256 diff, bool over) = priceController.checkPriceBand(phoPrice);
+        (uint256 diff,) = priceController.checkPriceBand(phoPrice);
 
         uint256 gapToMitigate =
             (diff * priceController.priceMitigationPercentage()) / PERCENTAGE_PRECISION;
@@ -296,6 +296,7 @@ contract PriceControllerTest is BaseSetup {
         uint256 fraxBPPoolBalanceBefore = dexPool.balances(1);
         uint256 phoPoolBalanceBefore = dexPool.balances(0);
         uint256 fraxBPPriceControllerBalanceBefore = fraxBPLP.balanceOf(address(priceController));
+        uint256 phoPriceControllerBalanceBefore = pho.balanceOf(address(priceController));
 
         uint256 phoToExchange = ONE_THOUSAND_D18;
         uint256 minExpected = dexPool.get_dy(0, 1, phoToExchange);
@@ -312,11 +313,12 @@ contract PriceControllerTest is BaseSetup {
         uint256 fraxBPPriceControllerBalanceAfter = fraxBPLP.balanceOf(address(priceController));
         uint256 phoPriceControllerBalanceAfter = pho.balanceOf(address(priceController));
 
-        /// taking into account fees and slippage
+        /// taking into account fees and slippage TODO - fix test to get exact value returned, not approx
         assertApproxEqAbs(
             fraxBPPoolBalanceBefore, fraxBPPoolBalanceAfter + tokensReceived, 10 ** 18
         );
         assertEq(phoPoolBalanceBefore, phoPoolBalanceAfter - phoToExchange);
+        assertEq(phoPriceControllerBalanceBefore, phoPriceControllerBalanceAfter);
         assertEq(
             fraxBPPriceControllerBalanceBefore, fraxBPPriceControllerBalanceAfter - tokensReceived
         );
@@ -362,7 +364,7 @@ contract PriceControllerTest is BaseSetup {
         uint256 phoPoolBalanceAfter = underlyingBalancesAfter[uint128(phoIndex)];
         uint256 usdcPriceControllerBalanceAfter = usdc.balanceOf(address(priceController));
 
-        /// taking into account fees and slippage
+        /// taking into account fees and slippage TODO - fix test to get exact value returned, not approx
         assertApproxEqAbs(phoPoolBalanceBefore, phoPoolBalanceAfter + expectedPho, 10 ** 18);
         assertEq(usdcPriceControllerBalanceBefore, usdcPriceControllerBalanceAfter + usdcToExchange);
     }
@@ -403,7 +405,7 @@ contract PriceControllerTest is BaseSetup {
 
         priceOracle.setPHOUSDPrice(OVER_PEG_OUT_BAND);
         uint256 phoPrice = priceOracle.getPHOUSDPrice();
-        (uint256 diff, bool over) = priceController.checkPriceBand(phoPrice);
+        (uint256 diff,) = priceController.checkPriceBand(phoPrice);
         uint256 priceMitigationPart = priceController.marketToTargetDiff(phoPrice, diff);
         uint256 expectedFraxBP = dexPool.get_dy(phoIndex, fraxBPLPIndex, priceMitigationPart);
 
@@ -429,7 +431,7 @@ contract PriceControllerTest is BaseSetup {
 
         priceOracle.setPHOUSDPrice(UNDER_PEG_OUT_BAND);
         uint256 phoPrice = priceOracle.getPHOUSDPrice();
-        (uint256 diff, bool over) = priceController.checkPriceBand(phoPrice);
+        (uint256 diff,) = priceController.checkPriceBand(phoPrice);
         uint256 priceMitigationPart = priceController.marketToTargetDiff(phoPrice, diff);
         uint256 expectedPho =
             dexPool.get_dy_underlying(usdcIndex, phoIndex, priceMitigationPart / USDC_SCALE);
@@ -440,6 +442,7 @@ contract PriceControllerTest is BaseSetup {
         uint256 phoTotalSupplyAfter = dexPool.balances(0);
         uint256 usdcPriceControllerBalanceAfter = usdc.balanceOf(address(priceController));
 
+        // TODO - fix test to get exact value returned, not approx
         assertApproxEqAbs(phoTotalSupplyAfter, phoTotalSupplyBefore - expectedPho, 10 ** 18);
         assertEq(
             usdcPriceControllerBalanceBefore,
