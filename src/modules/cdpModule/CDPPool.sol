@@ -4,7 +4,7 @@ pragma solidity 0.8.13;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@modules/cdpModule/ICDPPool.sol";
-import "@oracle/ChainlinkPriceFeed.sol";
+import "@oracle/IPriceOracle.sol";
 import "@protocol/interfaces/IModuleManager.sol";
 
 /// @title CDPPool.sol
@@ -14,7 +14,7 @@ import "@protocol/interfaces/IModuleManager.sol";
 /*
     Short summary on how this module works:
     1. Upon deployment, there are a few parameters to be set:
-        a. minDeb - the minimum debt to be taken in order to open a CDP
+        a. minDebt - the minimum debt to be taken in order to open a CDP
         b. liquidationCR - the CR is which a CDP becomes available from liquidation
         c. minCR - the minimum CR required to open a CDP. has to be higher than liquidationCR.
         d. protocolFee - currently set on constructor, but I want to change this to pull the protocol fee fro moduleManager
@@ -34,8 +34,8 @@ import "@protocol/interfaces/IModuleManager.sol";
 
 contract CDPPool is ICDPPool {
     struct PoolBalance {
+        uint256 debt;
         uint256 collateral;
-        uint256 pho;
     }
 
     struct CDP {
@@ -44,20 +44,22 @@ contract CDPPool is ICDPPool {
     }
 
     IModuleManager public moduleManager;
-    ChainlinkPriceFeed public priceOracle;
+    IPriceOracle public priceOracle;
     IERC20Metadata public immutable collateral;
 
     uint256 private constant POINT_PRECISION = 10 ** 5;
     uint256 private constant PRICE_PRECISION = 10 ** 18;
     uint256 private constant LIQUIDATION_REWARD = 5000;
-    /// 5%
 
-    uint256 public minCR;
     //// minimum collateral ration to open a position
-    uint256 public liquidationCR;
+    uint256 public minCR;
+
     //// collateral ratio liquidation threshold
-    uint256 public minDebt;
+    uint256 public liquidationCR;
+
     //// min debt to open a CDP
+    uint256 public minDebt;
+
     uint256 public protocolFee;
     uint256 public earnedFees;
 
@@ -69,26 +71,25 @@ contract CDPPool is ICDPPool {
         address _moduleManager,
         address _priceOracle,
         address _collateral,
-        address _chainlinkPriceFeed,
         uint256 _minCR,
         uint256 _liquidationCR,
         uint256 _minDebt,
         uint256 _protocolFee
     ) {
-        if (
-            _moduleManager == address(0) || _priceOracle == address(0) || _collateral == address(0)
-                || _chainlinkPriceFeed == address(0)
-        ) {
+        if (_moduleManager == address(0) || _priceOracle == address(0) || _collateral == address(0))
+        {
             revert ZeroAddress();
         }
 
-        if (_minCR <= 10 ** 5 || _minDebt == 0 || _protocolFee == 0 || _liquidationCR <= _minCR) {
+        if (
+            _minCR <= 10 ** 5 || _minDebt == 0 || _protocolFee == 0
+                || _protocolFee > PRICE_PRECISION || _liquidationCR >= _minCR
+        ) {
             revert ValueNotInRange();
         }
         moduleManager = IModuleManager(_moduleManager);
-        priceOracle = ChainlinkPriceFeed(_priceOracle);
+        priceOracle = IPriceOracle(_priceOracle);
         collateral = IERC20Metadata(_collateral);
-        priceOracle.addFeed(_collateral, _chainlinkPriceFeed);
         minCR = _minCR;
         liquidationCR = _liquidationCR;
         minDebt = _minDebt;
@@ -113,7 +114,7 @@ contract CDPPool is ICDPPool {
 
         moduleManager.mintPHO(msg.sender, _debtAmount);
 
-        balance.pho += _debtAmount;
+        balance.debt += _debtAmount;
         balance.collateral += _collateralAmount;
 
         emit Opened(msg.sender, _debtAmount, _collateralAmount);
@@ -130,14 +131,13 @@ contract CDPPool is ICDPPool {
         if (cdp.debt == 0) revert CDPNotActive();
 
         uint256 updatedCollateral = cdp.collateral + _collateralAmount;
-        uint256 newCR = computeCR(updatedCollateral, cdp.debt);
 
         collateral.transferFrom(msg.sender, address(this), _collateralAmount);
 
         cdp.collateral = updatedCollateral;
         balance.collateral += _collateralAmount;
 
-        emit CollateralAdded(msg.sender, cdp.debt, cdp.collateral, newCR);
+        emit CollateralAdded(msg.sender, _collateralAmount, cdp.collateral);
     }
 
     //// @notice User withdraws collateral from their CDP
@@ -198,11 +198,11 @@ contract CDPPool is ICDPPool {
         moduleManager.mintPHO(msg.sender, _debtAmount);
 
         /// Accrue stablecoin debt to balance
-        balance.pho += _debtAmount;
+        balance.debt += _debtAmount;
 
         cdp.debt = updatedDebt;
 
-        emit DebtAdded(msg.sender, updatedDebt, cdp.collateral);
+        emit DebtAdded(msg.sender, _debtAmount, cdp.debt);
     }
 
     //// @notice Liquidates user CDP when CR < liquidateCR
@@ -218,7 +218,7 @@ contract CDPPool is ICDPPool {
         if (cr >= liquidationCR) revert NotInLiquidationZone();
 
         /// update pool balance
-        balance.pho -= cdp.debt;
+        balance.debt -= cdp.debt;
         balance.collateral -= cdp.collateral;
 
         /// Calculate the protocol protocolFee to be paid and the collateral left in the CDP after the protocolFee deduction
@@ -247,7 +247,7 @@ contract CDPPool is ICDPPool {
             collateral.transfer(_user, repayToCDPOwner);
         }
 
-        emit Liquidate(
+        emit Liquidated(
             _user, msg.sender, liquidatorCollateralAmount, cdp.debt, cdp.collateral, repayToCDPOwner
             );
 
@@ -270,9 +270,9 @@ contract CDPPool is ICDPPool {
         moduleManager.burnPHO(msg.sender, _debt);
 
         cdp.debt -= _debt;
-        balance.pho -= _debt;
+        balance.debt -= _debt;
 
-        emit DebtRemoved(msg.sender, cdp.debt, cdp.collateral);
+        emit DebtRemoved(msg.sender, _debt, cdp.debt);
     }
 
     //// @notice User closes their position by repaying the debt in full
@@ -288,7 +288,7 @@ contract CDPPool is ICDPPool {
         moduleManager.burnPHO(msg.sender, _debt);
 
         (uint256 fee, uint256 amountToTransfer) = calculateProtocolFee(cdp.collateral);
-        balance.pho -= _debt;
+        balance.debt -= _debt;
         balance.collateral -= cdp.collateral;
 
         collateral.transfer(msg.sender, amountToTransfer);
@@ -324,7 +324,7 @@ contract CDPPool is ICDPPool {
     //// @return remainder amount of collateral or debt used in respective tx
     function calculateProtocolFee(uint256 amount) public view returns (uint256, uint256) {
         uint256 fee = (amount * protocolFee) / POINT_PRECISION;
-        uint256 remainder = amount - protocolFee;
+        uint256 remainder = amount - fee;
         return (fee, remainder);
     }
 

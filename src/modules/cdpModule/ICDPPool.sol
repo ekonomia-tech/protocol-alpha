@@ -18,12 +18,12 @@ interface ICDPPool {
     /// @param debt The debt in stablecoin
     /// @param collateral the collateral amount that was put in the protocol
     event Opened(address indexed user, uint256 debt, uint256 collateral);
-    event CollateralAdded(address indexed user, uint256 debt, uint256 collateral, uint256 cr);
+    event CollateralAdded(address indexed user, uint256 addedCollateral, uint256 collateral);
     event CollateralRemoved(
         address indexed user, uint256 removedCollateral, uint256 collateralLeft
     );
-    event DebtAdded(address indexed user, uint256 debt, uint256 collateral);
-    event DebtRemoved(address indexed user, uint256 debt, uint256 collateral);
+    event DebtAdded(address indexed user, uint256 addedDebt, uint256 debt);
+    event DebtRemoved(address indexed user, uint256 removedDebt, uint256 debt);
     event Closed(address indexed user);
 
     /// @notice Event emitted when a liquidation is happening
@@ -33,7 +33,7 @@ interface ICDPPool {
     /// @param debt The amount of debt to be covered
     /// @param collateralLiquidated The amount of deb in collateral
     /// @param repaidToDebtor The amount repaid to original CDP owner
-    event Liquidate(
+    event Liquidated(
         address indexed user,
         address indexed liquidator,
         uint256 paidToLiquidator,

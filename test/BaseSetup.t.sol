@@ -57,6 +57,7 @@ abstract contract BaseSetup is Test {
     address public metaPoolFactoryAddress = 0xB9fC157394Af804a3578134A6585C0dc9cc990d4;
     address public fraxRichGuy = 0xd3d176F7e4b43C70a68466949F6C64F06Ce75BB9;
 
+    address public constant WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant USDC_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address public constant FRAX_ADDRESS = 0x853d955aCEf822Db058eb8505911ED77F175b99e;
     address public constant MPL_ADDRESS = 0x33349B282065b0284d756F0577FB39c158F935e6;
@@ -77,6 +78,7 @@ abstract contract BaseSetup is Test {
     uint256 public constant PHO_DECIMALS = 18;
 
     uint256 public constant ONE_D6 = 10 ** 6;
+    uint256 public constant ONE_D18 = 10 ** 18;
     uint256 public constant ONE_HUNDRED_D6 = 100 * 10 ** 6;
     uint256 public constant ONE_HUNDRED_D18 = 100 * 10 ** 18;
     uint256 public constant ONE_THOUSAND_D18 = 1000 * 10 ** 18;
