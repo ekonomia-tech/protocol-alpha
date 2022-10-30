@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "../../BaseSetup.t.sol";
-import "@modules/CDPModule/CDPPool.sol";
+import "@modules/cdpModule/CDPPool.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@oracle/IPriceOracle.sol";
 import "@oracle/DummyOracle.sol";
