@@ -10,9 +10,10 @@ interface IModuleManager {
     error ModuleBurnExceeded();
     error NotPHOGovernance(address caller);
     error NotTONGovernance(address caller);
-    error UnregisteredModule(address module);
+    error ModuleUnavailable(address module, Status status);
     error ModuleRegistered();
-    error DeprecatedModule(address module);
+    error UnregisteredModule();
+    error ModuleNotPaused();
 
     /// events
 
@@ -22,10 +23,13 @@ interface IModuleManager {
     event UpdatedModuleDelay(uint256 newDelay);
     event ModuleMint(address indexed module, address indexed to, uint256 amount);
     event ModuleBurn(address indexed module, address indexed from, uint256 amount);
+    event ModulePaused(address indexed module);
+    event ModuleUnpaused(address indexed module);
 
     enum Status {
         Unregistered,
-        Registered,
+        Active,
+        Paused,
         Deprecated
     }
 
@@ -36,10 +40,12 @@ interface IModuleManager {
         Status status;
     }
 
-    function mintPHO(address to, uint256 _amount) external; // onlyModule
-    function burnPHO(address from, uint256 _amount) external; // onlyModule
-    function addModule(address _newModule) external; // onlyPHOGovernance
-    function deprecateModule(address _existingModule) external; // onlyPHOGovernance
-    function setPHOCeilingForModule(address _module, uint256 _newPHOCeiling) external; // onlyTONGovernance
-    function setModuleDelay(uint256 _newDelay) external; // onlyPHOGovernance
+    function mintPHO(address to, uint256 _amount) external;
+    function burnPHO(address from, uint256 _amount) external;
+    function addModule(address _newModule) external;
+    function deprecateModule(address _existingModule) external;
+    function setPHOCeilingForModule(address _module, uint256 _newPHOCeiling) external;
+    function setModuleDelay(uint256 _newDelay) external;
+    function pauseModule(address _module) external;
+    function unpauseModule(address _module) external;
 }
