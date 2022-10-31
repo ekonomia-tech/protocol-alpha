@@ -13,7 +13,7 @@ contract TONGovernorBravoDelegate is GovernorBravoDelegateStorageV2, GovernorBra
     uint public constant MIN_PROPOSAL_THRESHOLD = 1000e18; // 1,000 TON
 
     /// @notice The maximum setable proposal threshold
-    uint public constant MAX_PROPOSAL_THRESHOLD = 100000e18; //100,000 TON
+    uint public constant MAX_PROPOSAL_THRESHOLD = 1000e18; // NOTE - originally set to 100,000 COMP but for us we are setting it to 1,000 TON for tests.
 
     /// @notice The minimum setable voting period
     uint public constant MIN_VOTING_PERIOD = 5760; // About 24 hours
@@ -28,7 +28,7 @@ contract TONGovernorBravoDelegate is GovernorBravoDelegateStorageV2, GovernorBra
     uint public constant MAX_VOTING_DELAY = 40320; // About 1 week
 
     /// @notice The number of votes in support of a proposal required in order for a quorum to be reached and for a vote to succeed
-    uint public constant quorumVotes = 400000e18; // 400,000 = 4% of TON
+    uint public constant quorumVotes = 10000e18; // NOTE - originally set to 400,000 (4% of COMP) but for us we are setting it to 10,000 for tests.
 
     /// @notice The maximum number of actions that can be included in a proposal
     uint public constant proposalMaxOperations = 10; // 10 actions
@@ -76,7 +76,7 @@ contract TONGovernorBravoDelegate is GovernorBravoDelegateStorageV2, GovernorBra
         // Reject proposals before initiating as Governor
         require(initialProposalId != 0, "GovernorBravo::propose: Governor Bravo not active");
         // Allow addresses above proposal threshold and whitelisted addresses to propose
-        require(ton.getPriorVotes(msg.sender, sub256(block.number, 1)) > proposalThreshold || isWhitelisted(msg.sender), "GovernorBravo::propose: proposer votes below proposal threshold");
+        require(ton.getPriorVotes(msg.sender, sub256(block.number, 1)) > proposalThreshold || isWhitelisted(msg.sender), "GovernorBravo::propose: proposer votes below proposal threshold"); // TODO - comment this out as per KHou convo to get deployment functioning properly
         require(targets.length == values.length && targets.length == signatures.length && targets.length == calldatas.length, "GovernorBravo::propose: proposal function information arity mismatch");
         require(targets.length != 0, "GovernorBravo::propose: must provide actions");
         require(targets.length <= proposalMaxOperations, "GovernorBravo::propose: too many actions");
@@ -372,10 +372,11 @@ contract TONGovernorBravoDelegate is GovernorBravoDelegateStorageV2, GovernorBra
     function _initiate(address governorAlpha) external {
         require(msg.sender == admin, "GovernorBravo::_initiate: admin only");
         require(initialProposalId == 0, "GovernorBravo::_initiate: can only initiate once");
-        proposalCount = GovernorAlpha(governorAlpha).proposalCount();
+        proposalCount = 1;
+        // proposalCount = GovernorAlpha(governorAlpha).proposalCount(); // TODO - as per convo w/ KHou change this to `proposalCount = 1;`        
         initialProposalId = proposalCount;
-        timelock.acceptAdmin();
-    }
+        // timelock.acceptAdmin(); // TODO - comment this out as per KHou convo to get deployment functioning properly    
+        }
 
     /**
       * @notice Begins transfer of admin rights. The newPendingAdmin must call `_acceptAdmin` to finalize the transfer.

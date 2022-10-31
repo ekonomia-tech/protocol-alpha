@@ -46,6 +46,8 @@ contract ModuleManagerTest is BaseSetup {
 
     function setUp() public {
         vm.prank(PHOGovernance);
+        // now that governance requires proposals for adding a module, this isn't as simple as normal.
+        // TODO - fix this to reflect governance process
         moduleManager.addModule(module1);
 
         (,, uint256 startTime, ModuleManager.Status status) = moduleManager.modules(module1);

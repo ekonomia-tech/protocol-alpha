@@ -15,8 +15,14 @@ import "@external/curve/ICurvePool.sol";
 import "@external/curve/ICurveFactory.sol";
 import "@governance/PHOGovernorBravoDelegate.sol";
 import "@governance/PHOGovernorBravoDelegator.sol";
+import {TONGovernorBravoDelegate} from "@governance/TONGovernorBravoDelegate.sol";
+import {TONGovernorBravoDelegator} from "@governance/TONGovernorBravoDelegator.sol";
 
 abstract contract BaseSetup is Test {
+    /// errors
+
+    error UnrecognizedProxy();
+
     struct Balance {
         uint256 usdc;
         uint256 pho;
@@ -39,7 +45,9 @@ abstract contract BaseSetup is Test {
 
     PHOGovernorBravoDelegate public phoGovernanceDelegate;
     PHOGovernorBravoDelegator public phoGovernanceDelegator;
-    address public TONGovernance = address(105);
+    TONGovernorBravoDelegate public tonGovernanceDelegate;
+    TONGovernorBravoDelegator public tonGovernanceDelegator;
+    address public TONGovernance;
     address public PHOGovernance;
 
     address public owner = 0xed320Bf569E5F3c4e9313391708ddBFc58e296bb;
@@ -134,51 +142,22 @@ abstract contract BaseSetup is Test {
         // TODO - set up governance here
         // set up PHO Governance
         phoGovernanceDelegate = new PHOGovernorBravoDelegate();
-        PHOGovernance = address(phoGovernanceDelegate);
 
         phoGovernanceDelegator = new PHOGovernorBravoDelegator(
             PHO_timelock_address,
             address(pho),
             owner,
-            PHOGovernance,
+            address(phoGovernanceDelegate),
             21600,
             14400,
             ONE_HUNDRED_THOUSAND_D18
         ); //PHOGovernorBravoDelegate is initialized here too through Delegator constructor
 
-        // Checking values
-        (bool votingDelaySuccess, bytes memory votingDelayResult) = address(
-            phoGovernanceDelegator
-        ).call(abi.encodeWithSignature("votingDelay()"));
-
-        uint256 votingDelay = abi.decode(votingDelayResult, (uint256));
-        console.log("THIS IS votingDelay: ", votingDelay);
-
-        (
-            bool initialProposalIdSuccess,
-            bytes memory initialProposalIdResult
-        ) = address(phoGovernanceDelegator).call(
-                abi.encodeWithSignature("initialProposalId()")
-            );
-
-        uint256 initialProposalId = abi.decode(
-            initialProposalIdResult,
-            (uint256)
-        );
-        console.log("Original initialProposalId: ", initialProposalId);
-
-        (bool proposalCountSuccess, bytes memory proposalCountResult) = address(
-            phoGovernanceDelegator
-        ).call(abi.encodeWithSignature("proposalCount()"));
-
-        uint256 proposalCount = abi.decode(proposalCountResult, (uint256));
-        console.log("THIS IS proposalCount : ", proposalCount);
-
-        // Call Initiate() - note the timelock.acceptAdmin() fails
+        PHOGovernance = address(phoGovernanceDelegator);
 
         (bool initiateSuccess, bytes memory initiateResult) = address(
             phoGovernanceDelegator
-        ).call(abi.encodeWithSignature("_initiate(address)", PHOGovernance));
+        ).call(abi.encodeWithSignature("_initiate(address)", PHOGovernance)); // NOTE - param passed - PHOGovernance is not needed w/ modifications made. See comment in PHOGovernorBravoDelegate.sol
 
         console.log("THIS IS initiateSuccess: ", initiateSuccess);
 
@@ -194,93 +173,44 @@ abstract contract BaseSetup is Test {
             (uint256)
         );
         console.log("UPDATED newInitialProposalId: ", newInitialProposalId);
+        
+        // setup TON Governance
 
-        // Propose - note require for proposal threshold is commented out
+        tonGovernanceDelegate = new TONGovernorBravoDelegate();
 
-        address[] memory targets = new address[](1);
-        targets[0] = owner;
+        tonGovernanceDelegator = new TONGovernorBravoDelegator(
+            TON_timelock_address,
+            address(ton),
+            owner,
+            address(tonGovernanceDelegate),
+            21600,
+            14400,
+            ONE_HUNDRED_THOUSAND_D18
+        ); //TONGovernorBravoDelegate is initialized here too through Delegator constructor
 
-        uint256[] memory values = new uint256[](1);
-        values[0] = 0;
+        TONGovernance = address(tonGovernanceDelegator);
 
-        string[] memory signatures = new string[](1);
-        signatures[0] = "getBalanceOf(address)";
+        (bool TONInitiateSuccess, bytes memory TONinitiateResult) = address(
+            tonGovernanceDelegator
+        ).call(abi.encodeWithSignature("_initiate(address)", TONGovernance)); // NOTE - param passed - TONGovernance is not needed w/ modifications made. See comment in TONGovernorBravoDelegate.sol
 
-        bytes[] memory callDatas = new bytes[](1);
-        callDatas[0] = abi.encode("address", owner);
+        console.log("THIS IS TONinitiateSuccess: ", TONInitiateSuccess);
 
-        string memory description = "do nothing";
-
-        (bool proposeSuccess, bytes memory proposeResult) = address(
-            phoGovernanceDelegator
-        ).call(
-                abi.encodeWithSignature(
-                    "propose(address[],uint256[],string[],bytes[],string)",
-                    targets,
-                    values,
-                    signatures,
-                    callDatas,
-                    description
-                )
-            );
-
-        console.log("THIS IS proposeSuccess: ", proposeSuccess);
-
-        // (bool incrementSuccess, bytes memory incrementResult) = address(
-        //     phoGovernanceDelegator
-        // ).call(
-        //         abi.encodeWithSignature(
-        //             "incrementProposalCount(address[],uint256[],string[],bytes[],string)",
-        //             targets,
-        //             values,
-        //             signatures,
-        //             callDatas,
-        //             description
-        //         )
+        // // check that initial proposal is set up well.
+        // (
+        //     bool newInitialProposalIdSuccess,
+        //     bytes memory newInitialProposalIdResult
+        // ) = TONGovernance.call(
+        //         abi.encodeWithSignature("initialProposalId()")
         //     );
 
-        // console.log("THIS IS incrementSuccess: ", incrementSuccess);
+        // uint256 newInitialProposalId = abi.decode(
+        //     newInitialProposalIdResult,
+        //     (uint256)
+        // );
+        // console.log("UPDATED newInitialProposalId: ", newInitialProposalId);
 
-        (
-            bool newProposalCountSuccess,
-            bytes memory newProposalCountResult
-        ) = address(phoGovernanceDelegator).call(
-                abi.encodeWithSignature("proposalCount()")
-            );
-
-        uint256 newProposalCount = abi.decode(
-            newProposalCountResult,
-            (uint256)
-        );
-        console.log("THIS IS newProposalCount : ", newProposalCount);
-
-        //phoGovernanceDelegate._initiate(PHOGovernance); // input our own governorBravo that we just created bc we aren't upgrading from governorAlpha
-        console.log(
-            "Admin for delegator: %s, owner: %s",
-            phoGovernanceDelegator.admin(),
-            owner
-        );
-        console.log(
-            ", Admin for delegate: %s, timelock: %s",
-            phoGovernanceDelegate.admin(),
-            PHO_timelock_address
-        );
-        console.log(
-            "CHECKS: votingPeriod: %s, votingDelay: %s, proposalThreshold: %s",
-            phoGovernanceDelegate.votingPeriod(),
-            phoGovernanceDelegate.votingDelay(),
-            phoGovernanceDelegate.proposalThreshold()
-        );
-        console.log(
-            "CHECKS: phoGovernanceDelegator: %s",
-            address(phoGovernanceDelegator)
-        );
-        console.log(
-            "CHECKS: ProposedImplementation: %s, ActualImplementation: %s",
-            address(phoGovernanceDelegate),
-            phoGovernanceDelegator.implementation()
-        );
-        // TODO - setup TON Governance here
+        // setup kernel
 
         kernel = new Kernel(address(pho), TONGovernance);
 
@@ -474,6 +404,130 @@ abstract contract BaseSetup is Test {
         vm.stopPrank();
 
         return fraxBPPhoMetapoolAddress;
+    }
+
+    // governance helpers
+
+    /// @notice Point of this is to provide owner (or other users) with enough PHO to actually push proposals forward and vote them through to be executed.
+    /// TODO - start the genesis module using: genesisMint PHO && TON to the owner in PHO.sol && TON.sol (needed to be able to vote), owner proposes addModule(genesisModule), vm.roll(startBlock + 1), owner votes on that proposal so it passes quorumVotes minimum, vm.roll(endBlock + 1), owner `queue()` `addModule(genesisModule)` proposal, vm.warp(proposal.eta + 1), owner `execute()` `addModule(genesisModule)` proposal.
+
+    function _initGovernorSetup() public {
+        
+    }
+
+    function _propose(
+        address _proxy,
+        address[] memory _targets,
+        uint256[] memory _values,
+        string[] memory _signatures,
+        bytes[] memory _callDatas,
+        string memory _description
+    ) internal {
+        address proxy;
+        if(_proxy == PHOGovernance) {
+            proxy = PHOGovernance;
+        } else if (_proxy == TONGovernance) {
+            proxy = TONGovernance;
+        } else revert UnrecognizedProxy();
+
+        (bool proposeSuccess, bytes memory proposeResult) = address(
+            proxy
+        ).call(
+                abi.encodeWithSignature(
+                    "propose(address[],uint256[],string[],bytes[],string)",
+                    _targets,
+                    _values,
+                    _signatures,
+                    _callDatas,
+                    _description
+                )
+            );
+    }
+
+    function _castVote(
+        address _proxy,
+        uint _proposalId,
+        uint8 _support
+    ) internal {
+                address proxy;
+
+        if(_proxy == PHOGovernance) {
+            proxy = PHOGovernance;
+        } else if (_proxy == TONGovernance) {
+            proxy = TONGovernance;
+        } else revert UnrecognizedProxy();
+
+        (bool voteSuccess,) = 
+            proxy.call(
+                abi.encodeWithSignature(
+                    "castVote(uint,uint8)",
+                    _proposalId,
+                    _support
+                )
+            );
+    }
+
+    function _queue(
+        address _proxy,
+        uint _proposalId
+    ) internal {
+                address proxy;
+
+        if(_proxy == PHOGovernance) {
+            proxy = PHOGovernance;
+        } else if (_proxy == TONGovernance) {
+            proxy = TONGovernance;
+        } else revert UnrecognizedProxy();
+
+        (bool queueSuccess,) = 
+            proxy.call(
+                abi.encodeWithSignature(
+                    "queue(uint)",
+                    _proposalId
+                )
+            );
+    }
+
+    function _execute(
+        address _proxy,
+        uint _proposalId
+    ) internal {
+                address proxy;
+
+        if(_proxy == PHOGovernance) {
+            proxy = PHOGovernance;
+        } else if (_proxy == TONGovernance) {
+            proxy = TONGovernance;
+        } else revert UnrecognizedProxy();
+
+        (bool executeSuccess,) = 
+            proxy.call(
+                abi.encodeWithSignature(
+                    "execute(uint)",
+                    _proposalId
+                )
+            );
+    }
+
+    function _cancel(
+        address _proxy,
+        uint _proposalId
+    ) internal {
+                address proxy;
+
+        if(_proxy == PHOGovernance) {
+            proxy = PHOGovernance;
+        } else if (_proxy == TONGovernance) {
+            proxy = TONGovernance;
+        } else revert UnrecognizedProxy();
+
+        (bool cancelSuccess,) = 
+            proxy.call(
+                abi.encodeWithSignature(
+                    "cancel(uint)",
+                    _proposalId
+                )
+            );
     }
 }
 
