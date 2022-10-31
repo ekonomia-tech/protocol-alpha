@@ -9,6 +9,7 @@ import "@protocol/interfaces/IKernel.sol";
 /// @title ModuleManager
 /// @notice Intermediary between Modules and Kernel
 /// @author Ekonomia: https://github.com/Ekonomia
+
 contract ModuleManager is IModuleManager {
     IKernel public kernel;
     address public PHOGovernance;
@@ -19,10 +20,8 @@ contract ModuleManager is IModuleManager {
 
     /// modifiers
 
-    modifier onlyModule() {
-        if (modules[msg.sender].status != Status.Registered) {
-            revert UnregisteredModule(msg.sender);
-        }
+    modifier onlyActiveModule() {
+        _checkModuleStatus(msg.sender);
         _;
     }
 
@@ -36,7 +35,6 @@ contract ModuleManager is IModuleManager {
         _;
     }
 
-    /// NOTE -  need to setKernel right after initial deployment of ModuleManager
     constructor(address _kernel, address _PHOGovernance, address _TONGovernance) {
         if (_kernel == address(0) || _PHOGovernance == address(0) || _TONGovernance == address(0)) {
             revert ZeroAddress();
@@ -50,7 +48,7 @@ contract ModuleManager is IModuleManager {
     /// @notice updates module accounting && mints PHO through Kernel
     /// @param _to the user address to be minted $PHO
     /// @param _amount total PHO to be minted
-    function mintPHO(address _to, uint256 _amount) external override onlyModule {
+    function mintPHO(address _to, uint256 _amount) external onlyActiveModule {
         if (_amount == 0) revert ZeroValue();
         Module storage module = modules[msg.sender];
         if (module.phoMinted + _amount > module.phoCeiling) {
@@ -64,12 +62,10 @@ contract ModuleManager is IModuleManager {
     /// @notice updates module accounting && burns PHO through Kernel
     /// @param _from the user that $PHO will be burned from
     /// @param _amount total PHO to be burned
-    function burnPHO(address _from, uint256 _amount) external override {
-        if (modules[msg.sender].status == Status.Unregistered) {
-            revert UnregisteredModule(msg.sender);
-        }
+    function burnPHO(address _from, uint256 _amount) external {
         if (_amount == 0) revert ZeroValue();
         Module storage module = modules[msg.sender];
+        if (module.status == Status.Unregistered) revert UnregisteredModule();
         if ((module.phoMinted < _amount)) revert ModuleBurnExceeded();
         kernel.burnPHO(_from, _amount);
         module.phoMinted = module.phoMinted - _amount;
@@ -78,25 +74,21 @@ contract ModuleManager is IModuleManager {
 
     /// @notice adds new module to registry
     /// @param _newModule address of module to add
-    function addModule(address _newModule) external override onlyPHOGovernance {
-        Module storage module = modules[_newModule];
+    function addModule(address _newModule) external onlyPHOGovernance {
         if (_newModule == address(0)) revert ZeroAddress();
+        Module storage module = modules[_newModule];
         if (module.status != Status.Unregistered) revert ModuleRegistered();
-        module.status = Status.Registered;
-        module.startTime = block.timestamp + moduleDelay; // NOTE: initially 2 weeks
+        module.status = Status.Active;
+        module.startTime = block.timestamp + moduleDelay;
         emit ModuleAdded(_newModule);
     }
 
     /// @notice deprecates new module from registry
     /// @param _existingModule address of module to remove
-    function deprecateModule(address _existingModule) external override onlyPHOGovernance {
-        Module storage module = modules[_existingModule];
-
+    function deprecateModule(address _existingModule) external onlyPHOGovernance {
         if (_existingModule == address(0)) revert ZeroAddress();
-        if (module.status != Status.Registered) {
-            revert UnregisteredModule(_existingModule);
-        }
-        /// NOTE - not sure if we need to make sure _existingModule has no minted PHO outstanding
+        Module storage module = modules[_existingModule];
+        if (module.status == Status.Unregistered) revert UnregisteredModule();
         module.status = Status.Deprecated;
         module.phoCeiling = 0;
         emit ModuleDeprecated(_existingModule);
@@ -107,33 +99,46 @@ contract ModuleManager is IModuleManager {
     /// @param _newPHOCeiling new PHO ceiling amount for module
     function setPHOCeilingForModule(address _module, uint256 _newPHOCeiling)
         external
-        override
         onlyTONGovernance
     {
-        Module memory module = modules[_module];
         if (_module == address(0)) revert ZeroAddress();
-        if (module.status == Status.Unregistered) {
-            revert UnregisteredModule(_module);
-        }
-        if (module.status == Status.Deprecated) {
-            revert DeprecatedModule(_module);
-        }
-        // TODO - Commented out until kernel has PHOCeiling and totalPHOMinted uncommented
-        // if (
-        //     kernel.PHOCeiling()
-        //         < (kernel.totalPHOMinted() + _newPHOCeiling - module.phoCeiling)
-        // ) {
-        //     revert KernalCeilingExceeded();
-        // }
+        _checkModuleStatus(_module);
         modules[_module].phoCeiling = _newPHOCeiling;
         emit PHOCeilingUpdated(_module, _newPHOCeiling);
     }
 
     /// @notice set module delay
     /// @param _newDelay proposed delay before a newly deployed && registered module is functional
-    function setModuleDelay(uint256 _newDelay) external override onlyPHOGovernance {
+    function setModuleDelay(uint256 _newDelay) external onlyPHOGovernance {
         if (_newDelay == 0) revert ZeroValue();
         moduleDelay = _newDelay;
         emit UpdatedModuleDelay(moduleDelay);
+    }
+
+    /// @notice pause a module
+    /// @param _module the module to be paused
+    function pauseModule(address _module) external onlyTONGovernance {
+        if (_module == address(0)) revert ZeroAddress();
+        _checkModuleStatus(_module);
+        Module storage module = modules[_module];
+        module.status = Status.Paused;
+        emit ModulePaused(_module);
+    }
+
+    /// @notice unpause module
+    /// @param _module the module to be unpaused
+    function unpauseModule(address _module) external onlyTONGovernance {
+        if (_module == address(0)) revert ZeroAddress();
+        Module storage module = modules[_module];
+        if (module.status != Status.Paused) revert ModuleNotPaused();
+        module.status = Status.Active;
+        emit ModuleUnpaused(_module);
+    }
+
+    function _checkModuleStatus(address _module) private view {
+        Module memory module = modules[_module];
+        if (module.status != Status.Active) {
+            revert ModuleUnavailable(_module, module.status);
+        }
     }
 }

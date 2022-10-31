@@ -17,9 +17,10 @@ contract ModuleManagerTest is BaseSetup {
     error ModuleBurnExceeded();
     error NotPHOGovernance(address caller);
     error NotTONGovernance(address caller);
-    error UnregisteredModule(address module);
+    error ModuleUnavailable(address module, Status status);
     error ModuleRegistered();
-    error DeprecatedModule(address module);
+    error UnregisteredModule();
+    error ModuleNotPaused();
 
     /// events
 
@@ -30,6 +31,8 @@ contract ModuleManagerTest is BaseSetup {
     event UpdatedModuleDelay(uint256 newDelay);
     event ModuleMint(address indexed module, address indexed to, uint256 amount);
     event ModuleBurn(address indexed module, address indexed from, uint256 amount);
+    event ModulePaused(address indexed module);
+    event ModuleUnpaused(address indexed module);
 
     struct Module {
         uint256 phoCeiling;
@@ -40,7 +43,8 @@ contract ModuleManagerTest is BaseSetup {
 
     enum Status {
         Unregistered,
-        Registered,
+        Active,
+        Paused,
         Deprecated
     }
 
@@ -49,7 +53,7 @@ contract ModuleManagerTest is BaseSetup {
         moduleManager.addModule(module1);
 
         (,, uint256 startTime, ModuleManager.Status status) = moduleManager.modules(module1);
-        assertEq(uint8(status), uint8(Status.Registered));
+        assertEq(uint8(status), uint8(Status.Active));
         assertEq(startTime, block.timestamp + moduleManager.moduleDelay());
 
         vm.prank(TONGovernance);
@@ -69,10 +73,11 @@ contract ModuleManagerTest is BaseSetup {
     /// mintPHO() tests
 
     function testCannotMintPHOUnregistered() public {
-        vm.startPrank(dummyAddress);
-        vm.expectRevert(abi.encodeWithSelector(UnregisteredModule.selector, dummyAddress));
+        vm.expectRevert(
+            abi.encodeWithSelector(ModuleUnavailable.selector, dummyAddress, Status.Unregistered)
+        );
+        vm.prank(dummyAddress);
         moduleManager.mintPHO(user1, ONE_MILLION_D18);
-        vm.stopPrank();
     }
 
     function testCannotMintPHOCeilingMax() public {
@@ -127,10 +132,9 @@ contract ModuleManagerTest is BaseSetup {
     }
 
     function testCannotBurnUnregistered() public {
-        vm.startPrank(dummyAddress);
-        vm.expectRevert(abi.encodeWithSelector(UnregisteredModule.selector, dummyAddress));
+        vm.expectRevert(abi.encodeWithSelector(UnregisteredModule.selector));
+        vm.prank(dummyAddress);
         moduleManager.burnPHO(user1, ONE_HUNDRED_D18);
-        vm.stopPrank();
     }
 
     function testCannotBurnZeroPHO() public {
@@ -208,7 +212,7 @@ contract ModuleManagerTest is BaseSetup {
         moduleManager.addModule(module2);
 
         (,, uint256 newStartTime, ModuleManager.Status newStatus) = moduleManager.modules(module2);
-        assertEq(uint8(newStatus), uint8(Status.Registered));
+        assertEq(uint8(newStatus), uint8(Status.Active));
         assertEq(newStartTime, block.timestamp + moduleManager.moduleDelay());
     }
 
@@ -217,7 +221,7 @@ contract ModuleManagerTest is BaseSetup {
     function testCannotDeprecateUnRegisteredModule() public {
         address unregisteredModule = address(10);
 
-        vm.expectRevert(abi.encodeWithSelector(UnregisteredModule.selector, unregisteredModule));
+        vm.expectRevert(abi.encodeWithSelector(UnregisteredModule.selector));
         vm.prank(PHOGovernance);
         moduleManager.deprecateModule(unregisteredModule);
     }
@@ -254,7 +258,9 @@ contract ModuleManagerTest is BaseSetup {
     }
 
     function testCannotSetPHOCeilingUnregistered() public {
-        vm.expectRevert(abi.encodeWithSelector(UnregisteredModule.selector, dummyAddress));
+        vm.expectRevert(
+            abi.encodeWithSelector(ModuleUnavailable.selector, dummyAddress, Status.Unregistered)
+        );
         vm.prank(TONGovernance);
         moduleManager.setPHOCeilingForModule(dummyAddress, ONE_MILLION_D18);
     }
@@ -263,7 +269,9 @@ contract ModuleManagerTest is BaseSetup {
         vm.prank(PHOGovernance);
         moduleManager.deprecateModule(module1);
 
-        vm.expectRevert(abi.encodeWithSelector(DeprecatedModule.selector, module1));
+        vm.expectRevert(
+            abi.encodeWithSelector(ModuleUnavailable.selector, module1, Status.Deprecated)
+        );
         vm.prank(TONGovernance);
         moduleManager.setPHOCeilingForModule(module1, ONE_MILLION_D18);
     }
@@ -304,5 +312,64 @@ contract ModuleManagerTest is BaseSetup {
         vm.prank(PHOGovernance);
         moduleManager.setModuleDelay(3 weeks);
         assertEq(moduleManager.moduleDelay(), 3 weeks);
+    }
+
+    /// pauseModule()
+
+    function testPauseModule() public {
+        vm.expectEmit(true, false, false, true);
+        emit ModulePaused(module1);
+        vm.prank(TONGovernance);
+        moduleManager.pauseModule(module1);
+    }
+
+    function testCannotPauseModuleZeroAddress() public {
+        vm.expectRevert(abi.encodeWithSelector(ZeroAddress.selector));
+        vm.prank(TONGovernance);
+        moduleManager.pauseModule(address(0));
+    }
+
+    function testCannotPauseModuleAlreadyPaused() public {
+        vm.prank(TONGovernance);
+        moduleManager.pauseModule(module1);
+        vm.expectRevert(abi.encodeWithSelector(ModuleUnavailable.selector, module1, Status.Paused));
+        vm.prank(TONGovernance);
+        moduleManager.pauseModule(module1);
+    }
+
+    /// unpauseModule()
+
+    function testUnpauseModule() public {
+        vm.prank(TONGovernance);
+        moduleManager.pauseModule(module1);
+        vm.expectEmit(true, false, false, true);
+        emit ModuleUnpaused(module1);
+        vm.prank(TONGovernance);
+        moduleManager.unpauseModule(module1);
+    }
+
+    function testCannotUnpauseModuleZeroAddress() public {
+        vm.expectRevert(abi.encodeWithSelector(ZeroAddress.selector));
+        vm.prank(TONGovernance);
+        moduleManager.unpauseModule(address(0));
+    }
+
+    function testCannotUnpauseModuleNotPaused() public {
+        vm.startPrank(TONGovernance);
+
+        vm.expectRevert(abi.encodeWithSelector(ModuleNotPaused.selector));
+        moduleManager.unpauseModule(module1);
+
+        vm.expectRevert(abi.encodeWithSelector(ModuleNotPaused.selector));
+        moduleManager.unpauseModule(dummyAddress);
+
+        vm.stopPrank();
+
+        vm.prank(PHOGovernance);
+        moduleManager.deprecateModule(module1);
+
+        vm.prank(TONGovernance);
+        vm.expectRevert(abi.encodeWithSelector(ModuleNotPaused.selector));
+        moduleManager.unpauseModule(module1);
     }
 }
