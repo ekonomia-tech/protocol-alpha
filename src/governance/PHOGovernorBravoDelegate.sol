@@ -8,7 +8,7 @@ contract PHOGovernorBravoDelegate is GovernorBravoDelegateStorageV2, GovernorBra
     string public constant name = "PHO Governor Bravo";
 
     /// @notice The minimum setable proposal threshold
-    uint256 public constant MIN_PROPOSAL_THRESHOLD = 1000e18; // 1,000 Pho
+    uint256 public constant MIN_PROPOSAL_THRESHOLD = 100e18; // 1,000 Pho
 
     /// @notice The maximum setable proposal threshold
     uint256 public constant MAX_PROPOSAL_THRESHOLD = 1000e18; // NOTE - originally set to 100,000 COMP but for us we are setting it to 1,000 PHO for tests.

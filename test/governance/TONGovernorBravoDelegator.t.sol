@@ -6,65 +6,51 @@ import "../BaseSetup.t.sol";
 contract TONGovernorBravoDelegatorTest is BaseSetup {
     function setUp() public {
         vm.startPrank(address(kernel));
+        pho.mint(owner, ONE_MILLION_D18);
         ton.mint(owner, ONE_MILLION_D18);
+
+        uint256 ownerPHO = pho.balanceOf(owner);
+        uint256 ownerTON = ton.balanceOf(owner);
+
+        vm.roll(block.number + 1000);
         vm.stopPrank();
     }
 
-    /// tests
+    /// NOTE - start the first module: owner proposes addModule(module1), vm.roll(startBlock + 1), owner votes on that proposal so it passes quorumVotes minimum, vm.roll(endBlock + 1), owner `queue()` `addModule(module1)` proposal, vm.warp(proposal.eta + 1), owner `execute()` `addModule(module1)` proposal.
+    function testSetPHOCeiling() public {
+        _setUpAddedModule();
 
-    /// TODO - setPHOCeilingForModule() with TONGovernance. Owner proposes setPHOCeilingForModule(genesisModule), vm.roll(startBlock + 1), owner votes on that proposal so it passes quorumVotes minimum, vm.roll(endBlock + 1), owner `queue()` `setPHOCeilingForModule(genesisModule)` proposal, vm.warp(proposal.eta + 1), owner `execute()` `setPHOCeilingForModule(genesisModule)` proposal.
-    /// Once PHO and TON are in circulation, as long as a user has enough of each they can propose proposals for PHO && TON.
+        vm.startPrank(owner);
 
-    function testPropose() public {
-        // vm.startPrank(owner);
-        // // Propose - note require for proposal threshold is commented out
+        address[] memory targets = new address[](1);
+        targets[0] = address(moduleManager);
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+        string[] memory signatures = new string[](1);
+        signatures[0] = "setPHOCeilingForModule(address _module, uint256 _newPHOCeiling)";
+        bytes[] memory callDatas = new bytes[](1);
+        callDatas[0] =
+            abi.encode("address _module, uint256 _newPHOCeiling", module1, ONE_MILLION_D18);
+        string memory description = "Set PHOCeiling for new module";
 
-        // address[] memory targets = new address[](1);
-        // targets[0] = owner;
+        _propose(TONGovernance, targets, values, signatures, callDatas, description);
 
-        // uint256[] memory values = new uint256[](1);
-        // values[0] = 0;
+        uint256 proposalStartBlock = block.number;
 
-        // string[] memory signatures = new string[](1);
-        // signatures[0] = "addModule(address _newModule)";
+        // check that proposal is set up well and get the proposalID.
+        (bool newInitialProposalIdSuccess, bytes memory newInitialProposalIdResult) =
+            TONGovernance.call(abi.encodeWithSignature("initialProposalId()"));
 
-        // bytes[] memory callDatas = new bytes[](1);
-        // callDatas[0] = abi.encode("address _newModule", module1);
+        uint256 newInitialProposalId = abi.decode(newInitialProposalIdResult, (uint256));
 
-        // string memory description = "Add new module";
+        // next, cast votes to get proposal to succeed
+        _castVote(TONGovernance, newInitialProposalId, 1);
 
-        // _propose(PHOGovernance, targets, values, signatures, callDatas, description);
+        // next, roll forward duration of proposal && queue
+        vm.roll(proposalStartBlock + VOTING_PERIOD + 1);
+        _queue(TONGovernance, newInitialProposalId);
+        _execute(TONGovernance, newInitialProposalId);
 
-        // // (bool proposeSuccess, bytes memory proposeResult) = address(
-        // //     phoGovernanceDelegator
-        // // ).call(
-        // //         abi.encodeWithSignature(
-        // //             "propose(address[],uint256[],string[],bytes[],string)",
-        // //             targets,
-        // //             values,
-        // //             signatures,
-        // //             callDatas,
-        // //             description
-        // //         )
-        // //     );
-
-        // console.log("THIS IS proposeSuccess: ", proposeSuccess);
-
-        // (
-        //     bool newProposalCountSuccess,
-        //     bytes memory newProposalCountResult
-        // ) = address(phoGovernanceDelegator).call(
-        //         abi.encodeWithSignature("proposalCount()")
-        //     );
-
-        // uint256 newProposalCount = abi.decode(
-        //     newProposalCountResult,
-        //     (uint256)
-        // );
-        // console.log("THIS IS newProposalCount : ", newProposalCount);
-
-        // vm.stopPrank();
+        vm.stopPrank();
     }
-
-    function testVote() public {}
 }

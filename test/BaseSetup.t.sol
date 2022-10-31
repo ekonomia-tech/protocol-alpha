@@ -114,6 +114,9 @@ abstract contract BaseSetup is Test {
 
     uint256 public constant POOL_CEILING = (2 ** 256) - 1;
 
+    uint256 public constant VOTING_DELAY = 14400;
+    uint256 public constant VOTING_PERIOD = 21600;
+
     constructor() {
         string memory RPC_URL = vm.envString("RPC_URL");
         if (bytes(RPC_URL).length == 0) {
@@ -127,7 +130,6 @@ abstract contract BaseSetup is Test {
         pho = new PHO("PHO", "PHO");
         ton = new TON("TON", "TON");
 
-        // TODO - set up governance here
         // set up PHO Governance
         phoGovernanceDelegate = new PHOGovernorBravoDelegate();
 
@@ -136,9 +138,9 @@ abstract contract BaseSetup is Test {
             address(pho),
             owner,
             address(phoGovernanceDelegate),
-            21600,
-            14400,
-            ONE_HUNDRED_THOUSAND_D18
+            VOTING_PERIOD,
+            VOTING_DELAY,
+            ONE_HUNDRED_D18
         ); //PHOGovernorBravoDelegate is initialized here too through Delegator constructor
 
         PHOGovernance = address(phoGovernanceDelegator);
@@ -164,9 +166,9 @@ abstract contract BaseSetup is Test {
             address(ton),
             owner,
             address(tonGovernanceDelegate),
-            21600,
-            14400,
-            ONE_HUNDRED_THOUSAND_D18
+            VOTING_PERIOD,
+            VOTING_DELAY,
+            ONE_THOUSAND_D18
         ); //TONGovernorBravoDelegate is initialized here too through Delegator constructor
 
         TONGovernance = address(tonGovernanceDelegator);
@@ -175,20 +177,6 @@ abstract contract BaseSetup is Test {
             .call(abi.encodeWithSignature("_initiate(address)", TONGovernance)); // NOTE - param passed - TONGovernance is not needed w/ modifications made. See comment in TONGovernorBravoDelegate.sol
 
         console.log("THIS IS TONinitiateSuccess: ", TONInitiateSuccess);
-
-        // // check that initial proposal is set up well.
-        // (
-        //     bool newInitialProposalIdSuccess,
-        //     bytes memory newInitialProposalIdResult
-        // ) = TONGovernance.call(
-        //         abi.encodeWithSignature("initialProposalId()")
-        //     );
-
-        // uint256 newInitialProposalId = abi.decode(
-        //     newInitialProposalIdResult,
-        //     (uint256)
-        // );
-        // console.log("UPDATED newInitialProposalId: ", newInitialProposalId);
 
         // setup kernel
 
@@ -208,6 +196,7 @@ abstract contract BaseSetup is Test {
         vm.startPrank(owner);
 
         pho.setKernel(address(kernel));
+        ton.setKernel(address(kernel));
 
         dai = IERC20(DAI_ADDRESS);
         usdc = IUSDC(USDC_ADDRESS);
@@ -369,7 +358,7 @@ abstract contract BaseSetup is Test {
         string[] memory _signatures,
         bytes[] memory _callDatas,
         string memory _description
-    ) internal {
+    ) internal returns (bytes memory) {
         address proxy;
         if (_proxy == PHOGovernance) {
             proxy = PHOGovernance;
@@ -389,6 +378,8 @@ abstract contract BaseSetup is Test {
                 _description
             )
         );
+
+        return proposeResult;
     }
 
     function _castVote(address _proxy, uint256 _proposalId, uint8 _support) internal {
@@ -446,6 +437,42 @@ abstract contract BaseSetup is Test {
         }
 
         (bool cancelSuccess,) = proxy.call(abi.encodeWithSignature("cancel(uint)", _proposalId));
+    }
+
+    function _setUpAddedModule() internal {
+        vm.startPrank(owner);
+
+        address[] memory targets = new address[](1);
+        targets[0] = address(moduleManager);
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+        string[] memory signatures = new string[](1);
+        signatures[0] = "addModule(address _newModule)";
+        bytes[] memory callDatas = new bytes[](1);
+        callDatas[0] = abi.encode("address _newModule", module1);
+        string memory description = "Add new module";
+
+        bytes memory proposeSuccess =
+            _propose(PHOGovernance, targets, values, signatures, callDatas, description);
+
+        uint256 proposalStartBlock = block.number;
+
+        vm.roll(block.number + VOTING_DELAY + 1);
+
+        // check that proposal is set up well and get the proposalID.
+        (bool newInitialProposalIdSuccess2, bytes memory newInitialProposalIdResult2) =
+            PHOGovernance.call(abi.encodeWithSignature("initialProposalId()"));
+
+        uint256 newInitialProposalId2 = abi.decode(newInitialProposalIdResult2, (uint256));
+
+        // next, cast votes to get proposal to succeed
+        _castVote(PHOGovernance, newInitialProposalId2, 1);
+
+        // next, roll forward duration of proposal && queue
+        vm.roll(proposalStartBlock + VOTING_PERIOD + 1);
+        _queue(PHOGovernance, newInitialProposalId2);
+        _execute(PHOGovernance, newInitialProposalId2);
+        vm.stopPrank();
     }
 }
 
