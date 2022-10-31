@@ -4,7 +4,6 @@ pragma solidity ^0.8.13;
 import "../BaseSetup.t.sol";
 
 contract TONGovernorBravoDelegatorTest is BaseSetup {
-
     function setUp() public {
         vm.startPrank(address(kernel));
         ton.mint(owner, ONE_MILLION_D18);
@@ -17,7 +16,6 @@ contract TONGovernorBravoDelegatorTest is BaseSetup {
     /// Once PHO and TON are in circulation, as long as a user has enough of each they can propose proposals for PHO && TON.
 
     function testPropose() public {
-
         // vm.startPrank(owner);
         // // Propose - note require for proposal threshold is commented out
 
@@ -68,11 +66,5 @@ contract TONGovernorBravoDelegatorTest is BaseSetup {
         // vm.stopPrank();
     }
 
-    function testVote() public {
-        
-    }
-
-
-
-    
+    function testVote() public {}
 }

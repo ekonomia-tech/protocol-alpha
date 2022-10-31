@@ -4,7 +4,6 @@ pragma solidity ^0.8.13;
 import "../BaseSetup.t.sol";
 
 contract PHOGovernorBravoDelegatorTest is BaseSetup {
-
     function setUp() public {
         vm.startPrank(address(kernel));
         pho.mint(owner, ONE_MILLION_D18);
@@ -15,7 +14,6 @@ contract PHOGovernorBravoDelegatorTest is BaseSetup {
     /// TODO - start the first module: owner proposes addModule(module1), vm.roll(startBlock + 1), owner votes on that proposal so it passes quorumVotes minimum, vm.roll(endBlock + 1), owner `queue()` `addModule(module1)` proposal, vm.warp(proposal.eta + 1), owner `execute()` `addModule(module1)` proposal.
 
     function testPropose() public {
-
         vm.startPrank(owner);
         // Propose - note require for proposal threshold is commented out
 
@@ -50,27 +48,14 @@ contract PHOGovernorBravoDelegatorTest is BaseSetup {
 
         console.log("THIS IS proposeSuccess: ", proposeSuccess);
 
-        (
-            bool newProposalCountSuccess,
-            bytes memory newProposalCountResult
-        ) = address(phoGovernanceDelegator).call(
-                abi.encodeWithSignature("proposalCount()")
-            );
+        (bool newProposalCountSuccess, bytes memory newProposalCountResult) =
+            address(phoGovernanceDelegator).call(abi.encodeWithSignature("proposalCount()"));
 
-        uint256 newProposalCount = abi.decode(
-            newProposalCountResult,
-            (uint256)
-        );
+        uint256 newProposalCount = abi.decode(newProposalCountResult, (uint256));
         console.log("THIS IS newProposalCount : ", newProposalCount);
 
         vm.stopPrank();
     }
 
-    function testVote() public {
-
-    }
-
-
-
-    
+    function testVote() public {}
 }
