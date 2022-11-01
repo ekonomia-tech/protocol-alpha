@@ -62,6 +62,9 @@ contract PriceControllerTest is BaseSetup {
         vm.prank(TONGovernance);
         moduleManager.setPHOCeilingForModule(address(priceController), ONE_MILLION_D18 * 2);
 
+        vm.warp(block.timestamp + moduleManager.moduleDelay());
+        moduleManager.executeCeilingUpdate(address(priceController));
+
         vm.prank(address(priceController));
         moduleManager.mintPHO(address(priceController), ONE_HUNDRED_THOUSAND_D18);
 

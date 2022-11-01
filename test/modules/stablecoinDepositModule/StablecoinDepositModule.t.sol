@@ -58,7 +58,11 @@ contract StablecoinDepositModuleTest is BaseSetup {
         vm.prank(TONGovernance);
         moduleManager.setPHOCeilingForModule(address(daiStablecoinDepositModule), ONE_MILLION_D18);
 
-        moduleDelay = 2 weeks;
+        moduleDelay = moduleManager.moduleDelay();
+
+        vm.warp(block.timestamp + moduleDelay);
+        moduleManager.executeCeilingUpdate(address(usdcStablecoinDepositModule));
+        moduleManager.executeCeilingUpdate(address(daiStablecoinDepositModule));
 
         // Fund user with USDC
         vm.prank(richGuy);

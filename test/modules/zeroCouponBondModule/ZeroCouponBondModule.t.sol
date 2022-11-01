@@ -117,6 +117,10 @@ contract ZeroCouponBondModuleTest is BaseSetup {
         moduleManager.setPHOCeilingForModule(address(phoZeroCouponBondModule), ONE_MILLION_D18);
         vm.stopPrank();
 
+        vm.warp(block.timestamp + moduleManager.moduleDelay());
+        moduleManager.executeCeilingUpdate(address(usdcZeroCouponBondModule));
+        moduleManager.executeCeilingUpdate(address(daiZeroCouponBondModule));
+        moduleManager.executeCeilingUpdate(address(phoZeroCouponBondModule));
         // Fund user with USDC
         vm.prank(richGuy);
         usdc.transfer(user1, TEN_THOUSAND_D6);
