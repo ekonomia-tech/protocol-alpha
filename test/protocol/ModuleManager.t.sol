@@ -12,6 +12,7 @@ contract ModuleManagerTest is BaseSetup {
 
     error ZeroAddress();
     error ZeroValue();
+    error SameValue();
     error ModuleCeilingExceeded();
     error KernelCeilingExceeded();
     error ModuleBurnExceeded();
@@ -21,21 +22,27 @@ contract ModuleManagerTest is BaseSetup {
     error ModuleRegistered();
     error UnregisteredModule();
     error ModuleNotPaused();
+    error DelayNotMet();
+    error UpdateNotAvailable();
 
     /// events
 
-    event Transfer(address indexed from, address indexed to, uint256 value);
     event ModuleAdded(address indexed module);
     event ModuleDeprecated(address indexed module);
-    event PHOCeilingUpdated(address indexed module, uint256 newPHOCeiling);
+    event PHOCeilingUpdateScheduled(
+        address indexed module, uint256 upcomingCeiling, uint256 upcomingUpdated
+    );
     event UpdatedModuleDelay(uint256 newDelay);
     event ModuleMint(address indexed module, address indexed to, uint256 amount);
     event ModuleBurn(address indexed module, address indexed from, uint256 amount);
     event ModulePaused(address indexed module);
     event ModuleUnpaused(address indexed module);
+    event PHOCeilingUpdated(address indexed module, uint256 newPHOCeiling);
 
     struct Module {
         uint256 phoCeiling;
+        uint256 upcomingCeiling;
+        uint256 upcomingUpdate;
         uint256 phoMinted;
         uint256 startTime;
         Status status;
@@ -52,14 +59,18 @@ contract ModuleManagerTest is BaseSetup {
         vm.prank(PHOGovernance);
         moduleManager.addModule(module1);
 
-        (,, uint256 startTime, ModuleManager.Status status) = moduleManager.modules(module1);
+        (,,,, uint256 startTime, ModuleManager.Status status) = moduleManager.modules(module1);
         assertEq(uint8(status), uint8(Status.Active));
         assertEq(startTime, block.timestamp + moduleManager.moduleDelay());
 
         vm.prank(TONGovernance);
         moduleManager.setPHOCeilingForModule(module1, ONE_MILLION_D18);
 
-        (uint256 newPhoCeiling,,,) = moduleManager.modules(module1);
+        vm.warp(block.timestamp + moduleManager.moduleDelay());
+
+        moduleManager.executeCeilingUpdate(module1);
+
+        (uint256 newPhoCeiling,,,,,) = moduleManager.modules(module1);
         assertEq(newPhoCeiling, ONE_MILLION_D18);
     }
 
@@ -89,7 +100,7 @@ contract ModuleManagerTest is BaseSetup {
 
     function testMintPHO() public {
         uint256 user1BalanceBefore = pho.balanceOf(user1);
-        (, uint256 phoMintedBefore,,) = moduleManager.modules(module1);
+        (,,, uint256 phoMintedBefore,,) = moduleManager.modules(module1);
 
         vm.expectEmit(true, true, false, true);
         emit ModuleMint(module1, user1, ONE_HUNDRED_THOUSAND_D18);
@@ -97,7 +108,7 @@ contract ModuleManagerTest is BaseSetup {
         moduleManager.mintPHO(user1, ONE_HUNDRED_THOUSAND_D18);
 
         uint256 user1BalanceAfter = pho.balanceOf(user1);
-        (, uint256 phoMintedAfter,,) = moduleManager.modules(module1);
+        (,,, uint256 phoMintedAfter,,) = moduleManager.modules(module1);
 
         assertEq(user1BalanceAfter, user1BalanceBefore + ONE_HUNDRED_THOUSAND_D18);
         assertEq(phoMintedAfter, phoMintedBefore + ONE_HUNDRED_THOUSAND_D18);
@@ -114,7 +125,7 @@ contract ModuleManagerTest is BaseSetup {
 
         uint256 burnAmount = TEN_THOUSAND_D18 * 5;
         uint256 user1BalanceBefore = pho.balanceOf(user1);
-        (, uint256 module1PhoBalanceBefore,,) = moduleManager.modules(module1);
+        (,,, uint256 module1PhoBalanceBefore,,) = moduleManager.modules(module1);
 
         vm.prank(user1);
         pho.approve(address(kernel), burnAmount);
@@ -125,7 +136,7 @@ contract ModuleManagerTest is BaseSetup {
         moduleManager.burnPHO(user1, burnAmount);
 
         uint256 user1BalanceAfter = pho.balanceOf(user1);
-        (, uint256 module1PhoBalanceAfter,,) = moduleManager.modules(module1);
+        (,,, uint256 module1PhoBalanceAfter,,) = moduleManager.modules(module1);
 
         assertEq(user1BalanceBefore, user1BalanceAfter + burnAmount);
         assertEq(module1PhoBalanceBefore, module1PhoBalanceAfter + burnAmount);
@@ -156,7 +167,7 @@ contract ModuleManagerTest is BaseSetup {
         moduleManager.mintPHO(user1, ONE_HUNDRED_THOUSAND_D18);
 
         uint256 burnAmount = TEN_THOUSAND_D18 * 5;
-        (, uint256 module1phoMintedBefore,,) = moduleManager.modules(module1);
+        (,,, uint256 module1phoMintedBefore,,) = moduleManager.modules(module1);
         uint256 user1BalanceBefore = pho.balanceOf(user1);
 
         vm.prank(user1);
@@ -167,7 +178,7 @@ contract ModuleManagerTest is BaseSetup {
         vm.prank(module1);
         moduleManager.burnPHO(user1, burnAmount);
 
-        (, uint256 module1phoMintedAfter,,) = moduleManager.modules(module1);
+        (,,, uint256 module1phoMintedAfter,,) = moduleManager.modules(module1);
         uint256 user1BalanceAfter = pho.balanceOf(user1);
 
         assertEq(module1phoMintedBefore, module1phoMintedAfter + burnAmount);
@@ -211,7 +222,7 @@ contract ModuleManagerTest is BaseSetup {
         vm.prank(PHOGovernance);
         moduleManager.addModule(module2);
 
-        (,, uint256 newStartTime, ModuleManager.Status newStatus) = moduleManager.modules(module2);
+        (,,,, uint256 newStartTime, ModuleManager.Status newStatus) = moduleManager.modules(module2);
         assertEq(uint8(newStatus), uint8(Status.Active));
         assertEq(newStartTime, block.timestamp + moduleManager.moduleDelay());
     }
@@ -244,7 +255,7 @@ contract ModuleManagerTest is BaseSetup {
         vm.prank(PHOGovernance);
         moduleManager.deprecateModule(module1);
 
-        (uint256 newPhoCeiling,,, ModuleManager.Status newStatus) = moduleManager.modules(module1);
+        (uint256 newPhoCeiling,,,,, ModuleManager.Status newStatus) = moduleManager.modules(module1);
         assertEq(uint8(newStatus), uint8(Status.Deprecated));
         assertEq(newPhoCeiling, 0);
     }
@@ -276,6 +287,13 @@ contract ModuleManagerTest is BaseSetup {
         moduleManager.setPHOCeilingForModule(module1, ONE_MILLION_D18);
     }
 
+    function testCannotSetPHOCeilingSameValue() public {
+        (uint256 currentCeiling,,,,,) = moduleManager.modules(module1);
+        vm.expectRevert(abi.encodeWithSelector(SameValue.selector));
+        vm.prank(TONGovernance);
+        moduleManager.setPHOCeilingForModule(module1, currentCeiling);
+    }
+
     function testCannotSetPHOCeilingNonTONGovernance() public {
         vm.expectRevert(abi.encodeWithSelector(NotTONGovernance.selector, dummyAddress));
         vm.prank(dummyAddress);
@@ -284,15 +302,85 @@ contract ModuleManagerTest is BaseSetup {
 
     function testSetPHOCeilingModule() public {
         uint256 newPhoCeiling = ONE_MILLION_D18 * 10;
+        uint256 newUpcomingUpdate = block.timestamp + moduleManager.moduleDelay();
 
         vm.expectEmit(true, false, false, true);
-        emit PHOCeilingUpdated(module1, newPhoCeiling);
+        emit PHOCeilingUpdateScheduled(module1, newPhoCeiling, newUpcomingUpdate);
         vm.prank(TONGovernance);
         moduleManager.setPHOCeilingForModule(module1, newPhoCeiling);
 
-        (uint256 phoCeiling,,,) = moduleManager.modules(module1);
-        assertEq(phoCeiling, newPhoCeiling);
+        (, uint256 upcomingCeiling, uint256 upcomingUpdate,,,) = moduleManager.modules(module1);
+        assertEq(upcomingCeiling, newPhoCeiling);
+        assertEq(upcomingUpdate, newUpcomingUpdate);
     }
+
+    /// executeCeilingUpdate()
+
+    function testCannotExecuteCeilingUpdateZeroAddress() public {
+        vm.expectRevert(abi.encodeWithSelector(ZeroAddress.selector));
+        moduleManager.executeCeilingUpdate(address(0));
+    }
+
+    function testCannotExecuteCeilingUpdateModuleNotAvailable() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(ModuleUnavailable.selector, address(200), Status.Unregistered)
+        );
+        moduleManager.executeCeilingUpdate(address(200));
+
+        vm.prank(TONGovernance);
+        moduleManager.pauseModule(module1);
+
+        vm.expectRevert(abi.encodeWithSelector(ModuleUnavailable.selector, module1, Status.Paused));
+        moduleManager.executeCeilingUpdate(module1);
+
+        vm.prank(TONGovernance);
+        moduleManager.unpauseModule(module1);
+
+        vm.prank(PHOGovernance);
+        moduleManager.deprecateModule(module1);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(ModuleUnavailable.selector, module1, Status.Deprecated)
+        );
+        moduleManager.executeCeilingUpdate(module1);
+    }
+
+    function testCannotExecuteCeilingUpdateModuleUpdateNotAvailable() public {
+        vm.expectRevert(abi.encodeWithSelector(UpdateNotAvailable.selector));
+        moduleManager.executeCeilingUpdate(module1);
+    }
+
+    function testCannotExecuteCeilingUpdateModuleDelayNotMet() public {
+        (uint256 ceilingBefore,,,,,) = moduleManager.modules(module1);
+        vm.prank(TONGovernance);
+        moduleManager.setPHOCeilingForModule(module1, 2 * ceilingBefore);
+
+        vm.expectRevert(abi.encodeWithSelector(DelayNotMet.selector));
+        moduleManager.executeCeilingUpdate(module1);
+    }
+
+    function testExecuteCeilingUpdate() public {
+        (uint256 ceilingBefore,,,,,) = moduleManager.modules(module1);
+        uint256 newCeiling = ceilingBefore * 2;
+
+        vm.prank(TONGovernance);
+        moduleManager.setPHOCeilingForModule(module1, newCeiling);
+
+        vm.warp(block.timestamp + moduleManager.moduleDelay());
+
+        vm.expectEmit(true, false, false, true);
+        emit PHOCeilingUpdated(module1, newCeiling);
+        moduleManager.executeCeilingUpdate(module1);
+
+        (uint256 ceilingAfter, uint256 upcomingCeiling, uint256 upcomingUpdate,,,) =
+            moduleManager.modules(module1);
+
+        assertEq(ceilingAfter, newCeiling);
+        assertEq(upcomingCeiling, 0);
+        assertEq(upcomingUpdate, 0);
+    }
+
+    /// setModuleDelay()
 
     function testCannotSetModuleDelayToZero() public {
         vm.expectRevert(abi.encodeWithSelector(ZeroValue.selector));
