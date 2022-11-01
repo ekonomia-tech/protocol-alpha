@@ -10,13 +10,8 @@ import "@modules/mapleDepositModule/IPool.sol";
 contract MapleDepositModuleTest is BaseSetup {
     /// Errors
     error ZeroAddressDetected();
-    error CannotRedeemMoreThanDeposited();
     error OverEighteenDecimals();
     error DepositTokenMustBeMaplePoolAsset();
-    error MaplePoolNotOpen();
-    error CannotStakeMoreThanDeposited();
-    error CannotWithdrawMoreThanStaked();
-    error CannotRecieveNoMaplePoolTokens();
     error CannotRedeemZeroTokens();
 
     /// Events
@@ -56,7 +51,6 @@ contract MapleDepositModuleTest is BaseSetup {
     // Global
     uint256 public constant mplGlobalLpCooldownPeriod = 864000;
     uint256 public constant mplGlobalLpWithdrawWindow = 172800;
-    //require((block.timestamp - (withdrawCooldown[msg.sender] + lpCooldownPeriod)) <= lpWithdrawWindow, "P:WITHDRAW_NOT_ALLOWED");
     uint256 public moduleDelay;
 
     function setUp() public {
@@ -70,7 +64,7 @@ contract MapleDepositModuleTest is BaseSetup {
         // USDC - Orthogonal
         mplPoolUSDC = IPool(orthogonalUSDCPool);
         mplRewardsUSDC = IMplRewards(orthogonalUSDCRewards);
-        mplPoolUSDCLockupPeriod = 2592000; // 15552000; //2592000;
+        mplPoolUSDCLockupPeriod = 2592000;
         mplPoolWETHLockupPeriod = 2592000;
         vm.prank(owner);
         mapleDepositModuleUSDC = new MapleDepositModule(
@@ -84,6 +78,7 @@ contract MapleDepositModuleTest is BaseSetup {
         );
 
         // Add USDC pool rewards amounts since prev amounts expired
+        // i.e. last period of rewards was in the past so need to test with new rewards
         vm.prank(orthogonalPoolOwner);
         mplRewardsUSDC.notifyRewardAmount(ONE_HUNDRED_D18);
 
@@ -103,6 +98,7 @@ contract MapleDepositModuleTest is BaseSetup {
         );
 
         // Add WETH pool reward amounts since prev amounts expired
+        // i.e. last period of rewards was in the past so need to test with new rewards
         vm.prank(mavenPoolOwner);
         mplRewardsWETH.notifyRewardAmount(ONE_HUNDRED_D18);
 
@@ -212,17 +208,6 @@ contract MapleDepositModuleTest is BaseSetup {
             address(kernel),
             address(pho),
             address(priceOracle),
-            address(0),
-            address(mplRewardsUSDC),
-            address(mplPoolUSDC)
-        );
-
-        vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
-        mapleDepositModuleUSDC = new MapleDepositModule(
-            address(moduleManager),
-            address(kernel),
-            address(pho),
-            address(priceOracle),
             address(usdc),
             address(0),
             address(mplPoolUSDC)
@@ -298,7 +283,7 @@ contract MapleDepositModuleTest is BaseSetup {
         vm.expectEmit(true, true, true, true);
         emit MapleDeposited(user1, _depositAmount, expectedIssuedAmount);
         vm.prank(user1);
-        _module.depositMaple(_depositAmount);
+        _module.deposit(_depositAmount);
 
         // DepositToken and PHO balances after
         MapleBalance memory aft;
@@ -398,7 +383,7 @@ contract MapleDepositModuleTest is BaseSetup {
         vm.expectEmit(true, true, true, true);
         emit MapleRedeemed(user1, before.userIssuedAmount);
         vm.prank(user1);
-        _module.redeemMaple();
+        _module.redeem();
 
         // DepositToken and PHO balances after
         MapleBalance memory aft;
@@ -457,7 +442,7 @@ contract MapleDepositModuleTest is BaseSetup {
     function _testGetRewardAnyModule(uint256 _depositAmount, MapleDepositModule _module) public {
         // Deposit
         vm.prank(user1);
-        _module.depositMaple(_depositAmount);
+        _module.deposit(_depositAmount);
 
         // Advance days to accrue rewards
         vm.warp(block.timestamp + 7 days);

@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+// Inspired from: https://github.com/maple-labs/maple-core/blob/4577df4ac7e9ffd6a23fe6550c1d6ef98c5185ea/contracts/interfaces/IPool.sol
 interface IPool is IERC20 {
     function poolDelegate() external view returns (address);
 

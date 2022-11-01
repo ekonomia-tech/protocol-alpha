@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.13;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -18,26 +18,24 @@ import "./IPool.sol";
 /// @author Ekonomia: https://github.com/ekonomia-tech
 /// @notice Accepts deposit token for use in Maple lending pool
 contract MapleDepositModule is Ownable, ReentrancyGuard {
-    using SafeERC20 for ERC20;
+    using SafeERC20 for IERC20;
 
     /// Errors
     error ZeroAddressDetected();
-    error CannotRedeemMoreThanDeposited();
     error OverEighteenDecimals();
     error DepositTokenMustBeMaplePoolAsset();
     error MaplePoolNotOpen();
     error CannotStakeMoreThanDeposited();
-    error CannotWithdrawMoreThanStaked();
-    error CannotRecieveNoMaplePoolTokens();
+    error CannotReceiveZeroMPT();
     error CannotRedeemZeroTokens();
 
     /// State vars
     IModuleManager public moduleManager;
     address public kernel;
-    IPHO public pho;
-    ChainlinkPriceFeed public oracle;
     address public depositToken;
     uint8 public depositTokenDecimals;
+    IPHO public pho;
+    ChainlinkPriceFeed public oracle;
     IMplRewards public mplRewards;
     IPool public mplPool;
     mapping(address => uint256) public depositedAmount; // MPL deposited
@@ -47,7 +45,7 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
     /// Events
     event MapleDeposited(address indexed depositor, uint256 depositAmount, uint256 phoMinted);
     event MapleRedeemed(address indexed redeemer, uint256 redeemAmount);
-    event MapleRewardsRecieved(uint256 totalRewards);
+    event MapleRewardsReceived(uint256 totalRewards);
 
     modifier onlyModuleManager() {
         require(msg.sender == address(moduleManager), "Only ModuleManager");
@@ -90,18 +88,18 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
         }
 
         // Approve deposit token for mplPool
-        ERC20(depositToken).safeIncreaseAllowance(address(mplPool), type(uint256).max);
+        IERC20(depositToken).safeIncreaseAllowance(address(mplPool), type(uint256).max);
     }
 
     /// @notice Deposit into underlying MPL pool and rewards
-    /// @param depositAmount Deposit amount (in mapleToken decimals)
-    function depositMaple(uint256 depositAmount) external nonReentrant {
+    /// @param depositAmount Deposit amount (in depositToken decimals)
+    function deposit(uint256 depositAmount) external nonReentrant {
         // Adjust based on oracle price
         uint256 phoMinted = depositAmount * (10 ** (18 - depositTokenDecimals));
         phoMinted = (phoMinted * oracle.getPrice(depositToken)) / 10 ** 18;
 
         // transfer depositToken
-        ERC20(depositToken).safeTransferFrom(msg.sender, address(this), depositAmount);
+        IERC20(depositToken).safeTransferFrom(msg.sender, address(this), depositAmount);
 
         depositedAmount[msg.sender] += depositAmount;
         issuedAmount[msg.sender] += phoMinted;
@@ -118,19 +116,19 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
         mplPool.deposit(depositAmount);
 
         // Pool tokens recieved
-        uint256 mplPoolTokensRecieved = mplPool.balanceOf(address(this)) - mplBalanceBeforeDeposit;
+        uint256 mplPoolTokensReceived = mplPool.balanceOf(address(this)) - mplBalanceBeforeDeposit;
 
-        if (mplPoolTokensRecieved == 0) {
-            revert CannotRecieveNoMaplePoolTokens();
+        if (mplPoolTokensReceived == 0) {
+            revert CannotReceiveZeroMPT();
         }
 
         // Approve pool tokens for mplRewards
-        mplPool.increaseCustodyAllowance(address(mplRewards), mplPoolTokensRecieved);
+        mplPool.increaseCustodyAllowance(address(mplRewards), mplPoolTokensReceived);
 
         // Stakes deposit token in mplRewards
-        mplRewards.stake(mplPoolTokensRecieved);
+        mplRewards.stake(mplPoolTokensReceived);
 
-        stakedAmount[msg.sender] += mplPoolTokensRecieved;
+        stakedAmount[msg.sender] += mplPoolTokensReceived;
 
         emit MapleDeposited(msg.sender, depositAmount, phoMinted);
     }
@@ -141,7 +139,7 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
     }
 
     /// @notice User redeems PHO for their original tokens
-    function redeemMaple() external nonReentrant {
+    function redeem() external nonReentrant {
         uint256 redeemAmount = issuedAmount[msg.sender];
         if (redeemAmount == 0) {
             revert CannotRedeemZeroTokens();
@@ -168,17 +166,20 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
         mplPool.withdraw(depositAmount);
 
         // Transfer depositToken to caller
-        ERC20(depositToken).transfer(msg.sender, depositAmount);
+        IERC20(depositToken).transfer(msg.sender, depositAmount);
 
         emit MapleRedeemed(msg.sender, redeemAmount);
     }
 
     /// @notice Gets reward via MplRewards
+    /// Currently rewards are in this contract and not withdrawn
+    /// TODO: another PR to get rewards
+    /// Function in MPL rewards contract is called getReward()
     function getRewardMaple() external onlyOwner {
         // Get rewards
         mplRewards.getReward();
         IERC20 rewardToken = IERC20(mplRewards.rewardsToken());
         uint256 totalRewards = rewardToken.balanceOf(address(this));
-        emit MapleRewardsRecieved(totalRewards);
+        emit MapleRewardsReceived(totalRewards);
     }
 }
