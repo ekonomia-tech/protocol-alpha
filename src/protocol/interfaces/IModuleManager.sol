@@ -5,6 +5,7 @@ interface IModuleManager {
     /// errors
     error ZeroAddress();
     error ZeroValue();
+    error SameValue();
     error ModuleCeilingExceeded();
     error KernelCeilingExceeded();
     error ModuleBurnExceeded();
@@ -14,17 +15,22 @@ interface IModuleManager {
     error ModuleRegistered();
     error UnregisteredModule();
     error ModuleNotPaused();
+    error DelayNotMet();
+    error UpdateNotAvailable();
 
     /// events
 
     event ModuleAdded(address indexed module);
     event ModuleDeprecated(address indexed module);
-    event PHOCeilingUpdated(address indexed module, uint256 newPHOCeiling);
+    event PHOCeilingUpdateScheduled(
+        address indexed module, uint256 upcomingCeiling, uint256 upcomingUpdated
+    );
     event UpdatedModuleDelay(uint256 newDelay);
     event ModuleMint(address indexed module, address indexed to, uint256 amount);
     event ModuleBurn(address indexed module, address indexed from, uint256 amount);
     event ModulePaused(address indexed module);
     event ModuleUnpaused(address indexed module);
+    event PHOCeilingUpdated(address indexed module, uint256 newPHOCeiling);
 
     enum Status {
         Unregistered,
@@ -35,6 +41,8 @@ interface IModuleManager {
 
     struct Module {
         uint256 phoCeiling;
+        uint256 upcomingCeiling;
+        uint256 upcomingUpdate;
         uint256 phoMinted;
         uint256 startTime;
         Status status;

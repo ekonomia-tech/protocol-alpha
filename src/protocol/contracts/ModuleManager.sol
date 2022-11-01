@@ -103,8 +103,25 @@ contract ModuleManager is IModuleManager {
     {
         if (_module == address(0)) revert ZeroAddress();
         _checkModuleStatus(_module);
-        modules[_module].phoCeiling = _newPHOCeiling;
-        emit PHOCeilingUpdated(_module, _newPHOCeiling);
+        Module storage module = modules[_module];
+        if (module.phoCeiling == _newPHOCeiling) revert SameValue();
+        module.upcomingCeiling = _newPHOCeiling;
+        module.upcomingUpdate = block.timestamp + moduleDelay;
+        emit PHOCeilingUpdateScheduled(_module, _newPHOCeiling, module.upcomingUpdate);
+    }
+
+    /// @notice executes the PHO ceiling update scheduled by setPHOCeilingForModule()
+    /// @param _module address of module update
+    function executeCeilingUpdate(address _module) external {
+        if (_module == address(0)) revert ZeroAddress();
+        _checkModuleStatus(_module);
+        Module storage module = modules[_module];
+        if (module.upcomingCeiling == 0 || module.upcomingUpdate == 0) revert UpdateNotAvailable();
+        if (module.upcomingUpdate > block.timestamp) revert DelayNotMet();
+        module.phoCeiling = module.upcomingCeiling;
+        module.upcomingCeiling = 0;
+        module.upcomingUpdate = 0;
+        emit PHOCeilingUpdated(_module, module.phoCeiling);
     }
 
     /// @notice set module delay
