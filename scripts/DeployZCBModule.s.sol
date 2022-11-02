@@ -12,7 +12,6 @@ import "./Addresses.sol";
 /// Script to deploy ZCB module
 contract DeployZCBModule is Script, Addresses {
     ZeroCouponBondModule public zeroCouponBondModule;
-    ERC20 public mockUSDC;
     address depositToken = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     string bondTokenName = "Test USDC Bond";
     string bondTokenSymbol = "USDC-TEST";
@@ -23,12 +22,12 @@ contract DeployZCBModule is Script, Addresses {
     function run() external {
         vm.startBroadcast();
 
-        mockUSDC = new ERC20("Mock USDC", "mUSDC");
+        //mockUSDC = new ERC20("Mock USDC", "mUSDC");
         zeroCouponBondModule = new ZeroCouponBondModule(
             moduleManagerAddress,
             kernelAddress,
             phoAddress,
-            address(mockUSDC),
+            usdcAddress,
             bondTokenName,
             bondTokenSymbol,
             interestRate,

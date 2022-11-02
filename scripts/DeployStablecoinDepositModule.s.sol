@@ -18,10 +18,9 @@ contract DeployStablecoinDepositModule is Script, Addresses {
     function run() external {
         vm.startBroadcast();
 
-        mockUSDC = new ERC20("Mock USDC", "mUSDC");
         stablecoinDepositModule = new StablecoinDepositModule(
             moduleManagerAddress,
-            address(mockUSDC),
+            usdcAddress,
             kernelAddress,
             phoAddress
         );
