@@ -25,7 +25,6 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
     error OverEighteenDecimals();
     error DepositTokenMustBeMaplePoolAsset();
     error MaplePoolNotOpen();
-    error CannotStakeMoreThanDeposited();
     error CannotReceiveZeroMPT();
     error CannotRedeemZeroTokens();
 
@@ -115,7 +114,7 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
         // Deposit into mplPool
         mplPool.deposit(depositAmount);
 
-        // Pool tokens recieved
+        // Pool tokens received
         uint256 mplPoolTokensReceived = mplPool.balanceOf(address(this)) - mplBalanceBeforeDeposit;
 
         if (mplPoolTokensReceived == 0) {
@@ -173,7 +172,7 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
 
     /// @notice Gets reward via MplRewards
     /// Currently rewards are in this contract and not withdrawn
-    /// TODO: another PR to get rewards
+    /// TODO: another PR to get rewards distributed to users, and not stuck in contract
     /// Function in MPL rewards contract is called getReward()
     function getRewardMaple() external onlyOwner {
         // Get rewards
