@@ -175,4 +175,13 @@ contract ModuleManager is IModuleManager {
             revert ModuleUnavailable(_module, module.status);
         }
     }
+
+    /// @notice set a new pause guardian
+    /// @param _pauseGuardian the new pause guardian address
+    function setPauseGuardian(address _pauseGuardian) external onlyTONGovernance {
+        if (_pauseGuardian == address(0)) revert ZeroAddress();
+        if (_pauseGuardian == pauseGuardian) revert SameAddress();
+        pauseGuardian = _pauseGuardian;
+        emit PauseGuardianUpdated(_pauseGuardian);
+    }
 }

@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 interface IModuleManager {
     /// errors
     error ZeroAddress();
+    error SameAddress();
     error ZeroValue();
     error SameValue();
     error ModuleCeilingExceeded();
@@ -24,7 +25,7 @@ interface IModuleManager {
     event ModuleAdded(address indexed module);
     event ModuleDeprecated(address indexed module);
     event PHOCeilingUpdateScheduled(
-        address indexed module, uint256 upcomingCeiling, uint256 upcomingUpdated
+        address indexed module, uint256 upcomingCeiling, uint256 ceilingUpdateTime
     );
     event UpdatedModuleDelay(uint256 newDelay);
     event ModuleMint(address indexed module, address indexed to, uint256 amount);
@@ -32,6 +33,7 @@ interface IModuleManager {
     event ModulePaused(address indexed module);
     event ModuleUnpaused(address indexed module);
     event PHOCeilingUpdated(address indexed module, uint256 newPHOCeiling);
+    event PauseGuardianUpdated(address newPauseGuardian);
 
     enum Status {
         Unregistered,
@@ -57,4 +59,5 @@ interface IModuleManager {
     function setModuleDelay(uint256 _newDelay) external;
     function pauseModule(address _module) external;
     function unpauseModule(address _module) external;
+    function setPauseGuardian(address _pauseGuardian) external;
 }
