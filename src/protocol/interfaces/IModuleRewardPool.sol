@@ -3,17 +3,15 @@
 pragma solidity ^0.8.13;
 
 interface IModuleRewardPool {
-    function stake(address, uint256) external;
+    function stake(address, uint256) external returns (bool);
 
-    function stakeFor(address, uint256) external;
+    function stakeFor(address, uint256) external returns (bool);
 
     function withdraw(address, uint256) external;
 
-    function exit(address) external;
+    function getReward(address, bool) external returns (bool);
 
-    function getReward(address) external;
-
-    function queueNewRewards(uint256) external;
+    function queueNewRewards(uint256) external returns (bool);
 
     function notifyRewardAmount(uint256) external;
 

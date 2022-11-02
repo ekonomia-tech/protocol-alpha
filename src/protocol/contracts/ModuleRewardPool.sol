@@ -3,7 +3,7 @@
 pragma solidity ^0.8.13;
 
 import "../interfaces/IModuleRewardPool.sol";
-import "./interfaces/MathUtil.sol"; // TODO
+import "../interfaces/IModuleDispatcher.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -12,12 +12,12 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 /// @title ModuleRewardPool
 /// @notice Module reward pool, inspired by Synthetix
 /// @author Ekonomia: https://github.com/Ekonomia
-contract ModuleRewardPool is IModuleRewardPool {
+contract ModuleRewardPool {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    IERC20 public rewardToken;
-    IERC20 public stakingToken;
+    address public rewardToken;
+    address public stakingToken;
     uint256 public constant duration = 7 days;
 
     address public operator;
@@ -44,19 +44,29 @@ contract ModuleRewardPool is IModuleRewardPool {
     event Withdrawn(address indexed user, uint256 amount);
     event RewardPaid(address indexed user, uint256 reward);
 
+    modifier updateReward(address account) {
+        rewardPerTokenStored = rewardPerToken();
+        lastUpdateTime = lastTimeRewardApplicable();
+        if (account != address(0)) {
+            rewards[account] = earned(account);
+            userRewardPerTokenPaid[account] = rewardPerTokenStored;
+        }
+        _;
+    }
+
     /// Constructor
     constructor(
-        uint256 modulePoolId_,
-        address stakingToken_,
-        address rewardToken_,
-        address operator_,
-        address rewardManager_
+        uint256 _modulePoolId,
+        address _stakingToken,
+        address _rewardToken,
+        address _operator,
+        address _rewardManager
     ) public {
-        modulePoolId = modulePoolId_;
-        stakingToken = IERC20(stakingToken_);
-        rewardToken = IERC20(rewardToken_);
-        operator = operator_;
-        rewardManager = rewardManager_;
+        modulePoolId = _modulePoolId;
+        stakingToken = _stakingToken;
+        rewardToken = _rewardToken;
+        operator = _operator;
+        rewardManager = _rewardManager;
     }
 
     /// Total supply
@@ -74,33 +84,26 @@ contract ModuleRewardPool is IModuleRewardPool {
         return extraRewards.length;
     }
 
-    function addExtraReward(address _reward) external returns (bool) {
+    /// @notice Add extra reward
+    function addExtraReward(address _reward) external {
         require(msg.sender == rewardManager, "!authorized");
         require(_reward != address(0), "!reward setting");
-
         extraRewards.push(_reward);
-        return true;
+        return;
     }
 
+    /// @notice Clear extra rewards
     function clearExtraRewards() external {
         require(msg.sender == rewardManager, "!authorized");
         delete extraRewards;
     }
 
-    modifier updateReward(address account) {
-        rewardPerTokenStored = rewardPerToken();
-        lastUpdateTime = lastTimeRewardApplicable();
-        if (account != address(0)) {
-            rewards[account] = earned(account);
-            userRewardPerTokenPaid[account] = rewardPerTokenStored;
-        }
-        _;
-    }
-
+    /// @notice Get latest timestamp applicable for reward
     function lastTimeRewardApplicable() public view returns (uint256) {
-        return MathUtil.min(block.timestamp, periodFinish);
+        return block.timestamp < periodFinish ? block.timestamp : periodFinish;
     }
 
+    /// @notice Get reward per token
     function rewardPerToken() public view returns (uint256) {
         if (totalSupply() == 0) {
             return rewardPerTokenStored;
@@ -112,41 +115,49 @@ contract ModuleRewardPool is IModuleRewardPool {
         );
     }
 
+    /// @notice Get earned amount by account
+    /// @param account Account
     function earned(address account) public view returns (uint256) {
         return balanceOf(account).mul(rewardPerToken().sub(userRewardPerTokenPaid[account])).div(
             1e18
         ).add(rewards[account]);
     }
 
+    /// @notice Stake
+    /// @param _amount Amount
     function stake(uint256 _amount) public updateReward(msg.sender) returns (bool) {
         require(_amount > 0, "RewardPool : Cannot stake 0");
 
         //also stake to linked rewards
         for (uint256 i = 0; i < extraRewards.length; i++) {
-            IRewards(extraRewards[i]).stake(msg.sender, _amount);
+            IModuleRewardPool(extraRewards[i]).stake(msg.sender, _amount);
         }
 
         _totalSupply = _totalSupply.add(_amount);
         _balances[msg.sender] = _balances[msg.sender].add(_amount);
 
-        stakingToken.safeTransferFrom(msg.sender, address(this), _amount);
+        IERC20(stakingToken).safeTransferFrom(msg.sender, address(this), _amount);
         emit Staked(msg.sender, _amount);
 
         return true;
     }
 
+    /// @notice Stake all
     function stakeAll() external returns (bool) {
-        uint256 balance = stakingToken.balanceOf(msg.sender);
+        uint256 balance = IERC20(stakingToken).balanceOf(msg.sender);
         stake(balance);
         return true;
     }
 
+    /// @notice Stake for
+    /// @param _for For
+    /// @param _amount Amount
     function stakeFor(address _for, uint256 _amount) public updateReward(_for) returns (bool) {
         require(_amount > 0, "RewardPool : Cannot stake 0");
 
         //also stake to linked rewards
         for (uint256 i = 0; i < extraRewards.length; i++) {
-            IRewards(extraRewards[i]).stake(_for, _amount);
+            IModuleRewardPool(extraRewards[i]).stake(_for, _amount);
         }
 
         //give to _for
@@ -154,24 +165,41 @@ contract ModuleRewardPool is IModuleRewardPool {
         _balances[_for] = _balances[_for].add(_amount);
 
         //take away from sender
-        stakingToken.safeTransferFrom(msg.sender, address(this), _amount);
+        IERC20(stakingToken).safeTransferFrom(msg.sender, address(this), _amount);
         emit Staked(_for, _amount);
 
         return true;
     }
 
-    function withdraw(uint256 amount, bool claim) public updateReward(msg.sender) returns (bool) {
+    /// @notice Withdraw
+    /// @param _account Account
+    /// @param amount amount
+    function withdraw(address _account, uint256 amount) public updateReward(_account) {
+        require(msg.sender == address(operator), "Not authorized");
+        //require(amount > 0, 'VirtualDepositRewardPool : Cannot withdraw 0');
+
+        emit Withdrawn(_account, amount);
+    }
+
+    /// @notice TODO: modify -> withdraw() -> withdrawAmount()
+    /// @param amount Amount
+    /// @param claim Claim
+    function withdrawAmount(uint256 amount, bool claim)
+        public
+        updateReward(msg.sender)
+        returns (bool)
+    {
         require(amount > 0, "RewardPool : Cannot withdraw 0");
 
-        //also withdraw from linked rewards
-        for (uint256 i = 0; i < extraRewards.length; i++) {
-            IRewards(extraRewards[i]).withdraw(msg.sender, amount);
-        }
+        // //TODO: modify this also withdraw from linked rewards
+        // for (uint256 i = 0; i < extraRewards.length; i++) {
+        //     IModuleRewardPool(extraRewards[i]).withdraw(msg.sender, amount);
+        // }
 
         _totalSupply = _totalSupply.sub(amount);
         _balances[msg.sender] = _balances[msg.sender].sub(amount);
 
-        stakingToken.safeTransfer(msg.sender, amount);
+        IERC20(stakingToken).safeTransfer(msg.sender, amount);
         emit Withdrawn(msg.sender, amount);
 
         if (claim) {
@@ -181,10 +209,16 @@ contract ModuleRewardPool is IModuleRewardPool {
         return true;
     }
 
+    /// @notice Withdraw all
+    /// @param claim Claim
     function withdrawAll(bool claim) external {
-        withdraw(_balances[msg.sender], claim);
+        /// TODO: modify
+        //withdraw(_balances[msg.sender], claim);
     }
 
+    /// @notice Withdraw and unwrap
+    /// @param amount Amount
+    /// @param claim Whether to claim
     function withdrawAndUnwrap(uint256 amount, bool claim)
         public
         updateReward(msg.sender)
@@ -192,14 +226,14 @@ contract ModuleRewardPool is IModuleRewardPool {
     {
         //also withdraw from linked rewards
         for (uint256 i = 0; i < extraRewards.length; i++) {
-            IRewards(extraRewards[i]).withdraw(msg.sender, amount);
+            IModuleRewardPool(extraRewards[i]).withdraw(msg.sender, amount);
         }
 
         _totalSupply = _totalSupply.sub(amount);
         _balances[msg.sender] = _balances[msg.sender].sub(amount);
 
         //tell operator to withdraw from here directly to user
-        IDeposit(operator).withdrawTo(modulePoolId, amount, msg.sender);
+        IModuleDispatcher(operator).withdrawTo(modulePoolId, amount, msg.sender);
         emit Withdrawn(msg.sender, amount);
 
         //get rewards too
@@ -209,10 +243,15 @@ contract ModuleRewardPool is IModuleRewardPool {
         return true;
     }
 
+    /// @notice Withdraw all and unwrap
+    /// @param claim Whether to claim
     function withdrawAllAndUnwrap(bool claim) external {
         withdrawAndUnwrap(_balances[msg.sender], claim);
     }
 
+    /// @notice Get reward
+    /// @param _account Account
+    /// @param _claimExtras Whether to claim extras
     function getReward(address _account, bool _claimExtras)
         public
         updateReward(_account)
@@ -221,32 +260,35 @@ contract ModuleRewardPool is IModuleRewardPool {
         uint256 reward = earned(_account);
         if (reward > 0) {
             rewards[_account] = 0;
-            rewardToken.safeTransfer(_account, reward);
-            IDeposit(operator).rewardClaimed(modulePoolId, _account, reward);
+            IERC20(rewardToken).safeTransfer(_account, reward);
+            IModuleDispatcher(operator).rewardClaimed(modulePoolId, _account, reward);
             emit RewardPaid(_account, reward);
         }
 
         //also get rewards from linked rewards
         if (_claimExtras) {
             for (uint256 i = 0; i < extraRewards.length; i++) {
-                IRewards(extraRewards[i]).getReward(_account);
+                IModuleRewardPool(extraRewards[i]).getReward(_account, true);
             }
         }
         return true;
     }
 
+    /// @notice Get reward for msg.sender
     function getReward() external returns (bool) {
         getReward(msg.sender, true);
         return true;
     }
 
+    /// @notice Donates reward token
+    /// @param _amount Amount
     function donate(uint256 _amount) external returns (bool) {
         IERC20(rewardToken).safeTransferFrom(msg.sender, address(this), _amount);
         queuedRewards = queuedRewards.add(_amount);
     }
 
-    /// @notice TODO
-    /// @param _rewards TODO
+    /// @notice Queue new rewards
+    /// @param _rewards Rewards
     function queueNewRewards(uint256 _rewards) external returns (bool) {
         require(msg.sender == operator, "!authorized");
 
@@ -274,9 +316,9 @@ contract ModuleRewardPool is IModuleRewardPool {
         return true;
     }
 
-    /// @notice TODO
-    /// @param reward TODO
-    function notifyRewardAmount(uint256 reward) internal updateReward(address(0)) {
+    /// @notice Notify reward amount
+    /// @param reward Reward
+    function notifyRewardAmount(uint256 reward) public updateReward(address(0)) {
         historicalRewards = historicalRewards.add(reward);
         if (block.timestamp >= periodFinish) {
             rewardRate = reward.div(duration);

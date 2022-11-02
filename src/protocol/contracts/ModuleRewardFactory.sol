@@ -95,14 +95,4 @@ contract ModuleRewardFactory is IModuleRewardFactory {
         );
         return address(rewardPool);
     }
-
-    /// TODO: consolidate
-    //create a virtual balance reward pool that mimicks the balance of a pool's main reward contract
-    //used for extra incentive tokens(ex. snx) as well as vecrv fees
-    function createTokenRewards(address _token, address _mainRewards, address _operator)
-        external
-        returns (address)
-    {
-        // Not needed
-    }
 }

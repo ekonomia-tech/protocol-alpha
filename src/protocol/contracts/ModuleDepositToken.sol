@@ -19,17 +19,20 @@ contract ModuleDepositToken is ERC20, IModuleTokenMinter {
     using SafeMath for uint256;
 
     address public operator;
+    address public depositToken;
+    address public module;
 
     /// Constructor
     /// TODO - module name?
-    constructor(address _operator, address _lptoken, address _module)
-        public
+    constructor(address _operator, address _depositToken, address _module)
         ERC20(
-            string(abi.encodePacked(ERC20(_lptoken).name(), IModule(_module).name(), " Deposit")),
-            string(abi.encodePacked("MOD", ERC20(_lptoken).symbol()))
+            string(abi.encodePacked(ERC20(_depositToken).name(), IModule(_module).name(), " Deposit")),
+            string(abi.encodePacked("MOD", ERC20(_depositToken).symbol()))
         )
     {
         operator = _operator;
+        depositToken = _depositToken;
+        module = _module;
     }
 
     /// @notice Mint deposit token

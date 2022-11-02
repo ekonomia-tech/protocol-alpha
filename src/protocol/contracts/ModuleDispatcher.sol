@@ -7,6 +7,7 @@ import "../interfaces/IModuleRewardFactory.sol";
 import "../interfaces/IModuleRewardPool.sol";
 import "../interfaces/IModule.sol";
 import "../interfaces/IModuleTokenMinter.sol";
+import "../interfaces/IModuleDispatcher.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -15,7 +16,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 /// @title ModuleDispatcher
 /// @notice Dispatcher for modules
 /// @author Ekonomia: https://github.com/Ekonomia
-contract ModuleDispatcher {
+contract ModuleDispatcher is IModuleDispatcher {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -256,15 +257,15 @@ contract ModuleDispatcher {
         return true;
     }
 
-    /// Claim rewards
-    /// TODO: consolidate
+    /// @notice Claim rewards
+    /// @param _modulePoolId Module Pool Id
+    /// @param _source Source
     function claimRewards(uint256 _modulePoolId, address _source) external returns (bool) {
         // TODO: this was prev for stash
         IModule(staker).claimRewards(_source);
         return true;
     }
 
-    //claim crv and extra rewards and disperse to reward contracts
     /// @notice Claim rewards and disperse to reward contracts
     /// @param _modulePoolId Module Pool Id
     function _earmarkRewards(uint256 _modulePoolId) internal {
@@ -284,13 +285,17 @@ contract ModuleDispatcher {
         IModuleRewardPool(rewardContract).queueNewRewards(rewardTokenBal);
     }
 
-    /// Get rewards for given module pool
+    /// @notice Get rewards for given module pool
+    /// @param _modulePoolId Module Pool Id
     function earmarkRewards(uint256 _modulePoolId) external returns (bool) {
         _earmarkRewards(_modulePoolId);
         return true;
     }
 
-    /// TODO: consolidate
+    /// @notice Claim rewards
+    /// @param _modulePoolId Module Pool Id
+    /// @param _address Recipient
+    /// @param _amount Amount
     function rewardClaimed(uint256 _modulePoolId, address _address, uint256 _amount)
         external
         returns (bool)
