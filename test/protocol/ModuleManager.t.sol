@@ -13,6 +13,7 @@ contract ModuleManagerTest is BaseSetup {
     error ZeroAddress();
     error ZeroValue();
     error SameValue();
+    error SameAddress();
     error ModuleCeilingExceeded();
     error KernelCeilingExceeded();
     error ModuleBurnExceeded();
@@ -31,7 +32,7 @@ contract ModuleManagerTest is BaseSetup {
     event ModuleAdded(address indexed module);
     event ModuleDeprecated(address indexed module);
     event PHOCeilingUpdateScheduled(
-        address indexed module, uint256 upcomingCeiling, uint256 upcomingUpdated
+        address indexed module, uint256 upcomingCeiling, uint256 ceilingUpdateTime
     );
     event UpdatedModuleDelay(uint256 newDelay);
     event ModuleMint(address indexed module, address indexed to, uint256 amount);
@@ -39,6 +40,7 @@ contract ModuleManagerTest is BaseSetup {
     event ModulePaused(address indexed module);
     event ModuleUnpaused(address indexed module);
     event PHOCeilingUpdated(address indexed module, uint256 newPHOCeiling);
+    event PauseGuardianUpdated(address newPauseGuardian);
 
     struct Module {
         uint256 phoCeiling;
@@ -303,16 +305,16 @@ contract ModuleManagerTest is BaseSetup {
 
     function testSetPHOCeilingModule() public {
         uint256 newPhoCeiling = ONE_MILLION_D18 * 10;
-        uint256 newUpcomingUpdate = block.timestamp + moduleManager.moduleDelay();
+        uint256 newCeilingUpdateTime = block.timestamp + moduleManager.moduleDelay();
 
         vm.expectEmit(true, false, false, true);
-        emit PHOCeilingUpdateScheduled(module1, newPhoCeiling, newUpcomingUpdate);
+        emit PHOCeilingUpdateScheduled(module1, newPhoCeiling, newCeilingUpdateTime);
         vm.prank(TONGovernance);
         moduleManager.setPHOCeilingForModule(module1, newPhoCeiling);
 
         (, uint256 upcomingCeiling, uint256 ceilingUpdateTime,,,) = moduleManager.modules(module1);
         assertEq(upcomingCeiling, newPhoCeiling);
-        assertEq(ceilingUpdateTime, newUpcomingUpdate);
+        assertEq(ceilingUpdateTime, newCeilingUpdateTime);
     }
 
     /// executeCeilingUpdate()
@@ -418,6 +420,23 @@ contract ModuleManagerTest is BaseSetup {
         moduleManager.pauseModule(address(0));
     }
 
+    function testCannotPauseModuleNotActive() public {
+        vm.prank(PHOGovernance);
+        moduleManager.deprecateModule(module1);
+
+        vm.prank(guardianAddress);
+        vm.expectRevert(
+            abi.encodeWithSelector(ModuleUnavailable.selector, module1, Status.Deprecated)
+        );
+        moduleManager.pauseModule(module1);
+
+        vm.prank(guardianAddress);
+        vm.expectRevert(
+            abi.encodeWithSelector(ModuleUnavailable.selector, address(10001), Status.Unregistered)
+        );
+        moduleManager.pauseModule(address(10001));
+    }
+
     function testCannotPauseModuleAlreadyPaused() public {
         vm.prank(guardianAddress);
         moduleManager.pauseModule(module1);
@@ -475,5 +494,28 @@ contract ModuleManagerTest is BaseSetup {
         vm.prank(PHOGovernance);
         vm.expectRevert(abi.encodeWithSelector(NotPauseGuardian.selector));
         moduleManager.unpauseModule(module1);
+    }
+
+    /// setPauseGuardian()
+
+    function testSetPauseGuardian() public {
+        address newPauseGuardian = address(667);
+        vm.expectEmit(false, false, false, true);
+        emit PauseGuardianUpdated(newPauseGuardian);
+        vm.prank(TONGovernance);
+        moduleManager.setPauseGuardian(newPauseGuardian);
+    }
+
+    function testCannotSetPauseGuardianNotTonGovernance() public {
+        vm.expectRevert(abi.encodeWithSelector(NotTONGovernance.selector, user1));
+        vm.prank(user1);
+        moduleManager.setPauseGuardian(address(667));
+    }
+
+    function testCannotSetPauseGuardianSameAddress() public {
+        address newPauseGuardian = guardianAddress;
+        vm.expectRevert(abi.encodeWithSelector(SameAddress.selector));
+        vm.prank(TONGovernance);
+        moduleManager.setPauseGuardian(newPauseGuardian);
     }
 }
