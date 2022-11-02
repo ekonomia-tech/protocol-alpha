@@ -14,6 +14,7 @@ contract ModuleManager is IModuleManager {
     IKernel public kernel;
     address public PHOGovernance;
     address public TONGovernance;
+    address public pauseGuardian;
     uint256 public moduleDelay;
 
     mapping(address => Module) public modules;
@@ -21,7 +22,7 @@ contract ModuleManager is IModuleManager {
     /// modifiers
 
     modifier onlyActiveModule() {
-        _checkModuleStatus(msg.sender);
+        _checkModuleActive(msg.sender);
         _;
     }
 
@@ -35,13 +36,27 @@ contract ModuleManager is IModuleManager {
         _;
     }
 
-    constructor(address _kernel, address _PHOGovernance, address _TONGovernance) {
-        if (_kernel == address(0) || _PHOGovernance == address(0) || _TONGovernance == address(0)) {
+    modifier onlyPauseGuardian() {
+        if (msg.sender != pauseGuardian) revert NotPauseGuardian();
+        _;
+    }
+
+    constructor(
+        address _kernel,
+        address _PHOGovernance,
+        address _TONGovernance,
+        address _pauseGuardian
+    ) {
+        if (
+            _kernel == address(0) || _PHOGovernance == address(0) || _TONGovernance == address(0)
+                || _pauseGuardian == address(0)
+        ) {
             revert ZeroAddress();
         }
         kernel = IKernel(_kernel);
         PHOGovernance = _PHOGovernance;
         TONGovernance = _TONGovernance;
+        pauseGuardian = _pauseGuardian;
         moduleDelay = 2 weeks;
     }
 
@@ -59,7 +74,7 @@ contract ModuleManager is IModuleManager {
         emit ModuleMint(msg.sender, _to, _amount);
     }
 
-    /// @notice updates module accounting && burns PHO through Kernel
+    /// @notice updates module accounting && burns PHO through kernel. Only registered modules can call, otherwise it will revert
     /// @param _from the user that $PHO will be burned from
     /// @param _amount total PHO to be burned
     function burnPHO(address _from, uint256 _amount) external {
@@ -102,25 +117,25 @@ contract ModuleManager is IModuleManager {
         onlyTONGovernance
     {
         if (_module == address(0)) revert ZeroAddress();
-        _checkModuleStatus(_module);
+        _checkModuleActive(_module);
         Module storage module = modules[_module];
         if (module.phoCeiling == _newPHOCeiling) revert SameValue();
         module.upcomingCeiling = _newPHOCeiling;
-        module.upcomingUpdate = block.timestamp + moduleDelay;
-        emit PHOCeilingUpdateScheduled(_module, _newPHOCeiling, module.upcomingUpdate);
+        module.ceilingUpdateTime = block.timestamp + moduleDelay;
+        emit PHOCeilingUpdateScheduled(_module, _newPHOCeiling, module.ceilingUpdateTime);
     }
 
     /// @notice executes the PHO ceiling update scheduled by setPHOCeilingForModule()
     /// @param _module address of module update
     function executeCeilingUpdate(address _module) external {
         if (_module == address(0)) revert ZeroAddress();
-        _checkModuleStatus(_module);
+        _checkModuleActive(_module);
         Module storage module = modules[_module];
-        if (module.upcomingCeiling == 0 || module.upcomingUpdate == 0) revert UpdateNotAvailable();
-        if (module.upcomingUpdate > block.timestamp) revert DelayNotMet();
+        if (module.ceilingUpdateTime == 0) revert UpdateNotAvailable();
+        if (module.ceilingUpdateTime > block.timestamp) revert DelayNotMet();
         module.phoCeiling = module.upcomingCeiling;
         module.upcomingCeiling = 0;
-        module.upcomingUpdate = 0;
+        module.ceilingUpdateTime = 0;
         emit PHOCeilingUpdated(_module, module.phoCeiling);
     }
 
@@ -134,9 +149,9 @@ contract ModuleManager is IModuleManager {
 
     /// @notice pause a module
     /// @param _module the module to be paused
-    function pauseModule(address _module) external onlyTONGovernance {
+    function pauseModule(address _module) external onlyPauseGuardian {
         if (_module == address(0)) revert ZeroAddress();
-        _checkModuleStatus(_module);
+        _checkModuleActive(_module);
         Module storage module = modules[_module];
         module.status = Status.Paused;
         emit ModulePaused(_module);
@@ -144,7 +159,7 @@ contract ModuleManager is IModuleManager {
 
     /// @notice unpause module
     /// @param _module the module to be unpaused
-    function unpauseModule(address _module) external onlyTONGovernance {
+    function unpauseModule(address _module) external onlyPauseGuardian {
         if (_module == address(0)) revert ZeroAddress();
         Module storage module = modules[_module];
         if (module.status != Status.Paused) revert ModuleNotPaused();
@@ -152,7 +167,9 @@ contract ModuleManager is IModuleManager {
         emit ModuleUnpaused(_module);
     }
 
-    function _checkModuleStatus(address _module) private view {
+    /// @notice checks whether a certain module is active, and if not, throws the current state.
+    /// @param _module the module that is being checked for status
+    function _checkModuleActive(address _module) private view {
         Module memory module = modules[_module];
         if (module.status != Status.Active) {
             revert ModuleUnavailable(_module, module.status);
