@@ -20,7 +20,6 @@ contract DeployMapleDepositModule is Script, Addresses {
     function run() external {
         vm.startBroadcast();
 
-        //mockUSDC = new ERC20("Mock USDC", "mUSDC");
         mapleDepositModule = new MapleDepositModule(
             moduleManagerAddress,
             kernelAddress,

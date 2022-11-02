@@ -13,7 +13,6 @@ import "./Addresses.sol";
 /// Script to deploy Stablecoin Deposit module
 contract DeployStablecoinDepositModule is Script, Addresses {
     StablecoinDepositModule public stablecoinDepositModule;
-    ERC20 public mockUSDC;
 
     function run() external {
         vm.startBroadcast();

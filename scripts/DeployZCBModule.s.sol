@@ -22,7 +22,6 @@ contract DeployZCBModule is Script, Addresses {
     function run() external {
         vm.startBroadcast();
 
-        //mockUSDC = new ERC20("Mock USDC", "mUSDC");
         zeroCouponBondModule = new ZeroCouponBondModule(
             moduleManagerAddress,
             kernelAddress,
