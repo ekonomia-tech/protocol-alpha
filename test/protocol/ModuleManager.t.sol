@@ -24,6 +24,7 @@ contract ModuleManagerTest is BaseSetup {
     error ModuleNotPaused();
     error DelayNotMet();
     error UpdateNotAvailable();
+    error NotPauseGuardian();
 
     /// events
 
@@ -42,7 +43,7 @@ contract ModuleManagerTest is BaseSetup {
     struct Module {
         uint256 phoCeiling;
         uint256 upcomingCeiling;
-        uint256 upcomingUpdate;
+        uint256 ceilingUpdateTime;
         uint256 phoMinted;
         uint256 startTime;
         Status status;
@@ -309,9 +310,9 @@ contract ModuleManagerTest is BaseSetup {
         vm.prank(TONGovernance);
         moduleManager.setPHOCeilingForModule(module1, newPhoCeiling);
 
-        (, uint256 upcomingCeiling, uint256 upcomingUpdate,,,) = moduleManager.modules(module1);
+        (, uint256 upcomingCeiling, uint256 ceilingUpdateTime,,,) = moduleManager.modules(module1);
         assertEq(upcomingCeiling, newPhoCeiling);
-        assertEq(upcomingUpdate, newUpcomingUpdate);
+        assertEq(ceilingUpdateTime, newUpcomingUpdate);
     }
 
     /// executeCeilingUpdate()
@@ -327,13 +328,13 @@ contract ModuleManagerTest is BaseSetup {
         );
         moduleManager.executeCeilingUpdate(address(200));
 
-        vm.prank(TONGovernance);
+        vm.prank(guardianAddress);
         moduleManager.pauseModule(module1);
 
         vm.expectRevert(abi.encodeWithSelector(ModuleUnavailable.selector, module1, Status.Paused));
         moduleManager.executeCeilingUpdate(module1);
 
-        vm.prank(TONGovernance);
+        vm.prank(guardianAddress);
         moduleManager.unpauseModule(module1);
 
         vm.prank(PHOGovernance);
@@ -372,12 +373,12 @@ contract ModuleManagerTest is BaseSetup {
         emit PHOCeilingUpdated(module1, newCeiling);
         moduleManager.executeCeilingUpdate(module1);
 
-        (uint256 ceilingAfter, uint256 upcomingCeiling, uint256 upcomingUpdate,,,) =
+        (uint256 ceilingAfter, uint256 upcomingCeiling, uint256 ceilingUpdateTime,,,) =
             moduleManager.modules(module1);
 
         assertEq(ceilingAfter, newCeiling);
         assertEq(upcomingCeiling, 0);
-        assertEq(upcomingUpdate, 0);
+        assertEq(ceilingUpdateTime, 0);
     }
 
     /// setModuleDelay()
@@ -407,43 +408,49 @@ contract ModuleManagerTest is BaseSetup {
     function testPauseModule() public {
         vm.expectEmit(true, false, false, true);
         emit ModulePaused(module1);
-        vm.prank(TONGovernance);
+        vm.prank(guardianAddress);
         moduleManager.pauseModule(module1);
     }
 
     function testCannotPauseModuleZeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(ZeroAddress.selector));
-        vm.prank(TONGovernance);
+        vm.prank(guardianAddress);
         moduleManager.pauseModule(address(0));
     }
 
     function testCannotPauseModuleAlreadyPaused() public {
-        vm.prank(TONGovernance);
+        vm.prank(guardianAddress);
         moduleManager.pauseModule(module1);
         vm.expectRevert(abi.encodeWithSelector(ModuleUnavailable.selector, module1, Status.Paused));
-        vm.prank(TONGovernance);
+        vm.prank(guardianAddress);
+        moduleManager.pauseModule(module1);
+    }
+
+    function testCannotPauseModuleNotPauseGuardian() public {
+        vm.prank(PHOGovernance);
+        vm.expectRevert(abi.encodeWithSelector(NotPauseGuardian.selector));
         moduleManager.pauseModule(module1);
     }
 
     /// unpauseModule()
 
     function testUnpauseModule() public {
-        vm.prank(TONGovernance);
+        vm.prank(guardianAddress);
         moduleManager.pauseModule(module1);
         vm.expectEmit(true, false, false, true);
         emit ModuleUnpaused(module1);
-        vm.prank(TONGovernance);
+        vm.prank(guardianAddress);
         moduleManager.unpauseModule(module1);
     }
 
     function testCannotUnpauseModuleZeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(ZeroAddress.selector));
-        vm.prank(TONGovernance);
+        vm.prank(guardianAddress);
         moduleManager.unpauseModule(address(0));
     }
 
     function testCannotUnpauseModuleNotPaused() public {
-        vm.startPrank(TONGovernance);
+        vm.startPrank(guardianAddress);
 
         vm.expectRevert(abi.encodeWithSelector(ModuleNotPaused.selector));
         moduleManager.unpauseModule(module1);
@@ -456,8 +463,17 @@ contract ModuleManagerTest is BaseSetup {
         vm.prank(PHOGovernance);
         moduleManager.deprecateModule(module1);
 
-        vm.prank(TONGovernance);
+        vm.prank(guardianAddress);
         vm.expectRevert(abi.encodeWithSelector(ModuleNotPaused.selector));
+        moduleManager.unpauseModule(module1);
+    }
+
+    function testCannotUnpauseModuleNotPauseGuardian() public {
+        vm.prank(guardianAddress);
+        moduleManager.pauseModule(module1);
+
+        vm.prank(PHOGovernance);
+        vm.expectRevert(abi.encodeWithSelector(NotPauseGuardian.selector));
         moduleManager.unpauseModule(module1);
     }
 }

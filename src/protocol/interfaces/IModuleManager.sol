@@ -17,6 +17,7 @@ interface IModuleManager {
     error ModuleNotPaused();
     error DelayNotMet();
     error UpdateNotAvailable();
+    error NotPauseGuardian();
 
     /// events
 
@@ -42,7 +43,7 @@ interface IModuleManager {
     struct Module {
         uint256 phoCeiling;
         uint256 upcomingCeiling;
-        uint256 upcomingUpdate;
+        uint256 ceilingUpdateTime;
         uint256 phoMinted;
         uint256 startTime;
         Status status;

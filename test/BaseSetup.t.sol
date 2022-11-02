@@ -47,6 +47,7 @@ abstract contract BaseSetup is Test {
     address public user3 = address(3);
     address public dummyAddress = address(4);
     address public module1 = address(5);
+    address public guardianAddress = address(666);
     address public richGuy = 0x72A53cDBBcc1b9efa39c834A540550e23463AAcB;
     address public mplWhale = 0xd6d4Bcde6c816F17889f1Dd3000aF0261B03a196;
     address public daiWhale = 0xc08a8a9f809107c5A7Be6d90e315e4012c99F39a;
@@ -123,7 +124,8 @@ abstract contract BaseSetup is Test {
         moduleManager = new ModuleManager(
             address(kernel),
             PHOGovernance,
-            TONGovernance
+            TONGovernance,
+            guardianAddress
         );
 
         vm.stopPrank();
