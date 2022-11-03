@@ -31,7 +31,7 @@ abstract contract BaseSetup is Test {
     IUSDC usdc;
     IERC20 frax;
     IERC20 mpl;
-    IERC20 weth;
+    IWETH weth;
     IERC20 fraxBPLP;
     ICurvePool fraxBP;
     ICurveFactory curveFactory;
@@ -57,7 +57,6 @@ abstract contract BaseSetup is Test {
     address public metaPoolFactoryAddress = 0xB9fC157394Af804a3578134A6585C0dc9cc990d4;
     address public fraxRichGuy = 0xd3d176F7e4b43C70a68466949F6C64F06Ce75BB9;
 
-    address public constant WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant USDC_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address public constant FRAX_ADDRESS = 0x853d955aCEf822Db058eb8505911ED77F175b99e;
     address public constant MPL_ADDRESS = 0x33349B282065b0284d756F0577FB39c158F935e6;
@@ -145,7 +144,7 @@ abstract contract BaseSetup is Test {
         frax = IERC20(FRAX_ADDRESS);
 
         mpl = IERC20(MPL_ADDRESS);
-        weth = IERC20(WETH_ADDRESS);
+        weth = IWETH(WETH_ADDRESS);
 
         priceFeed = new ChainlinkPriceFeed(PRECISION_DIFFERENCE);
 
@@ -341,4 +340,8 @@ interface IUSDC {
     function configureMinter(address minter, uint256 minterAllowedAmount) external;
 
     function masterMinter() external view returns (address);
+}
+
+interface IWETH is IERC20 {
+    function deposit() external payable;
 }

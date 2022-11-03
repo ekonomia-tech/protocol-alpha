@@ -29,8 +29,7 @@ import "@protocol/interfaces/IModuleManager.sol";
     5. removeDebt() - the user can remove debt, burning PHO from the user causing heal of the position. minDebt has to be met. No fee
     6. close() - If the user wants to completely close the position, he can call this function. this is the only function that closes the position.
     7. liquidate() - liquidation function in case the CR drops under the liquidationCR. currently does NOT handle underwater liquidations.
-    
-*/
+    */
 
 contract CDPPool is ICDPPool {
     struct PoolBalance {
