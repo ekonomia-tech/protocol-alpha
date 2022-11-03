@@ -18,6 +18,7 @@ contract DeployZCBModule is Script, Addresses {
     uint256 interestRate = 1000;
     uint256 depositWindowOpen = block.timestamp + 1 days;
     uint256 depositWindowEnd = block.timestamp + 1000 days;
+    address depositTokenAddress = usdcAddress;
 
     function run() external {
         vm.startBroadcast();
@@ -26,7 +27,7 @@ contract DeployZCBModule is Script, Addresses {
             moduleManagerAddress,
             kernelAddress,
             phoAddress,
-            usdcAddress,
+            depositTokenAddress,
             bondTokenName,
             bondTokenSymbol,
             interestRate,

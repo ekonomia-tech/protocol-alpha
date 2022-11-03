@@ -13,13 +13,14 @@ import "./Addresses.sol";
 /// Script to deploy Stablecoin Deposit module
 contract DeployStablecoinDepositModule is Script, Addresses {
     StablecoinDepositModule public stablecoinDepositModule;
+    address depositTokenAddress = usdcAddress;
 
     function run() external {
         vm.startBroadcast();
 
         stablecoinDepositModule = new StablecoinDepositModule(
             moduleManagerAddress,
-            usdcAddress,
+            depositTokenAddress,
             kernelAddress,
             phoAddress
         );
