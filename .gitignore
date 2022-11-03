@@ -7,10 +7,8 @@ out/
 cache/
 broadcast/
 scripts/Addresses.sol
+.log
 
 # Code Editors
 .vscode
-
-
-
 
