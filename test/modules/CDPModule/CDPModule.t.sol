@@ -67,7 +67,6 @@ contract CDPPoolTest is BaseSetup {
     uint256 public constant POINT_PRECISION = 10 ** 5;
 
     CDPPool public wethPool;
-    IWETH public weth = IWETH(WETH_ADDRESS);
 
     function setUp() public {
         wethPool = new CDPPool(
@@ -569,8 +568,4 @@ contract CDPPoolTest is BaseSetup {
         balance.pool = _getPoolBalance();
         return balance;
     }
-}
-
-interface IWETH is IERC20 {
-    function deposit() external payable;
 }

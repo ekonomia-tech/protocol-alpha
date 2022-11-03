@@ -89,6 +89,7 @@ contract DummyOracle is IPriceOracle {
     function setMPLPHOPrice(uint256 _price) public {
         mpl_pho_price = _price;
     }
+
     function setWethUSDPrice(uint256 _price) public {
         priceFeeds[WETH_ADDRESS] = _price;
         weth_usd_price = _price;
