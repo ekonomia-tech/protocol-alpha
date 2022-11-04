@@ -7,20 +7,20 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@oracle/IPriceOracle.sol";
 import "@oracle/DummyOracle.sol";
 
-contract CDPPoolTest is BaseSetup {
+contract CDPPool_stETHTest is BaseSetup {
     struct PoolBalance {
         uint256 debt;
         uint256 collateral;
         uint256 earnedFees;
         uint256 pho;
-        uint256 weth;
+        uint256 collToken;
     }
 
     struct UserBalance {
         uint256 debt;
         uint256 collateral;
         uint256 pho;
-        uint256 weth;
+        uint256 collToken;
         uint256 cr;
     }
 
@@ -66,34 +66,40 @@ contract CDPPoolTest is BaseSetup {
     uint256 public constant MINTING_CEILING = POOL_CEILING;
     uint256 public constant POINT_PRECISION = 10 ** 5;
 
-    CDPPool public wethPool;
+    CDPPool public cdpPool;
+    IStETH public stETH = IStETH(STETH_ADDRESS);
+
+    IStETH public collToken;
 
     function setUp() public {
-        wethPool = new CDPPool(
+        cdpPool = new CDPPool(
             address(moduleManager),
             address(priceOracle),
-            WETH_ADDRESS,
+            STETH_ADDRESS,
             MIN_CR,
             LIQUIDATION_CR,
             MIN_DEBT,
             PROTOCOL_FEE
         );
 
+        collToken = IStETH(STETH_ADDRESS);
+
         vm.prank(PHOGovernance);
-        moduleManager.addModule(address(wethPool));
+        moduleManager.addModule(address(cdpPool));
 
         vm.prank(TONGovernance);
-        moduleManager.setPHOCeilingForModule(address(wethPool), MINTING_CEILING);
+        moduleManager.setPHOCeilingForModule(address(cdpPool), MINTING_CEILING);
 
         vm.warp(block.timestamp + moduleManager.moduleDelay());
-        
-        moduleManager.executeCeilingUpdate(address(wethPool));
+        moduleManager.executeCeilingUpdate(address(cdpPool));
 
         /// user1 is a normal user
         vm.deal(user1, 10000 * 10 ** 18);
         vm.startPrank(user1);
-        weth.deposit{value: (user1.balance)}();
-        weth.approve(address(wethPool), type(uint256).max);
+
+        collToken.submit{value: (user1.balance)}(owner);
+        collToken.approve(address(cdpPool), type(uint256).max);
+
         pho.approve(address(kernel), type(uint256).max);
         vm.stopPrank();
 
@@ -108,52 +114,53 @@ contract CDPPoolTest is BaseSetup {
     /// open()
 
     function testOpen() public {
+        
         uint256 collateralAmount = 2 * ONE_D18;
         uint256 debtAmount = ONE_THOUSAND_D18;
 
-        uint256 userWethBalanceBefore = weth.balanceOf(user1);
-        (uint256 debtBalanceBefore, uint256 collateralBalanceBefore) = wethPool.balance();
+        uint256 userCollTokenBalanceBefore = collToken.balanceOf(user1);
+        (uint256 debtBalanceBefore, uint256 collateralBalanceBefore) = cdpPool.balance();
 
         vm.expectEmit(true, false, false, true);
         emit Opened(user1, debtAmount, collateralAmount);
         vm.prank(user1);
-        wethPool.open(collateralAmount, debtAmount);
+        cdpPool.open(collateralAmount, debtAmount);
 
-        uint256 userWethBalanceAfter = weth.balanceOf(user1);
-        (uint256 debtBalanceAfter, uint256 collateralBalanceAfter) = wethPool.balance();
-        (uint256 userPositionDebt, uint256 userPositionCollateral) = wethPool.cdps(user1);
+        uint256 userCollTokenBalanceAfter = collToken.balanceOf(user1);
+        (uint256 debtBalanceAfter, uint256 collateralBalanceAfter) = cdpPool.balance();
+        (uint256 userPositionDebt, uint256 userPositionCollateral) = cdpPool.cdps(user1);
 
         assertEq(collateralBalanceBefore + collateralAmount, collateralBalanceAfter);
         assertEq(debtBalanceBefore + debtAmount, debtBalanceAfter);
         assertEq(userPositionDebt, debtAmount);
         assertEq(userPositionCollateral, collateralAmount);
-        assertEq(weth.balanceOf(address(wethPool)), collateralAmount);
-        assertEq(userWethBalanceBefore, userWethBalanceAfter + collateralAmount);
+        //assertEq(collToken.balanceOf(address(cdpPool)), collateralAmount);
+        assertEq(userCollTokenBalanceBefore, userCollTokenBalanceAfter + collateralAmount);
         assertEq(pho.balanceOf(address(user1)), debtAmount);
     }
 
     function testCannotOpenZeroAmount() public {
         vm.expectRevert(abi.encodeWithSelector(ZeroValue.selector));
         vm.prank(user1);
-        wethPool.open(0, ONE_THOUSAND_D18);
+        cdpPool.open(0, ONE_THOUSAND_D18);
 
         vm.expectRevert(abi.encodeWithSelector(ZeroValue.selector));
         vm.prank(user1);
-        wethPool.open(ONE_THOUSAND_D18, 0);
+        cdpPool.open(ONE_THOUSAND_D18, 0);
     }
 
     function testCannotOpenDebtLowerThanMinDebt(uint256 debtAmount) public {
         debtAmount = bound(debtAmount, 1, 999);
         vm.expectRevert(abi.encodeWithSelector(DebtTooLow.selector));
         vm.prank(user1);
-        wethPool.open(ONE_D18, debtAmount);
+        cdpPool.open(ONE_D18, debtAmount);
     }
 
     function testCannotOpenAlreadyActive() public {
         _openHealthyPosition(user1, ONE_THOUSAND_D18, 200);
         vm.expectRevert(abi.encodeWithSelector(CDPAlreadyActive.selector));
         vm.prank(user1);
-        wethPool.open(2 * ONE_D18, ONE_THOUSAND_D18);
+        cdpPool.open(2 * ONE_D18, ONE_THOUSAND_D18);
     }
 
     /// test settings:
@@ -162,13 +169,13 @@ contract CDPPoolTest is BaseSetup {
     /// CR - 100%
     function testCannotOpenCRTooLow(uint256 collAmount) public {
         uint256 debtAmount = ONE_THOUSAND_D18;
-        uint256 debtInCollateral = wethPool.debtToCollateral(debtAmount);
+        uint256 debtInCollateral = cdpPool.debtToCollateral(debtAmount);
         collAmount =
             bound(collAmount, debtInCollateral, (debtInCollateral * MIN_CR / POINT_PRECISION) - 1);
 
         vm.expectRevert(abi.encodeWithSelector(CRTooLow.selector));
         vm.prank(user1);
-        wethPool.open(collAmount, debtAmount);
+        cdpPool.open(collAmount, debtAmount);
     }
 
     /// addCollateral()
@@ -179,19 +186,19 @@ contract CDPPoolTest is BaseSetup {
 
         Balances memory _before = _getBalances(user1);
         uint256 expectedCR =
-            wethPool.computeCR(_before.user.collateral + collAddition, _before.user.debt);
+            cdpPool.computeCR(_before.user.collateral + collAddition, _before.user.debt);
         uint256 expectedNewCollateral = _before.user.collateral + collAddition;
 
         vm.expectEmit(true, false, false, true);
         emit CollateralAdded(user1, collAddition, expectedNewCollateral);
         vm.prank(user1);
-        wethPool.addCollateral(collAddition);
+        cdpPool.addCollateral(collAddition);
 
         Balances memory _after = _getBalances(user1);
 
         assertEq(_after.user.debt, _before.user.debt);
         assertEq(_after.user.collateral, _before.user.collateral + collAddition);
-        assertEq(_after.user.weth, _before.user.weth - collAddition);
+        assertEq(_after.user.collToken, _before.user.collToken - collAddition);
         assertEq(_after.user.pho, _before.user.pho);
         assertEq(_after.pool.debt, _before.pool.debt);
         assertEq(_after.pool.collateral, _before.pool.collateral + collAddition);
@@ -202,13 +209,13 @@ contract CDPPoolTest is BaseSetup {
         _openHealthyPosition(user1, ONE_THOUSAND_D18, 200);
         vm.expectRevert(abi.encodeWithSelector(ZeroValue.selector));
         vm.prank(user1);
-        wethPool.addCollateral(0);
+        cdpPool.addCollateral(0);
     }
 
     function testCannotAddCollateralCDPNotActive() public {
         vm.expectRevert(abi.encodeWithSelector(CDPNotActive.selector));
         vm.prank(user1);
-        wethPool.addCollateral(ONE_D18);
+        cdpPool.addCollateral(ONE_D18);
     }
 
     /// removeCollateral()
@@ -222,23 +229,23 @@ contract CDPPoolTest is BaseSetup {
         uint256 protocolFee = collReduction * PROTOCOL_FEE / POINT_PRECISION;
         uint256 expectedNewCollateral = _before.user.collateral - collReduction;
         uint256 expectedCR =
-            wethPool.computeCR(_before.user.collateral - collReduction, _before.user.debt);
+            cdpPool.computeCR(_before.user.collateral - collReduction, _before.user.debt);
 
         vm.expectEmit(true, false, false, true);
         emit CollateralRemoved(user1, collReduction, expectedNewCollateral);
         vm.prank(user1);
-        wethPool.removeCollateral(collReduction);
+        cdpPool.removeCollateral(collReduction);
 
         Balances memory _after = _getBalances(user1);
 
         assertEq(_after.user.debt, _before.user.debt);
         assertEq(_after.user.collateral, _before.user.collateral - collReduction);
-        assertEq(_after.user.weth, _before.user.weth + (collReduction - protocolFee));
+        assertApproxEqAbs(_after.user.collToken, _before.user.collToken + (collReduction - protocolFee), 1 wei);
         assertEq(_after.user.pho, _before.user.pho);
         assertEq(_after.pool.debt, _before.pool.debt);
-        assertEq(_after.pool.collateral, _before.pool.collateral - collReduction);
+        assertApproxEqAbs(_after.pool.collateral, _before.pool.collateral - collReduction, 1 wei);
         assertEq(_after.pool.earnedFees, _before.pool.earnedFees + protocolFee);
-        assertEq(weth.balanceOf(address(wethPool)), _after.pool.collateral + _after.pool.earnedFees);
+        assertApproxEqAbs(collToken.balanceOf(address(cdpPool)), _after.pool.collateral + _after.pool.earnedFees, 1 wei);
         assertEq(_after.user.cr, expectedCR);
     }
 
@@ -246,26 +253,26 @@ contract CDPPoolTest is BaseSetup {
         _openHealthyPosition(user1, ONE_THOUSAND_D18, 200);
         vm.expectRevert(abi.encodeWithSelector(ZeroValue.selector));
         vm.prank(user1);
-        wethPool.removeCollateral(0);
+        cdpPool.removeCollateral(0);
     }
 
     function testCannotRemoveCollateralCDPNotActive() public {
         vm.expectRevert(abi.encodeWithSelector(CDPNotActive.selector));
         vm.prank(user1);
-        wethPool.removeCollateral(ONE_D18);
+        cdpPool.removeCollateral(ONE_D18);
     }
 
     function testCannotRemoveCollateralAmountTooHigh() public {
         _openHealthyPosition(user1, ONE_THOUSAND_D18, 175);
         // calculate the reduction from 175% to 165%
-        (, uint256 collAmountInCR175) = wethPool.cdps(user1);
+        (, uint256 collAmountInCR175) = cdpPool.cdps(user1);
         uint256 collAmountInCR165 =
-            wethPool.debtToCollateral(ONE_THOUSAND_D18) * 165000 / POINT_PRECISION;
+            cdpPool.debtToCollateral(ONE_THOUSAND_D18) * 165000 / POINT_PRECISION;
         uint256 collReduction = collAmountInCR175 - collAmountInCR165;
 
         vm.expectRevert(abi.encodeWithSelector(RequestedAmountTooHigh.selector));
         vm.prank(user1);
-        wethPool.removeCollateral(collReduction);
+        cdpPool.removeCollateral(collReduction);
     }
 
     /// addDebt()
@@ -278,18 +285,18 @@ contract CDPPoolTest is BaseSetup {
 
         uint256 expectedDebt = _before.user.debt + debtAddition;
         uint256 expectedCR =
-            wethPool.computeCR(_before.user.collateral, _before.user.debt + debtAddition);
+            cdpPool.computeCR(_before.user.collateral, _before.user.debt + debtAddition);
 
         vm.expectEmit(true, false, false, true);
         emit DebtAdded(user1, debtAddition, expectedDebt);
         vm.prank(user1);
-        wethPool.addDebt(debtAddition);
+        cdpPool.addDebt(debtAddition);
 
         Balances memory _after = _getBalances(user1);
 
         assertEq(_after.user.debt, _before.user.debt + debtAddition);
         assertEq(_after.user.collateral, _before.user.collateral);
-        assertEq(_after.user.weth, _before.user.weth);
+        assertEq(_after.user.collToken, _before.user.collToken);
         assertEq(_after.user.pho, _before.user.pho + debtAddition);
         assertEq(_after.pool.debt, _before.pool.debt + debtAddition);
         assertEq(_after.pool.collateral, _before.pool.collateral);
@@ -300,13 +307,13 @@ contract CDPPoolTest is BaseSetup {
         _openHealthyPosition(user1, ONE_THOUSAND_D18, 200);
         vm.expectRevert(abi.encodeWithSelector(ZeroValue.selector));
         vm.prank(user1);
-        wethPool.addDebt(0);
+        cdpPool.addDebt(0);
     }
 
     function testCannotAddDebtCDPNotActive() public {
         vm.expectRevert(abi.encodeWithSelector(CDPNotActive.selector));
         vm.prank(user1);
-        wethPool.addDebt(ONE_D18);
+        cdpPool.addDebt(ONE_D18);
     }
 
     function testCannotAddDebtAmountTooHigh() public {
@@ -316,7 +323,7 @@ contract CDPPoolTest is BaseSetup {
 
         vm.expectRevert(abi.encodeWithSelector(RequestedAmountTooHigh.selector));
         vm.prank(user1);
-        wethPool.addDebt(debtAddition);
+        cdpPool.addDebt(debtAddition);
     }
 
     /// removeDebt()
@@ -327,19 +334,19 @@ contract CDPPoolTest is BaseSetup {
 
         Balances memory _before = _getBalances(user1);
         uint256 expectedCR =
-            wethPool.computeCR(_before.user.collateral, _before.user.debt - debtReduction);
+            cdpPool.computeCR(_before.user.collateral, _before.user.debt - debtReduction);
         uint256 expectedNewDebt = _before.user.debt - debtReduction;
 
         vm.expectEmit(true, false, false, true);
         emit DebtRemoved(user1, debtReduction, expectedNewDebt);
         vm.prank(user1);
-        wethPool.removeDebt(debtReduction);
+        cdpPool.removeDebt(debtReduction);
 
         Balances memory _after = _getBalances(user1);
 
         assertEq(_after.user.debt, _before.user.debt - debtReduction);
         assertEq(_after.user.collateral, _before.user.collateral);
-        assertEq(_after.user.weth, _before.user.weth);
+        assertEq(_after.user.collToken, _before.user.collToken);
         assertEq(_after.user.pho, _before.user.pho - debtReduction);
         assertEq(_after.pool.debt, _before.pool.debt - debtReduction);
         assertEq(_after.pool.collateral, _before.pool.collateral);
@@ -350,13 +357,13 @@ contract CDPPoolTest is BaseSetup {
         _openHealthyPosition(user1, ONE_THOUSAND_D18, 200);
         vm.expectRevert(abi.encodeWithSelector(ZeroValue.selector));
         vm.prank(user1);
-        wethPool.removeDebt(0);
+        cdpPool.removeDebt(0);
     }
 
     function testCannotRemoveDebtCDPNotActive() public {
         vm.expectRevert(abi.encodeWithSelector(CDPNotActive.selector));
         vm.prank(user1);
-        wethPool.removeDebt(ONE_D18);
+        cdpPool.removeDebt(ONE_D18);
     }
 
     function testCannotRemoveDebtAmountTooHigh(uint256 debtReduction) public {
@@ -365,7 +372,7 @@ contract CDPPoolTest is BaseSetup {
 
         vm.expectRevert(abi.encodeWithSelector(RequestedAmountTooHigh.selector));
         vm.prank(user1);
-        wethPool.removeDebt(debtReduction);
+        cdpPool.removeDebt(debtReduction);
     }
 
     /// close()
@@ -380,31 +387,31 @@ contract CDPPoolTest is BaseSetup {
         vm.expectEmit(true, false, false, true);
         emit Closed(user1);
         vm.prank(user1);
-        wethPool.close(_before.user.debt);
+        cdpPool.close(_before.user.debt);
 
         Balances memory _after = _getBalances(user1);
 
         assertEq(_after.user.debt, 0);
         assertEq(_after.user.collateral, 0);
-        assertEq(_after.user.weth, _before.user.weth + expectedCollateralBack);
+        assertApproxEqAbs(_after.user.collToken, _before.user.collToken + expectedCollateralBack, 1 wei);
         assertEq(_after.user.pho, _before.user.pho - _before.user.debt);
         assertEq(_after.pool.debt, _before.pool.debt - _before.user.debt);
-        assertEq(_after.pool.collateral, _before.pool.collateral - _before.user.collateral);
+        assertApproxEqAbs(_after.pool.collateral, _before.pool.collateral - _before.user.collateral, 1 wei);
         assertEq(_after.pool.earnedFees, _before.pool.earnedFees + protocolFee);
-        assertEq(_after.pool.weth, _before.pool.weth - _before.user.collateral + protocolFee);
+        assertApproxEqAbs(_after.pool.collToken, _before.pool.collToken + protocolFee - _before.user.collateral , 1 wei);
     }
 
     function testCannotCloseZeroValue() public {
         _openHealthyPosition(user1, ONE_THOUSAND_D18, 200);
         vm.expectRevert(abi.encodeWithSelector(ZeroValue.selector));
         vm.prank(user1);
-        wethPool.close(0);
+        cdpPool.close(0);
     }
 
     function testCannotCloseCDPNotActive() public {
         vm.expectRevert(abi.encodeWithSelector(CDPNotActive.selector));
         vm.prank(user1);
-        wethPool.close(ONE_D18);
+        cdpPool.close(ONE_D18);
     }
 
     function testCannotCloseFullAmountNotPresent() public {
@@ -412,7 +419,7 @@ contract CDPPoolTest is BaseSetup {
 
         vm.expectRevert(abi.encodeWithSelector(FullAmountNotPresent.selector));
         vm.prank(user1);
-        wethPool.close(ONE_THOUSAND_D18 - 1);
+        cdpPool.close(ONE_THOUSAND_D18 - 1);
     }
 
     /// liquidate()
@@ -431,7 +438,7 @@ contract CDPPoolTest is BaseSetup {
         uint256 liquidationReward =
             (_before.user.collateral - protocolFee) * LIQUIDATION_REWARD / POINT_PRECISION;
         uint256 expectedLiquidatorAmount =
-            wethPool.debtToCollateral(_before.user.debt) + liquidationReward;
+            cdpPool.debtToCollateral(_before.user.debt) + liquidationReward;
         uint256 expectedCollateralBackToOwner =
             _before.user.collateral - protocolFee - expectedLiquidatorAmount;
 
@@ -447,19 +454,19 @@ contract CDPPoolTest is BaseSetup {
         vm.expectEmit(true, false, false, true);
         emit Closed(user1);
         vm.prank(user2);
-        wethPool.liquidate(user1);
+        cdpPool.liquidate(user1);
 
         Balances memory _after = _getBalances(user1);
         UserBalance memory _liquidatorAfter = _getUserBalance(user2);
 
         assertEq(_after.user.collateral, 0);
         assertEq(_after.user.debt, 0);
-        assertEq(_after.user.weth, _before.user.weth + expectedCollateralBackToOwner);
+        assertApproxEqAbs(_after.user.collToken, _before.user.collToken + expectedCollateralBackToOwner, 2 wei);
         assertEq(_after.user.pho, _before.user.pho);
-        assertEq(_liquidatorAfter.weth, _liquidatorBefore.weth + expectedLiquidatorAmount);
+        assertApproxEqAbs(_liquidatorAfter.collToken, _liquidatorBefore.collToken + expectedLiquidatorAmount, 2 wei);
         assertEq(_liquidatorAfter.pho, _liquidatorBefore.pho - debtAmount);
-        assertEq(_after.pool.weth, _before.pool.weth - _before.user.collateral + protocolFee);
-        assertEq(_after.pool.collateral, _before.pool.collateral - _before.user.collateral);
+        assertApproxEqAbs(_after.pool.collToken, _before.pool.collToken + protocolFee - _before.user.collateral, 2 wei);
+        assertApproxEqAbs(_after.pool.collateral, _before.pool.collateral - _before.user.collateral, 2 wei);
         assertEq(_after.pool.debt, _before.pool.debt - debtAmount);
         assertEq(_after.pool.earnedFees, _before.pool.earnedFees + protocolFee);
     }
@@ -467,14 +474,14 @@ contract CDPPoolTest is BaseSetup {
     function testCannotLiquidateCDPNotActive() public {
         vm.expectRevert(abi.encodeWithSelector(CDPNotActive.selector));
         vm.prank(user2);
-        wethPool.liquidate(user1);
+        cdpPool.liquidate(user1);
     }
 
     function testCannotLiquidateNotInLiquidationZone() public {
         _openHealthyPosition(user1, ONE_THOUSAND_D18, 175);
         vm.expectRevert(abi.encodeWithSelector(NotInLiquidationZone.selector));
         vm.prank(user2);
-        wethPool.liquidate(user1);
+        cdpPool.liquidate(user1);
     }
 
     /// computeCR()
@@ -482,10 +489,10 @@ contract CDPPoolTest is BaseSetup {
     function testComputeCR() public {
         uint256 debtAmount = ONE_THOUSAND_D18;
         uint256 collateralAmount = 2 * ONE_D18;
-        uint256 collateralInUSD = priceOracle.getPrice(WETH_ADDRESS) * collateralAmount / 10 ** 18;
+        uint256 collateralInUSD = priceOracle.getPrice(address(collToken)) * collateralAmount / 10 ** 18;
         uint256 expectedCR = collateralInUSD * POINT_PRECISION / debtAmount;
 
-        assertEq(expectedCR, wethPool.computeCR(collateralAmount, debtAmount));
+        assertEq(expectedCR, cdpPool.computeCR(collateralAmount, debtAmount));
     }
 
     /// calculateProtocolFee()
@@ -493,7 +500,7 @@ contract CDPPoolTest is BaseSetup {
     function testCalculateProtocolFee(uint256 collateralAmount) public {
         collateralAmount = bound(collateralAmount, ONE_D18, ONE_THOUSAND_D18);
         uint256 expectedFee = collateralAmount * PROTOCOL_FEE / POINT_PRECISION;
-        (uint256 actualFee, uint256 remainder) = wethPool.calculateProtocolFee(collateralAmount);
+        (uint256 actualFee, uint256 remainder) = cdpPool.calculateProtocolFee(collateralAmount);
         assertEq(actualFee, expectedFee);
         assertEq(remainder, collateralAmount - expectedFee);
     }
@@ -503,7 +510,7 @@ contract CDPPoolTest is BaseSetup {
     function testCalculateLiquidationFee(uint256 collateralAmount) public {
         collateralAmount = bound(collateralAmount, ONE_D18, ONE_THOUSAND_D18);
         uint256 expectedFee = collateralAmount * LIQUIDATION_REWARD / POINT_PRECISION;
-        uint256 actualFee = wethPool.calculateLiquidationFee(collateralAmount);
+        uint256 actualFee = cdpPool.calculateLiquidationFee(collateralAmount);
         assertEq(actualFee, expectedFee);
     }
 
@@ -511,18 +518,18 @@ contract CDPPoolTest is BaseSetup {
 
     function testDebtToCollateral(uint256 debt) public {
         debt = bound(debt, ONE_THOUSAND_D18, ONE_MILLION_D18);
-        uint256 collateralPrice = priceOracle.getPrice(WETH_ADDRESS);
+        uint256 collateralPrice = priceOracle.getPrice(address(collToken));
         uint256 expectedCollateral = debt * 10 ** 18 / collateralPrice;
-        assertEq(wethPool.debtToCollateral(debt), expectedCollateral);
+        assertEq(cdpPool.debtToCollateral(debt), expectedCollateral);
     }
 
     /// collateralToUSD
 
     function testCollateralToUSD(uint256 collateralAmount) public {
         collateralAmount = bound(collateralAmount, ONE_D18, ONE_THOUSAND_D18);
-        uint256 collateralPrice = priceOracle.getPrice(WETH_ADDRESS);
+        uint256 collateralPrice = priceOracle.getPrice(address(collToken));
         uint256 expected = collateralAmount * collateralPrice / 10 ** 18;
-        assertEq(wethPool.collateralToUSD(collateralAmount), expected);
+        assertEq(cdpPool.collateralToUSD(collateralAmount), expected);
     }
 
     /// private functions
@@ -537,31 +544,31 @@ contract CDPPoolTest is BaseSetup {
     {
         require(cr >= (MIN_CR / 10 ** 3) && debtAmount >= MIN_DEBT);
         uint256 collateralAmount =
-            wethPool.debtToCollateral(debtAmount * (cr * 10 ** 3) / POINT_PRECISION);
+            cdpPool.debtToCollateral(debtAmount * (cr * 10 ** 3) / POINT_PRECISION);
         vm.prank(user);
-        wethPool.open(collateralAmount, debtAmount);
+        cdpPool.open(collateralAmount, debtAmount);
     }
 
     function _getPoolBalance() private returns (PoolBalance memory) {
         PoolBalance memory balance;
-        (uint256 debt, uint256 collateral) = wethPool.balance();
+        (uint256 debt, uint256 collateral) = cdpPool.balance();
         balance.debt = debt;
         balance.collateral = collateral;
-        balance.earnedFees = wethPool.earnedFees();
-        balance.pho = pho.balanceOf(address(wethPool));
-        balance.weth = weth.balanceOf(address(wethPool));
+        balance.earnedFees = cdpPool.earnedFees();
+        balance.pho = pho.balanceOf(address(cdpPool));
+        balance.collToken = collToken.balanceOf(address(cdpPool));
         return balance;
     }
 
     function _getUserBalance(address user) private returns (UserBalance memory) {
         UserBalance memory balance;
-        (uint256 debt, uint256 collateral) = wethPool.cdps(user);
+        (uint256 debt, uint256 collateral) = cdpPool.cdps(user);
         balance.debt = debt;
         balance.collateral = collateral;
         balance.pho = pho.balanceOf(user);
-        balance.weth = weth.balanceOf(user);
+        balance.collToken = collToken.balanceOf(user);
         if (balance.collateral != 0 && balance.debt != 0) {
-            balance.cr = wethPool.computeCR(balance.collateral, balance.debt);
+            balance.cr = cdpPool.computeCR(balance.collateral, balance.debt);
         }
         return balance;
     }
@@ -572,4 +579,8 @@ contract CDPPoolTest is BaseSetup {
         balance.pool = _getPoolBalance();
         return balance;
     }
+}
+
+interface IStETH is IERC20 {
+    function submit(address _referral) external payable;
 }
