@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.13;
 
+import "forge-std/console2.sol";
 import "../../BaseSetup.t.sol";
 import "@modules/mapleDepositModule/MapleDepositModule.sol";
 import "@modules/mapleDepositModule/IMplRewards.sol";
@@ -28,6 +29,15 @@ contract MapleDepositModuleTest is BaseSetup {
         uint256 totalPHOSupply;
         uint256 maplePoolBalance;
         uint256 maplePoolRewardsBalance;
+    }
+
+    struct RewardsVars {
+        uint256 rewardPerToken;
+        uint256 userRewardPerTokenPaid;
+        uint256 lastUpdateTime;
+        uint256 lastTimeRewardApplicable;
+        uint256 periodFinish;
+        uint256 blockTimestamp;
     }
 
     // USDC
@@ -77,11 +87,6 @@ contract MapleDepositModuleTest is BaseSetup {
             address(mplPoolUSDC)
         );
 
-        // Add USDC pool rewards amounts since prev amounts expired
-        // i.e. last period of rewards was in the past so need to test with new rewards
-        vm.prank(orthogonalPoolOwner);
-        mplRewardsUSDC.notifyRewardAmount(ONE_HUNDRED_D18);
-
         // WETH - Maven11
         mplPoolWETH = IPool(mavenWETHPool);
         mplRewardsWETH = IMplRewards(mavenWETHRewards);
@@ -96,11 +101,6 @@ contract MapleDepositModuleTest is BaseSetup {
             address(mplRewardsWETH),
             address(mplPoolWETH)
         );
-
-        // Add WETH pool reward amounts since prev amounts expired
-        // i.e. last period of rewards was in the past so need to test with new rewards
-        vm.prank(mavenPoolOwner);
-        mplRewardsWETH.notifyRewardAmount(ONE_HUNDRED_D18);
 
         // Add module to ModuleManager
         vm.startPrank(PHOGovernance);
@@ -282,7 +282,7 @@ contract MapleDepositModuleTest is BaseSetup {
         before.userStakedAmount = _module.stakedAmount(user1);
         before.totalPHOSupply = pho.totalSupply();
         before.maplePoolBalance = _module.mplPool().balanceOf(address(_module));
-        before.maplePoolRewardsBalance = _module.mplRewards().balanceOf(address(_module));
+        before.maplePoolRewardsBalance = _module.mplStakingAMO().balanceOf(address(_module));
 
         // Deposit - TODO: event
         vm.expectEmit(true, true, true, true);
@@ -299,7 +299,7 @@ contract MapleDepositModuleTest is BaseSetup {
         aft.userStakedAmount = _module.stakedAmount(user1);
         aft.totalPHOSupply = pho.totalSupply();
         aft.maplePoolBalance = _module.mplPool().balanceOf(address(_module));
-        aft.maplePoolRewardsBalance = _module.mplRewards().balanceOf(address(_module));
+        aft.maplePoolRewardsBalance = _module.mplStakingAMO().balanceOf(address(_module));
 
         // User balance - depositToken down and PHO up
         assertEq(aft.userDepositTokenBalance + _depositAmount, before.userDepositTokenBalance);
@@ -377,7 +377,7 @@ contract MapleDepositModuleTest is BaseSetup {
         before.userStakedAmount = _module.stakedAmount(user1);
         before.totalPHOSupply = pho.totalSupply();
         before.maplePoolBalance = _module.mplPool().balanceOf(address(_module));
-        before.maplePoolRewardsBalance = _module.mplRewards().balanceOf(address(_module));
+        before.maplePoolRewardsBalance = _module.mplStakingAMO().balanceOf(address(_module));
 
         vm.warp(intendToWithdrawTimestamp);
         vm.prank(owner);
@@ -399,7 +399,7 @@ contract MapleDepositModuleTest is BaseSetup {
         aft.userStakedAmount = _module.stakedAmount(user1);
         aft.totalPHOSupply = pho.totalSupply();
         aft.maplePoolBalance = _module.mplPool().balanceOf(address(_module));
-        aft.maplePoolRewardsBalance = _module.mplRewards().balanceOf(address(_module));
+        aft.maplePoolRewardsBalance = _module.mplStakingAMO().balanceOf(address(_module));
 
         // User balance - depositToken up and PHO down
         assertEq(aft.userDepositTokenBalance, before.userDepositTokenBalance + _redeemAmount);
@@ -431,40 +431,78 @@ contract MapleDepositModuleTest is BaseSetup {
         mapleDepositModuleUSDC.getRewardMaple();
     }
 
-    // // Test Reward - USDC
-    // function testRewardUSDC() public {
-    //     uint256 depositAmount = ONE_HUNDRED_D6;
-    //     _testGetRewardAnyModule(depositAmount, mapleDepositModuleUSDC);
-    // }
+    // Test Reward - USDC
+    function testRewardUSDC() public {
+        uint256 depositAmount = ONE_HUNDRED_D6;
+        // Add USDC pool rewards amounts since prev amounts expired
+        // i.e. last period of rewards was in the past so need to test with new rewards
+        vm.prank(orthogonalPoolOwner);
+        mplRewardsUSDC.notifyRewardAmount(ONE_HUNDRED_D18);
+        _testGetRewardAnyModule(depositAmount, mapleDepositModuleUSDC);
+    }
 
     // Test Reward - WETH
     function testRewardWETH() public {
         uint256 depositAmount = ONE_HUNDRED_D18;
+        // Add WETH pool reward amounts since prev amounts expired
+        // i.e. last period of rewards was in the past so need to test with new rewards
+        vm.prank(mavenPoolOwner);
+        mplRewardsWETH.notifyRewardAmount(ONE_HUNDRED_D18);
         _testGetRewardAnyModule(depositAmount, mapleDepositModuleWETH);
     }
 
     // Helper function to test Maple rewards from any module
     function _testGetRewardAnyModule(uint256 _depositAmount, MapleDepositModule _module) public {
         // Deposit
+        RewardsVars memory before;
+        before.rewardPerToken = _module.mplStakingAMO().rewardPerToken();
+        before.userRewardPerTokenPaid =
+            _module.mplStakingAMO().userRewardPerTokenPaid(address(_module));
+        before.lastUpdateTime = _module.mplStakingAMO().lastUpdateTime();
+        before.lastTimeRewardApplicable = _module.mplStakingAMO().lastTimeRewardApplicable();
+        before.periodFinish = _module.mplStakingAMO().periodFinish();
+        before.blockTimestamp = block.timestamp;
+
         vm.prank(user1);
         _module.deposit(_depositAmount);
+
+        RewardsVars memory afterDeposit;
+        afterDeposit.rewardPerToken = _module.mplStakingAMO().rewardPerToken();
+        afterDeposit.userRewardPerTokenPaid =
+            _module.mplStakingAMO().userRewardPerTokenPaid(address(_module));
+        afterDeposit.lastUpdateTime = _module.mplStakingAMO().lastUpdateTime();
+        afterDeposit.lastTimeRewardApplicable = _module.mplStakingAMO().lastTimeRewardApplicable();
+        afterDeposit.periodFinish = _module.mplStakingAMO().periodFinish();
+        afterDeposit.blockTimestamp = block.timestamp;
 
         // Advance days to accrue rewards
         vm.warp(block.timestamp + 7 days);
 
-        uint256 beforeRewardsDeposited = _module.mplRewards().balanceOf(address(_module));
+        RewardsVars memory beforeRewards;
+        beforeRewards.rewardPerToken = _module.mplStakingAMO().rewardPerToken();
+        beforeRewards.userRewardPerTokenPaid =
+            _module.mplStakingAMO().userRewardPerTokenPaid(address(_module));
+        beforeRewards.lastUpdateTime = _module.mplStakingAMO().lastUpdateTime();
+        beforeRewards.lastTimeRewardApplicable = _module.mplStakingAMO().lastTimeRewardApplicable();
+        beforeRewards.periodFinish = _module.mplStakingAMO().periodFinish();
+        beforeRewards.blockTimestamp = block.timestamp;
+
+        uint256 beforeRewardsDeposited = _module.mplStakingAMO().balanceOf(address(_module));
         uint256 beforeRewardsBalance =
-            IERC20(_module.mplRewards().rewardsToken()).balanceOf(address(_module));
-        uint256 beforeRewardsEarned = _module.mplRewards().earned(address(_module));
+            IERC20(_module.mplStakingAMO().rewardsToken()).balanceOf(address(_module));
+        uint256 beforeRewardsEarned = _module.mplStakingAMO().earned(address(_module));
+        uint256 beforeRewardPerToken = _module.mplStakingAMO().rewardPerToken();
+        uint256 beforeUserRewardPerTokenPaid =
+            _module.mplStakingAMO().userRewardPerTokenPaid(address(_module));
 
         // Get reward
         vm.prank(owner);
         _module.getRewardMaple();
 
-        uint256 afterRewardsDeposited = _module.mplRewards().balanceOf(address(_module));
+        uint256 afterRewardsDeposited = _module.mplStakingAMO().balanceOf(address(_module));
         uint256 afterRewardsBalance =
-            IERC20(_module.mplRewards().rewardsToken()).balanceOf(address(_module));
-        uint256 afterRewardsEarned = _module.mplRewards().earned(address(_module));
+            IERC20(_module.mplStakingAMO().rewardsToken()).balanceOf(address(_module));
+        uint256 afterRewardsEarned = _module.mplStakingAMO().earned(address(_module));
 
         // Check balances of reward tokens - note deposits stay same
         assertTrue(beforeRewardsBalance == 0);

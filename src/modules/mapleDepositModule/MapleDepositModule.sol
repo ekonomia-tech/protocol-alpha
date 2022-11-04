@@ -13,11 +13,17 @@ import "@protocol/interfaces/IModuleManager.sol";
 import "@oracle/ChainlinkPriceFeed.sol";
 import "./IMplRewards.sol";
 import "./IPool.sol";
+import "../interfaces/IModuleRewardPool.sol";
+import "../interfaces/IStakingAMO.sol";
+import "../interfaces/IModule.sol";
+import "../interfaces/IModuleTokenMinter.sol";
+import "../common/ModuleDepositToken.sol";
+import "../common/ModuleRewardPool.sol";
 
 /// @title MapleDepositModule
 /// @author Ekonomia: https://github.com/ekonomia-tech
 /// @notice Accepts deposit token for use in Maple lending pool
-contract MapleDepositModule is Ownable, ReentrancyGuard {
+contract MapleDepositModule is Ownable, ReentrancyGuard, IModule {
     using SafeERC20 for IERC20;
 
     /// Errors
@@ -35,16 +41,22 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
     uint8 public depositTokenDecimals;
     IPHO public pho;
     ChainlinkPriceFeed public oracle;
-    IMplRewards public mplRewards;
+    IStakingAMO public mplStakingAMO;
     IPool public mplPool;
+    IModuleRewardPool public moduleRewardPool; // TODO; instantiate in tests
+    IModuleTokenMinter public moduleDepositToken;
     mapping(address => uint256) public depositedAmount; // MPL deposited
     mapping(address => uint256) public issuedAmount; // PHO issued
     mapping(address => uint256) public stakedAmount; // MPL staked
+
+    address stakingToken = 0x6F6c8013f639979C84b756C7FC1500eB5aF18Dc4; // MPL-LP
+    address rewardToken = 0x33349B282065b0284d756F0577FB39c158F935e6; // MPL
 
     /// Events
     event MapleDeposited(address indexed depositor, uint256 depositAmount, uint256 phoMinted);
     event MapleRedeemed(address indexed redeemer, uint256 redeemAmount);
     event MapleRewardsReceived(uint256 totalRewards);
+    event Withdrawn(address to, uint256 amount);
 
     modifier onlyModuleManager() {
         require(msg.sender == address(moduleManager), "Only ModuleManager");
@@ -58,12 +70,12 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
         address _pho,
         address _oracle,
         address _depositToken,
-        address _mplRewards,
+        address _mplStakingAMO,
         address _mplPool
     ) {
         if (
             _moduleManager == address(0) || _kernel == address(0) || _pho == address(0)
-                || _oracle == address(0) || _depositToken == address(0) || _mplRewards == address(0)
+                || _oracle == address(0) || _depositToken == address(0) || _mplStakingAMO == address(0)
                 || _mplPool == address(0)
         ) {
             revert ZeroAddressDetected();
@@ -77,7 +89,7 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
         if (depositTokenDecimals > 18) {
             revert OverEighteenDecimals();
         }
-        mplRewards = IMplRewards(_mplRewards);
+        mplStakingAMO = IStakingAMO(_mplStakingAMO);
         mplPool = IPool(_mplPool);
         if (mplPool.liquidityAsset() != _depositToken) {
             revert DepositTokenMustBeMaplePoolAsset();
@@ -88,6 +100,22 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
 
         // Approve deposit token for mplPool
         IERC20(depositToken).safeIncreaseAllowance(address(mplPool), type(uint256).max);
+
+        // TODO: make module deposit token (IModuleTokenMinter)
+        ModuleDepositToken mToken = new ModuleDepositToken(
+            address(this),
+            _depositToken,
+            address(this)
+        );
+        moduleDepositToken = IModuleTokenMinter(mToken);
+
+        ModuleRewardPool mRewardPool = new ModuleRewardPool(
+            stakingToken,
+            rewardToken,
+            address(this),
+            address(this)
+        );
+        moduleRewardPool = IModuleRewardPool(address(mRewardPool));
     }
 
     /// @notice Deposit into underlying MPL pool and rewards
@@ -121,11 +149,18 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
             revert CannotReceiveZeroMPT();
         }
 
-        // Approve pool tokens for mplRewards
-        mplPool.increaseCustodyAllowance(address(mplRewards), mplPoolTokensReceived);
+        // Approve pool tokens for mplStakingAMO
+        mplPool.increaseCustodyAllowance(address(mplStakingAMO), mplPoolTokensReceived);
 
-        // Stakes deposit token in mplRewards
-        mplRewards.stake(mplPoolTokensReceived);
+        // Stakes deposit token in mplStakingAMO
+        mplStakingAMO.stake(mplPoolTokensReceived);
+
+        // TODO: mint deposit tracker, token
+        // TODO: then call stakeFor() in pool contract
+
+        moduleDepositToken.mint(msg.sender, mplPoolTokensReceived);
+
+        moduleRewardPool.stakeFor(msg.sender, mplPoolTokensReceived);
 
         stakedAmount[msg.sender] += mplPoolTokensReceived;
 
@@ -138,7 +173,7 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
     }
 
     /// @notice User redeems PHO for their original tokens
-    function redeem() external nonReentrant {
+    function redeem() public nonReentrant {
         uint256 redeemAmount = issuedAmount[msg.sender];
         if (redeemAmount == 0) {
             revert CannotRedeemZeroTokens();
@@ -158,8 +193,11 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
         depositedAmount[msg.sender] -= depositAmount;
         stakedAmount[msg.sender] -= stakedPoolTokenAmount;
 
-        // Withdraw from rewards
-        mplRewards.withdraw(stakedPoolTokenAmount);
+        // Burn module deposit token
+        moduleDepositToken.burn(msg.sender, stakedPoolTokenAmount);
+
+        // Withdraw from staking AMO
+        mplStakingAMO.withdraw(stakedPoolTokenAmount);
 
         // Withdraw from pool
         mplPool.withdraw(depositAmount);
@@ -176,9 +214,46 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
     /// Function in MPL rewards contract is called getReward()
     function getRewardMaple() external onlyOwner {
         // Get rewards
-        mplRewards.getReward();
-        IERC20 rewardToken = IERC20(mplRewards.rewardsToken());
+        mplStakingAMO.getReward();
+        IERC20 rewardToken = IERC20(mplStakingAMO.rewardsToken());
         uint256 totalRewards = rewardToken.balanceOf(address(this));
         emit MapleRewardsReceived(totalRewards);
+    }
+
+    /// @notice Claim rewards
+    /// @param _address Recipient
+    /// @param _amount Amount
+    function rewardClaimed(address _address, uint256 _amount) external returns (bool) {
+        address rewardContract = address(moduleRewardPool);
+        // What is lockRewards?
+        require(msg.sender == rewardContract, "!auth");
+
+        //mint reward tokens
+        moduleDepositToken.mint(_address, _amount);
+
+        return true;
+    }
+
+    // Allow reward contracts to send here and withdraw to user
+    function withdrawTo(uint256 _amount, address _to) external returns (bool) {
+        address rewardContract = address(moduleRewardPool);
+        require(msg.sender == rewardContract, "!auth");
+
+        _withdraw(_amount, msg.sender, _to);
+        return true;
+    }
+
+    // TODO: edit
+    // Helper function for withdraw on module deposit side
+    function _withdraw(uint256 _amount, address _from, address _to) internal {
+        // Remove moduleDepositToken balance
+        moduleDepositToken.burn(_from, _amount);
+
+        redeem();
+
+        //return lp tokens
+        IERC20(address(moduleDepositToken)).safeTransfer(_to, _amount);
+
+        emit Withdrawn(_to, _amount);
     }
 }
