@@ -9,9 +9,9 @@ interface ICDPPool {
     error CRTooLow();
     error CDPNotActive();
     error CDPAlreadyActive();
-    error RequestedAmountTooHigh();
     error FullAmountNotPresent();
     error NotInLiquidationZone();
+    error MinDebtNotMet();
 
     /// @notice Event emitted when a CDP is opened
     /// @param user The user that opens the CDP
@@ -53,5 +53,5 @@ interface ICDPPool {
     function removeDebt(uint256 _debtAmount) external;
     function liquidate(address _user) external;
     function withdrawFees() external;
-    function getTotalNormalizedCollateral() external view returns (uint256);
+    function getCollateralUSDTotal() external view returns (uint256);
 }
