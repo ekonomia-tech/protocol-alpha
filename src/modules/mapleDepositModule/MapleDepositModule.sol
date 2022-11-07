@@ -13,7 +13,8 @@ import "@protocol/interfaces/IModuleManager.sol";
 import "@oracle/ChainlinkPriceFeed.sol";
 import "./IMplRewards.sol";
 import "./IPool.sol";
-import "../interfaces/IModuleRewardPool.sol";
+// import "../interfaces/IModuleRewardPool.sol";
+import "../interfaces/IModuleAMO.sol";
 import "../interfaces/IStakingAMO.sol";
 import "../interfaces/IModule.sol";
 import "../interfaces/IModuleTokenMinter.sol";
@@ -163,7 +164,7 @@ contract MapleDepositModule is Ownable, ReentrancyGuard, IModule {
 
         moduleDepositToken.mint(msg.sender, mplPoolTokensReceived);
 
-        IModuleRewardPool(moduleRewardPool).stakeFor(msg.sender, mplPoolTokensReceived);
+        IModuleAMO(moduleRewardPool).stakeFor(msg.sender, mplPoolTokensReceived);
 
         stakedAmount[msg.sender] += mplPoolTokensReceived;
 
