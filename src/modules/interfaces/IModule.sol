@@ -5,9 +5,9 @@ pragma solidity ^0.8.13;
 interface IModule {
     function deposit(uint256) external;
 
-    function redeem() external;
+    function redeem() external; // TODO: rename to Withdraw
 
-    function rewardClaimed(address, uint256) external returns (bool);
+    // function rewardClaimed(address, uint256) external returns (bool);
 
     function withdrawTo(uint256, address) external returns (bool);
 }

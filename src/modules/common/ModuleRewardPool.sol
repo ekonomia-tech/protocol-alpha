@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "forge-std/console2.sol";
 
 /// @title ModuleRewardPool
 /// @notice Module reward pool, inspired by Synthetix
@@ -122,49 +123,23 @@ contract ModuleRewardPool {
         ).add(rewards[account]);
     }
 
-    /// @notice Stake
-    /// @param _amount Amount
-    function stake(uint256 _amount) public updateReward(msg.sender) returns (bool) {
-        require(_amount > 0, "RewardPool : Cannot stake 0");
-
-        //also stake to linked rewards
-        for (uint256 i = 0; i < extraRewards.length; i++) {
-            IModuleRewardPool(extraRewards[i]).stake(msg.sender, _amount);
-        }
-
-        _totalSupply = _totalSupply.add(_amount);
-        _balances[msg.sender] = _balances[msg.sender].add(_amount);
-
-        IERC20(stakingToken).safeTransferFrom(msg.sender, address(this), _amount);
-        emit Staked(msg.sender, _amount);
-
-        return true;
-    }
-
-    /// @notice Stake all
-    function stakeAll() external returns (bool) {
-        uint256 balance = IERC20(stakingToken).balanceOf(msg.sender);
-        stake(balance);
-        return true;
-    }
-
     /// @notice Stake for
     /// @param _for For
     /// @param _amount Amount
     function stakeFor(address _for, uint256 _amount) public updateReward(_for) returns (bool) {
         require(_amount > 0, "RewardPool : Cannot stake 0");
 
-        //also stake to linked rewards
-        for (uint256 i = 0; i < extraRewards.length; i++) {
-            IModuleRewardPool(extraRewards[i]).stake(_for, _amount);
-        }
-
         //give to _for
         _totalSupply = _totalSupply.add(_amount);
         _balances[_for] = _balances[_for].add(_amount);
 
-        //take away from sender
-        IERC20(stakingToken).safeTransferFrom(msg.sender, address(this), _amount);
+        // TODO: call external contract here as needed..
+        //take away from sender - TODO: change this?
+        // IERC20(stakingToken).safeTransferFrom(
+        //     msg.sender,
+        //     address(this),
+        //     _amount
+        // );
         emit Staked(_for, _amount);
 
         return true;
@@ -257,18 +232,11 @@ contract ModuleRewardPool {
         returns (bool)
     {
         uint256 reward = earned(_account);
+        console2.log("ModuleRewardPool -> this is earned: ", reward);
         if (reward > 0) {
             rewards[_account] = 0;
             IERC20(rewardToken).safeTransfer(_account, reward);
-            IModule(operator).rewardClaimed(_account, reward);
             emit RewardPaid(_account, reward);
-        }
-
-        //also get rewards from linked rewards
-        if (_claimExtras) {
-            for (uint256 i = 0; i < extraRewards.length; i++) {
-                IModuleRewardPool(extraRewards[i]).getReward(_account, true);
-            }
         }
         return true;
     }

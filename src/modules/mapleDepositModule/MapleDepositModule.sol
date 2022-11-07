@@ -43,13 +43,13 @@ contract MapleDepositModule is Ownable, ReentrancyGuard, IModule {
     ChainlinkPriceFeed public oracle;
     IStakingAMO public mplStakingAMO;
     IPool public mplPool;
-    IModuleRewardPool public moduleRewardPool; // TODO; instantiate in tests
+    address public moduleRewardPool; // TODO; instantiate in tests
     IModuleTokenMinter public moduleDepositToken;
     mapping(address => uint256) public depositedAmount; // MPL deposited
     mapping(address => uint256) public issuedAmount; // PHO issued
     mapping(address => uint256) public stakedAmount; // MPL staked
 
-    address stakingToken = 0x6F6c8013f639979C84b756C7FC1500eB5aF18Dc4; // MPL-LP
+    address public stakingToken = 0x6F6c8013f639979C84b756C7FC1500eB5aF18Dc4; // MPL-LP
     address rewardToken = 0x33349B282065b0284d756F0577FB39c158F935e6; // MPL
 
     /// Events
@@ -112,10 +112,13 @@ contract MapleDepositModule is Ownable, ReentrancyGuard, IModule {
         ModuleRewardPool mRewardPool = new ModuleRewardPool(
             stakingToken,
             rewardToken,
-            address(this),
+            msg.sender,
             address(this)
         );
-        moduleRewardPool = IModuleRewardPool(address(mRewardPool));
+        moduleRewardPool = address(mRewardPool);
+
+        // Set staking token as deposit token
+        //stakingToken = address(moduleDepositToken);
     }
 
     /// @notice Deposit into underlying MPL pool and rewards
@@ -160,7 +163,7 @@ contract MapleDepositModule is Ownable, ReentrancyGuard, IModule {
 
         moduleDepositToken.mint(msg.sender, mplPoolTokensReceived);
 
-        moduleRewardPool.stakeFor(msg.sender, mplPoolTokensReceived);
+        IModuleRewardPool(moduleRewardPool).stakeFor(msg.sender, mplPoolTokensReceived);
 
         stakedAmount[msg.sender] += mplPoolTokensReceived;
 
@@ -212,19 +215,21 @@ contract MapleDepositModule is Ownable, ReentrancyGuard, IModule {
     /// Currently rewards are in this contract and not withdrawn
     /// TODO: another PR to get rewards distributed to users, and not stuck in contract
     /// Function in MPL rewards contract is called getReward()
-    function getRewardMaple() external onlyOwner {
-        // Get rewards
+    function getRewardMaple() external onlyOwner returns (uint256) {
+        // Get rewards from MPL staking contract
         mplStakingAMO.getReward();
-        IERC20 rewardToken = IERC20(mplStakingAMO.rewardsToken());
-        uint256 totalRewards = rewardToken.balanceOf(address(this));
+        uint256 totalRewards = IERC20(rewardToken).balanceOf(address(this));
         emit MapleRewardsReceived(totalRewards);
+        // Transfer rewards to module reward pool
+        IERC20(rewardToken).transfer(address(moduleRewardPool), totalRewards);
+        return totalRewards;
     }
 
     /// @notice Claim rewards
     /// @param _address Recipient
     /// @param _amount Amount
     function rewardClaimed(address _address, uint256 _amount) external returns (bool) {
-        address rewardContract = address(moduleRewardPool);
+        address rewardContract = moduleRewardPool;
         // What is lockRewards?
         require(msg.sender == rewardContract, "!auth");
 
@@ -236,7 +241,7 @@ contract MapleDepositModule is Ownable, ReentrancyGuard, IModule {
 
     // Allow reward contracts to send here and withdraw to user
     function withdrawTo(uint256 _amount, address _to) external returns (bool) {
-        address rewardContract = address(moduleRewardPool);
+        address rewardContract = moduleRewardPool;
         require(msg.sender == rewardContract, "!auth");
 
         _withdraw(_amount, msg.sender, _to);
