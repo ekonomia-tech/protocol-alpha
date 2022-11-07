@@ -13,13 +13,10 @@ interface IModuleAMO {
     function withdrawAllFor(address account) external;
 
     // Get reward
-    function getReward(address account, bool claimExtras) external returns (bool);
+    function getReward(address account) external returns (bool);
 
     // Queue new rewards
     function queueNewRewards(uint256 rewards) external returns (bool);
-
-    // TODO: consolidate
-    function notifyRewardAmount(uint256 reward) external;
 
     // Staking token
     function stakingToken() external view returns (address);
