@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@oracle/IPriceOracle.sol";
 import "@oracle/DummyOracle.sol";
 
-contract CDPPool_stETHTest is BaseSetup {
+contract CDP_stETHTest is BaseSetup {
     struct PoolBalances {
         uint256 debt;
         uint256 collateral;
@@ -232,11 +232,11 @@ contract CDPPool_stETHTest is BaseSetup {
         Balances memory _after = _getBalances(user1);
 
         assertEq(_after.user.debt, _before.user.debt);
-        assertEq(_after.user.collateral, _before.user.collateral + collAddition);
-        assertEq(_after.user.collToken, _before.user.collToken - collAddition);
+        assertApproxEqAbs(_after.user.collateral, _before.user.collateral + collAddition, 1 wei);
+        assertApproxEqAbs(_after.user.collToken, _before.user.collToken - collAddition, 1 wei);
         assertEq(_after.user.pho, _before.user.pho);
         assertEq(_after.pool.debt, _before.pool.debt);
-        assertEq(_after.pool.collateral, _before.pool.collateral + collAddition);
+        assertApproxEqAbs(_after.pool.collateral, _before.pool.collateral + collAddition, 1 wei);
         assertEq(_after.user.cr, expectedCR);
     }
 
@@ -272,11 +272,11 @@ contract CDPPool_stETHTest is BaseSetup {
         Balances memory _after = _getBalances(user1);
 
         assertEq(_after.user.debt, _before.user.debt);
-        assertEq(_after.user.collateral, _before.user.collateral + collAddition);
-        assertEq(_after.user.collToken, _before.user.collToken - collAddition);
+        assertApproxEqAbs(_after.user.collateral, _before.user.collateral + collAddition, 1 wei);
+        assertApproxEqAbs(_after.user.collToken, _before.user.collToken - collAddition, 1 wei);
         assertEq(_after.user.pho, _before.user.pho);
         assertEq(_after.pool.debt, _before.pool.debt);
-        assertEq(_after.pool.collateral, _before.pool.collateral + collAddition);
+        assertApproxEqAbs(_after.pool.collateral, _before.pool.collateral + collAddition, 1 wei);
         assertEq(_after.user.cr, expectedCR);
     }
 
@@ -294,7 +294,6 @@ contract CDPPool_stETHTest is BaseSetup {
 
         Balances memory _before = _getBalances(user1);
 
-        uint256 protocolFee = collReduction * PROTOCOL_FEE / MAX_PPH;
         uint256 expectedNewCollateral = _before.user.collateral - collReduction;
         uint256 expectedCR =
             cdpPool.computeCR(_before.user.collateral - collReduction, _before.user.debt);
@@ -308,18 +307,10 @@ contract CDPPool_stETHTest is BaseSetup {
 
         assertEq(_after.user.debt, _before.user.debt);
         assertEq(_after.user.collateral, _before.user.collateral - collReduction);
-        assertApproxEqAbs(
-            _after.user.collToken, _before.user.collToken + (collReduction - protocolFee), 1 wei
-        );
+        assertApproxEqAbs(_after.user.collToken, _before.user.collToken + collReduction, 1 wei);
         assertEq(_after.user.pho, _before.user.pho);
         assertEq(_after.pool.debt, _before.pool.debt);
         assertApproxEqAbs(_after.pool.collateral, _before.pool.collateral - collReduction, 1 wei);
-        assertEq(_after.pool.feesCollected, _before.pool.feesCollected + protocolFee);
-        assertApproxEqAbs(
-            collToken.balanceOf(address(cdpPool)),
-            _after.pool.collateral + _after.pool.feesCollected,
-            1 wei
-        );
         assertEq(_after.user.cr, expectedCR);
     }
 
@@ -356,7 +347,6 @@ contract CDPPool_stETHTest is BaseSetup {
 
         Balances memory _before = _getBalances(user1);
 
-        uint256 protocolFee = collReduction * PROTOCOL_FEE / MAX_PPH;
         uint256 expectedNewCollateral = _before.user.collateral - collReduction;
         uint256 expectedCR =
             cdpPool.computeCR(_before.user.collateral - collReduction, _before.user.debt);
@@ -370,18 +360,10 @@ contract CDPPool_stETHTest is BaseSetup {
 
         assertEq(_after.user.debt, _before.user.debt);
         assertEq(_after.user.collateral, _before.user.collateral - collReduction);
-        assertApproxEqAbs(
-            _after.user.collToken, _before.user.collToken + (collReduction - protocolFee), 1 wei
-        );
+        assertApproxEqAbs(_after.user.collToken, _before.user.collToken + collReduction, 1 wei);
         assertEq(_after.user.pho, _before.user.pho);
         assertEq(_after.pool.debt, _before.pool.debt);
         assertApproxEqAbs(_after.pool.collateral, _before.pool.collateral - collReduction, 1 wei);
-        assertEq(_after.pool.feesCollected, _before.pool.feesCollected + protocolFee);
-        assertApproxEqAbs(
-            collToken.balanceOf(address(cdpPool)),
-            _after.pool.collateral + _after.pool.feesCollected,
-            1 wei
-        );
         assertEq(_after.user.cr, expectedCR);
     }
 
@@ -449,8 +431,10 @@ contract CDPPool_stETHTest is BaseSetup {
         _openHealthyPosition(user1, 3 * ONE_THOUSAND_D18, 175);
 
         Balances memory _before = _getBalances(user1);
-        uint256 expectedCR =
-            cdpPool.computeCR(_before.user.collateral, _before.user.debt - debtReduction);
+        uint256 protocolFee = cdpPool.debtToCollateral(debtReduction * PROTOCOL_FEE / MAX_PPH);
+        uint256 expectedCR = cdpPool.computeCR(
+            _before.user.collateral - protocolFee, _before.user.debt - debtReduction
+        );
         uint256 expectedNewDebt = _before.user.debt - debtReduction;
 
         vm.expectEmit(true, false, false, true);
@@ -461,11 +445,12 @@ contract CDPPool_stETHTest is BaseSetup {
         Balances memory _after = _getBalances(user1);
 
         assertEq(_after.user.debt, _before.user.debt - debtReduction);
-        assertEq(_after.user.collateral, _before.user.collateral);
+        assertEq(_after.user.collateral, _before.user.collateral - protocolFee);
         assertEq(_after.user.collToken, _before.user.collToken);
         assertEq(_after.user.pho, _before.user.pho - debtReduction);
         assertEq(_after.pool.debt, _before.pool.debt - debtReduction);
-        assertEq(_after.pool.collateral, _before.pool.collateral);
+        assertEq(_after.pool.collateral, _before.pool.collateral - protocolFee);
+        assertEq(_after.pool.feesCollected, _before.pool.feesCollected + protocolFee);
         assertEq(_after.user.cr, expectedCR);
     }
 
@@ -497,7 +482,7 @@ contract CDPPool_stETHTest is BaseSetup {
         _openHealthyPosition(user1, ONE_THOUSAND_D18, 175);
 
         Balances memory _before = _getBalances(user1);
-        uint256 protocolFee = _before.user.collateral * PROTOCOL_FEE / MAX_PPH;
+        uint256 protocolFee = cdpPool.debtToCollateral(_before.user.debt * PROTOCOL_FEE / MAX_PPH);
         uint256 expectedCollateralBack = _before.user.collateral - protocolFee;
 
         vm.expectEmit(true, false, false, true);

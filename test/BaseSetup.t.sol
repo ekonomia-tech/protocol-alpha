@@ -227,8 +227,9 @@ abstract contract BaseSetup is Test {
     }
 
     function _getFRAX(address _to, uint256 _amount) internal {
-        vm.prank(fraxRichGuy);
-        frax.transfer(_to, _amount);
+        _fundAndApproveUSDC(_to, address(fraxBP), _amount / 10 ** 12, _amount / 10 ** 12);
+        vm.prank(_to);
+        ICurvePool(fraxBP).exchange(1, 0, _amount / 10 ** 12, _amount * 9 / 10);
     }
 
     function _approveFRAX(address _owner, address _spender, uint256 _amount) internal {
@@ -299,8 +300,7 @@ abstract contract BaseSetup is Test {
         fraxBPmetaLiquidity[0] = TEN_THOUSAND_D18; // frax
         fraxBPmetaLiquidity[1] = TEN_THOUSAND_D6; // usdc
 
-        vm.prank(fraxRichGuy);
-        frax.transfer(owner, TEN_THOUSAND_D18 * 5);
+        _fundAndApproveFRAX(owner, address(fraxBP), TEN_THOUSAND_D18 * 5, TEN_THOUSAND_D18 * 5);
 
         vm.startPrank(owner);
 
