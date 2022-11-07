@@ -62,8 +62,7 @@ contract CDPPool is ICDPPool {
             revert ZeroAddress();
         }
 
-        if (_minCR <= 10 ** 5 || _protocolFee > ORACLE_PRICE_PRECISION || _liquidationCR >= _minCR)
-        {
+        if (_minCR <= 10 ** 5 || _protocolFee > MAX_PPH || _liquidationCR >= _minCR) {
             revert ValueNotInRange();
         }
 
@@ -177,8 +176,6 @@ contract CDPPool is ICDPPool {
         CDP storage cdp = cdps[_user];
 
         if (cdp.debt == 0) revert CDPNotActive();
-        /// Calculate the protocol protocolFee to be prepared for any debt status ( debt > 0 or debt == 0)
-        (uint256 fee, uint256 amountToTransfer) = calculateProtocolFee(_collateralAmount);
 
         /// The CDP collateral after the removal of the wanted amount
         uint256 updatedCollateral = cdp.collateral - _collateralAmount;
@@ -190,9 +187,7 @@ contract CDPPool is ICDPPool {
         cdp.collateral = updatedCollateral;
         pool.collateral -= _collateralAmount;
 
-        collateral.transfer(_user, amountToTransfer);
-
-        _accrueProtocolFees(fee);
+        collateral.transfer(_user, _collateralAmount);
 
         emit CollateralRemoved(_user, _collateralAmount, cdp.collateral);
     }
@@ -285,10 +280,17 @@ contract CDPPool is ICDPPool {
         if (cdp.debt == 0) revert CDPNotActive();
         if (cdp.debt - _debt < minDebt) revert MinDebtNotMet();
 
+        (uint256 fee,) = calculateProtocolFee(_debt);
+        uint256 feeInCollateral = debtToCollateral(fee);
+
         moduleManager.burnPHO(msg.sender, _debt);
 
         cdp.debt -= _debt;
+        cdp.collateral -= feeInCollateral;
         pool.debt -= _debt;
+        pool.collateral -= feeInCollateral;
+
+        _accrueProtocolFees(feeInCollateral);
 
         emit DebtRemoved(msg.sender, _debt, cdp.debt);
     }
@@ -301,13 +303,15 @@ contract CDPPool is ICDPPool {
 
         moduleManager.burnPHO(msg.sender, cdp.debt);
 
-        (uint256 fee, uint256 amountToTransfer) = calculateProtocolFee(cdp.collateral);
+        (uint256 fee,) = calculateProtocolFee(cdp.debt);
+        uint256 feeInCollateral = debtToCollateral(fee);
+
         pool.debt -= cdp.debt;
         pool.collateral -= cdp.collateral;
 
-        collateral.transfer(msg.sender, amountToTransfer);
+        collateral.transfer(msg.sender, cdp.collateral - feeInCollateral);
 
-        _accrueProtocolFees(fee);
+        _accrueProtocolFees(feeInCollateral);
 
         delete cdps[msg.sender];
         emit Closed(msg.sender);
