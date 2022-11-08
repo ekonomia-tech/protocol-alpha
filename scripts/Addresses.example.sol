@@ -6,9 +6,10 @@ contract Addresses {
     address public phoGovernance;
     address public tonGovernance;
     address public moduleManagerAddress;
-    address public kernelAddress; 
+    address public kernelAddress;
     address public phoAddress;
     address public tonAddress;
     address public chainlinkOracleAddress;
     address public curvePool;
+    address public usdcAddress;
 }

@@ -62,6 +62,34 @@ To deploy the price controller:
 5. add the checksum curve pool address to `Addresses.sol`
 6. deploy the price controller by running the following command:
 - ```forge script scripts/DeployPriceController.s.sol:DeployPriceController --fork-url $FORK_URL --broadcast --json  --private-key $PRIVATE_KEY -vvvv```
+
+# Deploy the CDP Module using WETH as collateral
+
+To deploy a CDP module with WETH as collateral, follow the following steps:
+1. follow the `Addresses.example` template to update `Addresses.sol`:
+- ```moduleManagerAddress```
+- ```chainlinkOracleAddress```
+
+2. deploy the CDP module using the ```DeployCDPModuleWETH.s.sol``` script by running:
+- ```forge script scripts/DeployCDPModuleWETH.s.sol:DeployCDPModuleWETH --fork-url $FORK_URL --broadcast --json  --private-key $PRIVATE_KEY -vvvv```
+
+# Register a module with the Module Manager
+
+1. Use the ```PHOGovernance``` account to register a new module by running following command:
+- ```cast send <module manager address> "addModule(address)" <deployed module address> --from <PHOGovernance address>``` 
+2. User the ```TONGovernance``` account to grant a minting ceiling to the module by running the following command:
+- ```cast send <module manager address> "setPHOCeilingForModule(address, uint256)" <deployed module address> <minting ceiling for module> --from <TONGovernance address>``` 
+
+to verify the module has been registered and received a minting ceiling, run the following command:
+```cast call <module manager address> "modules(address)((uint256,uint256,uint256))" <module address>```
+
+# To run any command on the deployed contracts
+
+```cast call --rpc-url <render endpoint> 0xc0Bb1650A8eA5dDF81998f17B5319afD656f4c11 "modules(address)((uint256,uint256,uint256))" 0xBbc18b580256A82dC0F9A86152b8B22E7C1C8005```
+
+For syntax description, refer to the following link:
+- https://book.getfoundry.sh/reference/cast/cast-call
+
 ## Deploying to the persistent mainnet fork on Render
 TODO!
 

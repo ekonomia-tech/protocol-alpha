@@ -31,7 +31,7 @@ abstract contract BaseSetup is Test {
     IUSDC usdc;
     IERC20 frax;
     IERC20 mpl;
-    IERC20 weth;
+    IWETH weth;
     IERC20 fraxBPLP;
     ICurvePool fraxBP;
     ICurveFactory curveFactory;
@@ -59,6 +59,7 @@ abstract contract BaseSetup is Test {
 
     address public constant USDC_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address public constant FRAX_ADDRESS = 0x853d955aCEf822Db058eb8505911ED77F175b99e;
+    address public constant STETH_ADDRESS = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
     address public constant MPL_ADDRESS = 0x33349B282065b0284d756F0577FB39c158F935e6;
     address public constant FRAXBP_ADDRESS = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
     address public constant FRAXBP_LP_TOKEN = 0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC;
@@ -77,6 +78,7 @@ abstract contract BaseSetup is Test {
     uint256 public constant PHO_DECIMALS = 18;
 
     uint256 public constant ONE_D6 = 10 ** 6;
+    uint256 public constant ONE_D18 = 10 ** 18;
     uint256 public constant ONE_HUNDRED_D6 = 100 * 10 ** 6;
     uint256 public constant ONE_HUNDRED_D18 = 100 * 10 ** 18;
     uint256 public constant ONE_THOUSAND_D18 = 1000 * 10 ** 18;
@@ -143,7 +145,7 @@ abstract contract BaseSetup is Test {
         frax = IERC20(FRAX_ADDRESS);
 
         mpl = IERC20(MPL_ADDRESS);
-        weth = IERC20(WETH_ADDRESS);
+        weth = IWETH(WETH_ADDRESS);
 
         priceFeed = new ChainlinkPriceFeed(PRECISION_DIFFERENCE);
 
@@ -225,8 +227,9 @@ abstract contract BaseSetup is Test {
     }
 
     function _getFRAX(address _to, uint256 _amount) internal {
-        vm.prank(fraxRichGuy);
-        frax.transfer(_to, _amount);
+        _fundAndApproveUSDC(_to, address(fraxBP), _amount / 10 ** 12, _amount / 10 ** 12);
+        vm.prank(_to);
+        ICurvePool(fraxBP).exchange(1, 0, _amount / 10 ** 12, _amount * 9 / 10);
     }
 
     function _approveFRAX(address _owner, address _spender, uint256 _amount) internal {
@@ -297,8 +300,7 @@ abstract contract BaseSetup is Test {
         fraxBPmetaLiquidity[0] = TEN_THOUSAND_D18; // frax
         fraxBPmetaLiquidity[1] = TEN_THOUSAND_D6; // usdc
 
-        vm.prank(fraxRichGuy);
-        frax.transfer(owner, TEN_THOUSAND_D18 * 5);
+        _fundAndApproveFRAX(owner, address(fraxBP), TEN_THOUSAND_D18 * 5, TEN_THOUSAND_D18 * 5);
 
         vm.startPrank(owner);
 
@@ -339,4 +341,8 @@ interface IUSDC {
     function configureMinter(address minter, uint256 minterAllowedAmount) external;
 
     function masterMinter() external view returns (address);
+}
+
+interface IWETH is IERC20 {
+    function deposit() external payable;
 }
