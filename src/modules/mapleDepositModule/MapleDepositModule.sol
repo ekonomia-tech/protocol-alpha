@@ -13,7 +13,6 @@ import "@oracle/ChainlinkPriceFeed.sol";
 import "./IMplRewards.sol";
 import "./IPool.sol";
 import "../interfaces/IModuleAMO.sol";
-import "../interfaces/IStakingAMO.sol";
 import "./MapleModuleAMO.sol";
 
 /// @title MapleDepositModule
