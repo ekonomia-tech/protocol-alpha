@@ -384,4 +384,14 @@ contract CDPPool is ICDPPool {
     function getCollateralUSDTotal() public view returns (uint256) {
         return collateralToUSD(pool.collateral);
     }
+
+    /// @notice getter for pool collateral balance
+    /// @return result pool collateral balance
+    function getCollateralBalance() external view returns (uint256) {
+        return pool.collateral;
+    }
+
+    function getFeesCollected() external view returns (uint256) {
+        return feesCollected;
+    }
 }
