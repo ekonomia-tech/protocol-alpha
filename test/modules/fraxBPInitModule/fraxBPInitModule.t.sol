@@ -7,7 +7,7 @@ import "@external/curve/ICurvePool.sol";
 import "@external/curve/ICurveFactory.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@modules/priceController/PriceController.sol";
-import "@modules/fraxBpInitModule/FraxBPInitModule.sol";
+import "@modules/fraxBPInitModule/FraxBPInitModule.sol";
 import "forge-std/console2.sol";
 
 contract FraxBPInitModuleTest is BaseSetup {
