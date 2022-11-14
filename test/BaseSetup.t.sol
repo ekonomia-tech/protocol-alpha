@@ -229,7 +229,7 @@ abstract contract BaseSetup is Test {
     function _getFRAX(address _to, uint256 _amount) internal {
         _fundAndApproveUSDC(_to, address(fraxBP), _amount / 10 ** 12, _amount / 10 ** 12);
         vm.prank(_to);
-        ICurvePool(fraxBP).exchange(1, 0, _amount / 10 ** 12, _amount * 9 / 10);
+        ICurvePool(fraxBP).exchange(1, 0, _amount / 10 ** 12, (_amount * 9) / 10);
     }
 
     function _approveFRAX(address _owner, address _spender, uint256 _amount) internal {
@@ -320,6 +320,52 @@ abstract contract BaseSetup is Test {
         uint256[2] memory metaLiquidity;
         metaLiquidity[0] = TEN_THOUSAND_D18;
         metaLiquidity[1] = TEN_THOUSAND_D18;
+
+        fraxBPPhoMetapool.add_liquidity(metaLiquidity, 0);
+
+        vm.stopPrank();
+
+        return fraxBPPhoMetapoolAddress;
+    }
+
+    // Deploys custom pool
+    function _deployFraxBPPHOPoolCustom(uint256 multiple) internal returns (address) {
+        vm.prank(address(kernel));
+        pho.mint(owner, multiple * ONE_MILLION_D18);
+
+        frax = IERC20(FRAX_ADDRESS);
+        fraxBPLP = IERC20(FRAXBP_LP_TOKEN);
+
+        _fundAndApproveUSDC(
+            owner, address(fraxBP), multiple * ONE_MILLION_D6, multiple * ONE_MILLION_D6
+        );
+
+        uint256[2] memory fraxBPmetaLiquidity;
+        fraxBPmetaLiquidity[0] = multiple * ONE_MILLION_D18; // frax
+        fraxBPmetaLiquidity[1] = multiple * ONE_MILLION_D6; // usdc
+
+        _fundAndApproveFRAX(
+            owner, address(fraxBP), ONE_MILLION_D18 * multiple * 5, ONE_MILLION_D18 * multiple * 5
+        );
+
+        vm.startPrank(owner);
+
+        usdc.approve(address(fraxBP), multiple * ONE_MILLION_D6);
+        frax.approve(address(fraxBP), multiple * ONE_MILLION_D18);
+
+        fraxBP.add_liquidity(fraxBPmetaLiquidity, 0);
+
+        address fraxBPPhoMetapoolAddress = curveFactory.deploy_metapool(
+            address(fraxBP), "FRAXBP/PHO", "FRAXBPPHO", address(pho), 200, 4000000, 0
+        );
+
+        fraxBPPhoMetapool = ICurvePool(fraxBPPhoMetapoolAddress);
+        pho.approve(address(fraxBPPhoMetapool), multiple * ONE_MILLION_D18);
+        fraxBPLP.approve(address(fraxBPPhoMetapool), multiple * ONE_MILLION_D18);
+
+        uint256[2] memory metaLiquidity;
+        metaLiquidity[0] = multiple * ONE_MILLION_D18;
+        metaLiquidity[1] = multiple * ONE_MILLION_D18;
 
         fraxBPPhoMetapool.add_liquidity(metaLiquidity, 0);
 
