@@ -109,6 +109,8 @@ contract CDPPool is ICDPPool {
 
         if (cr < minCR) revert CRTooLow();
 
+        strategy.stakeFor(_user, _collateralAmount);
+
         collateral.transferFrom(_user, address(this), _collateralAmount);
 
         cdps[_user] = CDP(_debtAmount, _collateralAmount);
@@ -119,8 +121,6 @@ contract CDPPool is ICDPPool {
         pool.collateral += _collateralAmount;
 
         emit Opened(_user, _debtAmount, _collateralAmount);
-
-        strategy.stakeFor(_user, _collateralAmount);
     }
 
     /// @notice External function for _addCollateral()
