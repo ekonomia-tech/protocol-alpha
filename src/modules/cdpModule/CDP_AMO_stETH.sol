@@ -79,13 +79,13 @@ contract CDP_AMO_stETH is IModuleAMO {
 
         updateBalance();
 
-        uint256 rewards = earned(account); 
+        uint256 rewards = earned(account);
         uint256 shares = _shares[account];
         _totalBalance -= deposit;
         _totalShares -= shares;
         delete _deposits[account];
         delete _shares[account];
-        
+
         lido.transferFrom(address(pool), account, rewards);
 
         emit RewardsPaid(account, rewards);

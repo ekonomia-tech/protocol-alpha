@@ -150,14 +150,13 @@ contract CDPPool is ICDPPool {
         uint256 updatedCollateral = cdp.collateral + _collateralAmount;
 
         strategy.stakeFor(_user, _collateralAmount);
-        
+
         collateral.transferFrom(_user, address(this), _collateralAmount);
 
         cdp.collateral = updatedCollateral;
         pool.collateral += _collateralAmount;
 
         emit CollateralAdded(_user, _collateralAmount, cdp.collateral);
-
     }
 
     /// @notice external function for _removeCollateral()
@@ -201,7 +200,6 @@ contract CDPPool is ICDPPool {
         collateral.transfer(_user, _collateralAmount);
 
         emit CollateralRemoved(_user, _collateralAmount, cdp.collateral);
-
     }
 
     /// @notice User takes on more debt and is transferred newly minted $STABLE
