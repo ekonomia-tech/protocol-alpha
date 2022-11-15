@@ -77,13 +77,9 @@ contract MapleModuleAMONew is IModuleAMO, ERC20 {
         address _mplPool
     ) ERC20(_name, _symbol) {
         if (
-            _stakingToken == address(0) ||
-            _rewardToken == address(0) ||
-            _operator == address(0) ||
-            _module == address(0) ||
-            _depositToken == address(0) ||
-            _mplRewards == address(0) ||
-            _mplPool == address(0)
+            _stakingToken == address(0) || _rewardToken == address(0) || _operator == address(0)
+                || _module == address(0) || _depositToken == address(0) || _mplRewards == address(0)
+                || _mplPool == address(0)
         ) {
             revert ZeroAddressDetected();
         }
@@ -95,18 +91,14 @@ contract MapleModuleAMONew is IModuleAMO, ERC20 {
         mplPool = IPool(_mplPool);
         depositToken = _depositToken;
         // Approve deposit token for mplPool
-        IERC20(depositToken).safeIncreaseAllowance(
-            address(mplPool),
-            type(uint256).max
-        );
+        IERC20(depositToken).safeIncreaseAllowance(address(mplPool), type(uint256).max);
     }
 
     /// @notice Get earned amount by account (total available - claimed)
     /// @param account Account
     function earned(address account) public view returns (uint256) {
-        uint256 earnedRewards = (balanceOf(account) * _totalRewards) /
-            totalSupply() -
-            claimedRewards[account];
+        uint256 earnedRewards =
+            (balanceOf(account) * _totalRewards) / totalSupply() - claimedRewards[account];
         return earnedRewards;
     }
 
@@ -119,10 +111,7 @@ contract MapleModuleAMONew is IModuleAMO, ERC20 {
     }
 
     /// @notice Tracks shares for deposits
-    function _trackDepositShares(address account, uint256 amount)
-        private
-        returns (uint256)
-    {
+    function _trackDepositShares(address account, uint256 amount) private returns (uint256) {
         uint256 shares = _toShares(amount);
         _shares[account] += shares;
         _totalShares += shares;
@@ -131,10 +120,7 @@ contract MapleModuleAMONew is IModuleAMO, ERC20 {
     }
 
     /// @notice Tracks shares for withdrawals
-    function _trackWithdrawShares(address account, uint256 amount)
-        private
-        returns (uint256)
-    {
+    function _trackWithdrawShares(address account, uint256 amount) private returns (uint256) {
         uint256 shares = _toShares(amount);
         _shares[account] -= shares;
         _totalShares -= shares;
@@ -154,18 +140,14 @@ contract MapleModuleAMONew is IModuleAMO, ERC20 {
         mplPool.deposit(amount);
 
         // Pool tokens received
-        uint256 mplPoolTokensReceived = mplPool.balanceOf(address(this)) -
-            mplBalanceBeforeDeposit;
+        uint256 mplPoolTokensReceived = mplPool.balanceOf(address(this)) - mplBalanceBeforeDeposit;
 
         if (mplPoolTokensReceived == 0) {
             revert CannotReceiveZeroMPT();
         }
 
         // Approve pool tokens for mplStakingAMO
-        mplPool.increaseCustodyAllowance(
-            address(mplRewards),
-            mplPoolTokensReceived
-        );
+        mplPool.increaseCustodyAllowance(address(mplRewards), mplPoolTokensReceived);
 
         // Stakes deposit token in mplStakingAMO
         mplRewards.stake(mplPoolTokensReceived);

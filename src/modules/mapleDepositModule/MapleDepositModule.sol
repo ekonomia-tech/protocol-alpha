@@ -47,11 +47,7 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
     address rewardToken = 0x33349B282065b0284d756F0577FB39c158F935e6; // MPL
 
     /// Events
-    event MapleDeposited(
-        address indexed depositor,
-        uint256 depositAmount,
-        uint256 phoMinted
-    );
+    event MapleDeposited(address indexed depositor, uint256 depositAmount, uint256 phoMinted);
     event MapleRedeemed(address indexed redeemer, uint256 redeemAmount);
     event MapleRewardsReceived(uint256 totalRewards);
     event Withdrawn(address to, uint256 amount);
@@ -72,13 +68,9 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
         address _mplPool
     ) {
         if (
-            _moduleManager == address(0) ||
-            _kernel == address(0) ||
-            _pho == address(0) ||
-            _oracle == address(0) ||
-            _depositToken == address(0) ||
-            _mplStakingAMO == address(0) ||
-            _mplPool == address(0)
+            _moduleManager == address(0) || _kernel == address(0) || _pho == address(0)
+                || _oracle == address(0) || _depositToken == address(0) || _mplStakingAMO == address(0)
+                || _mplPool == address(0)
         ) {
             revert ZeroAddressDetected();
         }
@@ -127,15 +119,11 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
     /// @param depositAmount Deposit amount (in depositToken decimals)
     function deposit(uint256 depositAmount) external nonReentrant {
         // Adjust based on oracle price
-        uint256 phoMinted = depositAmount * (10**(18 - depositTokenDecimals));
-        phoMinted = (phoMinted * oracle.getPrice(depositToken)) / 10**18;
+        uint256 phoMinted = depositAmount * (10 ** (18 - depositTokenDecimals));
+        phoMinted = (phoMinted * oracle.getPrice(depositToken)) / 10 ** 18;
 
         // Get depositToken from user
-        IERC20(depositToken).safeTransferFrom(
-            msg.sender,
-            address(this),
-            depositAmount
-        );
+        IERC20(depositToken).safeTransferFrom(msg.sender, address(this), depositAmount);
 
         // Transfer depositToken to moduleAMO
         IERC20(depositToken).transfer(address(mapleModuleAMO), depositAmount);
@@ -165,11 +153,8 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
         moduleManager.burnPHO(msg.sender, redeemAmount);
 
         // Adjust based on oracle price
-        uint256 scaledRedeemAmount = redeemAmount /
-            (10**(18 - depositTokenDecimals));
-        scaledRedeemAmount =
-            (scaledRedeemAmount * oracle.getPrice(depositToken)) /
-            10**18;
+        uint256 scaledRedeemAmount = redeemAmount / (10 ** (18 - depositTokenDecimals));
+        scaledRedeemAmount = (scaledRedeemAmount * oracle.getPrice(depositToken)) / 10 ** 18;
 
         uint256 depositAmount = depositedAmount[msg.sender];
         uint256 stakedPoolTokenAmount = stakedAmount[msg.sender];
