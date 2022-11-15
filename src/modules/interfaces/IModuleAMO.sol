@@ -12,12 +12,6 @@ interface IModuleAMO {
     // Withdraw all for user
     function withdrawAllFor(address account) external;
 
-    // Get reward
-    function getReward(address account) external returns (bool);
-
-    // Queue new rewards
-    function queueNewRewards(uint256 rewards) external returns (bool);
-
     // Staking token
     function stakingToken() external view returns (address);
 
