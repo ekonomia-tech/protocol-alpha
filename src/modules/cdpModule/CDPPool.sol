@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@modules/cdpModule/ICDPPool.sol";
 import "@oracle/IPriceOracle.sol";
 import "@protocol/interfaces/IModuleManager.sol";
+import "@modules/interfaces/IModuleAMO.sol";
 
 /// @title CDPPool.sol
 /// @notice Keeps track of collateral-specific user CDP and relevant CDP variables
@@ -45,6 +46,7 @@ contract CDPPool is ICDPPool {
     uint256 public feesCollected;
 
     PoolBalances public pool;
+    IModuleAMO public strategy;
 
     mapping(address => CDP) public cdps;
 
@@ -52,6 +54,7 @@ contract CDPPool is ICDPPool {
         address _moduleManager,
         address _priceOracle,
         address _collateral,
+        address _strategy,
         uint256 _minCR,
         uint256 _liquidationCR,
         uint256 _minDebt,
@@ -71,6 +74,7 @@ contract CDPPool is ICDPPool {
         moduleManager = IModuleManager(_moduleManager);
         priceOracle = IPriceOracle(_priceOracle);
         collateral = IERC20Metadata(_collateral);
+        strategy = IModuleAMO(_strategy);
         minCR = _minCR;
         liquidationCR = _liquidationCR;
         minDebt = _minDebt;
@@ -115,6 +119,8 @@ contract CDPPool is ICDPPool {
         pool.collateral += _collateralAmount;
 
         emit Opened(_user, _debtAmount, _collateralAmount);
+
+        strategy.stakeFor(_user, _collateralAmount);
     }
 
     /// @notice External function for _addCollateral()
@@ -143,12 +149,15 @@ contract CDPPool is ICDPPool {
 
         uint256 updatedCollateral = cdp.collateral + _collateralAmount;
 
+        strategy.stakeFor(_user, _collateralAmount);
+        
         collateral.transferFrom(_user, address(this), _collateralAmount);
 
         cdp.collateral = updatedCollateral;
         pool.collateral += _collateralAmount;
 
         emit CollateralAdded(_user, _collateralAmount, cdp.collateral);
+
     }
 
     /// @notice external function for _removeCollateral()
@@ -187,9 +196,12 @@ contract CDPPool is ICDPPool {
         cdp.collateral = updatedCollateral;
         pool.collateral -= _collateralAmount;
 
+        strategy.withdrawFor(_user, _collateralAmount);
+
         collateral.transfer(_user, _collateralAmount);
 
         emit CollateralRemoved(_user, _collateralAmount, cdp.collateral);
+
     }
 
     /// @notice User takes on more debt and is transferred newly minted $STABLE
@@ -252,6 +264,9 @@ contract CDPPool is ICDPPool {
         /// Pay out the debt by the liquidator
         moduleManager.burnPHO(msg.sender, cdp.debt);
 
+        /// Withdraw the rewards the user earned during the staking period
+        strategy.withdrawAllFor(_user);
+
         /// Transfer the collateral to the liquidator
         collateral.transfer(msg.sender, liquidatorCollateralAmount);
 
@@ -293,6 +308,8 @@ contract CDPPool is ICDPPool {
         _accrueProtocolFees(feeInCollateral);
 
         emit DebtRemoved(msg.sender, _debt, cdp.debt);
+
+        strategy.withdrawFor(msg.sender, feeInCollateral);
     }
 
     /// @notice User closes their position by repaying the debt in full
@@ -315,6 +332,8 @@ contract CDPPool is ICDPPool {
 
         delete cdps[msg.sender];
         emit Closed(msg.sender);
+
+        strategy.withdrawAllFor(msg.sender);
     }
 
     /// @notice Get CR for respective CDP
