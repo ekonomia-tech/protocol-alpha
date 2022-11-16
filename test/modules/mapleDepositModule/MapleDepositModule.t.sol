@@ -5,7 +5,7 @@ pragma solidity ^0.8.13;
 import "forge-std/console2.sol";
 import "../../BaseSetup.t.sol";
 import "@modules/mapleDepositModule/MapleDepositModule.sol";
-import "@modules/mapleDepositModule/MapleModuleAMONew.sol";
+import "@modules/mapleDepositModule/MapleModuleAMO.sol";
 import "@modules/mapleDepositModule/IMplRewards.sol";
 import "@modules/mapleDepositModule/IPool.sol";
 import "@modules/interfaces/IModuleAMO.sol";
@@ -563,7 +563,7 @@ contract MapleDepositModuleTest is BaseSetup {
         vm.warp(block.timestamp + 1 days);
 
         vm.prank(user1);
-        MapleModuleAMONew(moduleRewardPool).getReward(user1);
+        MapleModuleAMO(moduleRewardPool).getReward(user1);
 
         uint256 finalUserRewardsBalance =
             IERC20(MapleModuleAMO(moduleRewardPool).mplRewards().rewardsToken()).balanceOf(user1);

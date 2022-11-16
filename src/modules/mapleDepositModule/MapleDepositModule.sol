@@ -14,7 +14,6 @@ import "./IMplRewards.sol";
 import "./IPool.sol";
 import "../interfaces/IModuleAMO.sol";
 import "./MapleModuleAMO.sol";
-import "./MapleModuleAMONew.sol";
 
 /// @title MapleDepositModule
 /// @author Ekonomia: https://github.com/ekonomia-tech
@@ -91,7 +90,7 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
             revert MaplePoolNotOpen();
         }
 
-        MapleModuleAMONew mapleModuleAMOInstance = new MapleModuleAMONew(
+        MapleModuleAMO mapleModuleAMOInstance = new MapleModuleAMO(
             "MPL-AMO",
             "MPLAMO",
             stakingToken,
@@ -103,15 +102,6 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
             _mplPool
         );
 
-        // MapleModuleAMO mapleModuleAMOInstance = new MapleModuleAMO(
-        //     stakingToken,
-        //     rewardToken,
-        //     msg.sender,
-        //     address(this),
-        //     _depositToken,
-        //     _mplStakingAMO,
-        //     _mplPool
-        // );
         mapleModuleAMO = address(mapleModuleAMOInstance);
     }
 
@@ -121,16 +111,6 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
         // Adjust based on oracle price
         uint256 phoMinted = depositAmount * (10 ** (18 - depositTokenDecimals));
         phoMinted = (phoMinted * oracle.getPrice(depositToken)) / 10 ** 18;
-
-        // // Get depositToken from user
-        // IERC20(depositToken).safeTransferFrom(
-        //     msg.sender,
-        //     address(this),
-        //     depositAmount
-        // );
-
-        // // Transfer depositToken to moduleAMO
-        // IERC20(depositToken).transfer(address(mapleModuleAMO), depositAmount);
 
         depositedAmount[msg.sender] += depositAmount;
         issuedAmount[msg.sender] += phoMinted;
