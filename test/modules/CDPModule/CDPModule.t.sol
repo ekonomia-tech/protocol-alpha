@@ -30,6 +30,7 @@ contract CDPPoolTest is BaseSetup {
     }
 
     error ZeroAddress();
+    error SameAddress();
     error ZeroValue();
     error ValueNotInRange();
     error DebtTooLow();
@@ -39,6 +40,7 @@ contract CDPPoolTest is BaseSetup {
     error FullAmountNotPresent();
     error NotInLiquidationZone();
     error MinDebtNotMet();
+    error NotTONGovernance();
 
     event Opened(address indexed user, uint256 debt, uint256 collateral);
     event CollateralAdded(address indexed user, uint256 addedCollateral, uint256 collateral);
@@ -57,6 +59,7 @@ contract CDPPoolTest is BaseSetup {
         uint256 repaidToDebtor
     );
     event WithdrawFees(uint256 amountWithdrawn);
+    event StrategySet(address indexed strategy);
 
     uint256 public constant MIN_CR = 170 * 10 ** 3;
     uint256 public constant LIQUIDATION_CR = 150 * 10 ** 3;
@@ -73,6 +76,7 @@ contract CDPPoolTest is BaseSetup {
             address(moduleManager),
             address(priceOracle),
             WETH_ADDRESS,
+            TONGovernance,
             MIN_CR,
             LIQUIDATION_CR,
             MIN_DEBT,
@@ -168,7 +172,7 @@ contract CDPPoolTest is BaseSetup {
         vm.expectEmit(true, false, false, true);
         emit Opened(user1, debtAmount, collateralAmount);
         vm.prank(owner);
-        wethPool.openFor(user1, collateralAmount, debtAmount);
+        wethPool.openFor(user1, user1, collateralAmount, debtAmount);
 
         uint256 userWethBalanceAfter = weth.balanceOf(user1);
         (uint256 debtBalanceAfter, uint256 collateralBalanceAfter) = wethPool.pool();
@@ -186,7 +190,7 @@ contract CDPPoolTest is BaseSetup {
     function testCannotOpenForZeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(ZeroAddress.selector));
         vm.prank(owner);
-        wethPool.openFor(address(0), ONE_D18, ONE_THOUSAND_D18);
+        wethPool.openFor(address(0), address(0), ONE_D18, ONE_THOUSAND_D18);
     }
 
     /// test settings:
@@ -257,7 +261,7 @@ contract CDPPoolTest is BaseSetup {
         vm.expectEmit(true, false, false, true);
         emit CollateralAdded(user1, collAddition, expectedNewCollateral);
         vm.prank(owner);
-        wethPool.addCollateralFor(user1, collAddition);
+        wethPool.addCollateralFor(user1, user1, collAddition);
 
         Balances memory _after = _getBalances(user1);
 
@@ -273,7 +277,7 @@ contract CDPPoolTest is BaseSetup {
     function testCannotAddCollateralFoZeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(ZeroAddress.selector));
         vm.prank(owner);
-        wethPool.addCollateralFor(address(0), ONE_D18);
+        wethPool.addCollateralFor(address(0), address(0), ONE_D18);
     }
 
     /// removeCollateral()
@@ -606,6 +610,36 @@ contract CDPPoolTest is BaseSetup {
         uint256 collateralPrice = priceOracle.getPrice(WETH_ADDRESS);
         uint256 expected = collateralAmount * collateralPrice / 10 ** 18;
         assertEq(wethPool.collateralToUSD(collateralAmount), expected);
+    }
+
+    /// setStrategy
+
+    function testSetStrategy() public {
+        vm.expectEmit(true, false, false, true);
+        emit StrategySet(address(555));
+        vm.prank(TONGovernance);
+        wethPool.setStrategy(address(555));
+
+        assertEq(address(wethPool.strategy()), address(555));
+    }
+
+    function testCannotSetStrategyZeroAddress() public {
+        vm.expectRevert(abi.encodeWithSelector(ZeroAddress.selector));
+        vm.prank(TONGovernance);
+        wethPool.setStrategy(address(0));
+    }
+
+    function testCannotSetStrategySameAddress() public {
+        testSetStrategy();
+        vm.expectRevert(abi.encodeWithSelector(SameAddress.selector));
+        vm.prank(TONGovernance);
+        wethPool.setStrategy(address(555));
+    }
+
+    function testCannotSetStrategyNotAuthorized() public {
+        vm.expectRevert(abi.encodeWithSelector(NotTONGovernance.selector));
+        vm.prank(user1);
+        wethPool.setStrategy(address(555));
     }
 
     /// private functions

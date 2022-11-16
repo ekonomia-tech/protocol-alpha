@@ -39,6 +39,7 @@ contract CDP_stETHTest is BaseSetup {
     error FullAmountNotPresent();
     error NotInLiquidationZone();
     error MinDebtNotMet();
+    error NotTONGovernance();
 
     event Opened(address indexed user, uint256 debt, uint256 collateral);
     event CollateralAdded(address indexed user, uint256 addedCollateral, uint256 collateral);
@@ -57,6 +58,7 @@ contract CDP_stETHTest is BaseSetup {
         uint256 repaidToDebtor
     );
     event WithdrawFees(uint256 amountWithdrawn);
+    event StrategySet(address indexed strategy);
 
     uint256 public constant MIN_CR = 170 * 10 ** 3;
     uint256 public constant LIQUIDATION_CR = 150 * 10 ** 3;
@@ -76,6 +78,7 @@ contract CDP_stETHTest is BaseSetup {
             address(moduleManager),
             address(priceOracle),
             STETH_ADDRESS,
+            TONGovernance,
             MIN_CR,
             LIQUIDATION_CR,
             MIN_DEBT,
@@ -176,7 +179,7 @@ contract CDP_stETHTest is BaseSetup {
         vm.expectEmit(true, false, false, true);
         emit Opened(user1, debtAmount, collateralAmount);
         vm.prank(owner);
-        cdpPool.openFor(user1, collateralAmount, debtAmount);
+        cdpPool.openFor(user1, user1, collateralAmount, debtAmount);
 
         uint256 userCollTokenBalanceAfter = collToken.balanceOf(user1);
         (uint256 debtBalanceAfter, uint256 collateralBalanceAfter) = cdpPool.pool();
@@ -196,7 +199,7 @@ contract CDP_stETHTest is BaseSetup {
     function testCannotOpenForZeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(ZeroAddress.selector));
         vm.prank(owner);
-        cdpPool.openFor(address(0), ONE_D18, ONE_THOUSAND_D18);
+        cdpPool.openFor(address(0), address(0), ONE_D18, ONE_THOUSAND_D18);
     }
 
     /// test settings:
@@ -267,7 +270,7 @@ contract CDP_stETHTest is BaseSetup {
         vm.expectEmit(true, false, false, true);
         emit CollateralAdded(user1, collAddition, expectedNewCollateral);
         vm.prank(owner);
-        cdpPool.addCollateralFor(user1, collAddition);
+        cdpPool.addCollateralFor(user1, user1, collAddition);
 
         Balances memory _after = _getBalances(user1);
 
@@ -283,7 +286,7 @@ contract CDP_stETHTest is BaseSetup {
     function testCannotAddCollateralFoZeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(ZeroAddress.selector));
         vm.prank(owner);
-        cdpPool.addCollateralFor(address(0), ONE_D18);
+        cdpPool.addCollateralFor(address(0), address(0), ONE_D18);
     }
 
     /// removeCollateral()

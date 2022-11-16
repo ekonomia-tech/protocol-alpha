@@ -14,6 +14,7 @@ contract DummyOracle is IPriceOracle {
 
     address public constant WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant STETH_ADDRESS = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
+    address public constant WSTETH_ADDRESS = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
 
     mapping(address => uint256) public priceFeeds;
 
@@ -28,6 +29,7 @@ contract DummyOracle is IPriceOracle {
 
         priceFeeds[WETH_ADDRESS] = weth_usd_price;
         priceFeeds[STETH_ADDRESS] = weth_usd_price;
+        priceFeeds[WSTETH_ADDRESS] = weth_usd_price * 11 / 10;
     }
 
     function getWethUSDPrice() public view returns (uint256) {
@@ -85,6 +87,7 @@ contract DummyOracle is IPriceOracle {
     function setWethUSDPrice(uint256 _price) public {
         priceFeeds[WETH_ADDRESS] = _price;
         priceFeeds[STETH_ADDRESS] = _price;
+        priceFeeds[WSTETH_ADDRESS] = _price * 11 / 10;
         weth_usd_price = _price;
     }
 
