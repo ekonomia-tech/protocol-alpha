@@ -19,6 +19,7 @@
   - Future: reformatting of codebase with error codes for gas efficiencies if deemed appropriate.
 - Always do exponential numbers as `100 * 10 ** 18`, not `100 * 10e18`
 - Always explicitly set names for numbers in functions, rather than passing in `150000` and expecting people to know the context of this number.
+- Never set default explicit values (i.e. 0 for uint256)
 - Dependencies: always add submodules using `forge install <githubRepoName>`
   - ex. `forge install OpenZeppelin/openzeppelin-contracts`
   - Add submodule to `foundry.toml` in `remappings` and modify to have ‘@’ symbol for beginning of `import`

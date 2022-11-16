@@ -47,8 +47,8 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
     address rewardToken = 0x33349B282065b0284d756F0577FB39c158F935e6; // MPL
 
     /// Events
-    event MapleDeposited(address indexed depositor, uint256 depositAmount, uint256 phoMinted);
-    event MapleRedeemed(address indexed redeemer, uint256 redeemAmount);
+    event Deposited(address indexed depositor, uint256 depositAmount, uint256 phoMinted);
+    event Redeemed(address indexed redeemer, uint256 redeemAmount);
     event MapleRewardsReceived(uint256 totalRewards);
     event Withdrawn(address to, uint256 amount);
 
@@ -122,11 +122,15 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
         uint256 phoMinted = depositAmount * (10 ** (18 - depositTokenDecimals));
         phoMinted = (phoMinted * oracle.getPrice(depositToken)) / 10 ** 18;
 
-        // Get depositToken from user
-        IERC20(depositToken).safeTransferFrom(msg.sender, address(this), depositAmount);
+        // // Get depositToken from user
+        // IERC20(depositToken).safeTransferFrom(
+        //     msg.sender,
+        //     address(this),
+        //     depositAmount
+        // );
 
-        // Transfer depositToken to moduleAMO
-        IERC20(depositToken).transfer(address(mapleModuleAMO), depositAmount);
+        // // Transfer depositToken to moduleAMO
+        // IERC20(depositToken).transfer(address(mapleModuleAMO), depositAmount);
 
         depositedAmount[msg.sender] += depositAmount;
         issuedAmount[msg.sender] += phoMinted;
@@ -137,7 +141,7 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
         // Call AMO
         IModuleAMO(mapleModuleAMO).stakeFor(msg.sender, depositAmount);
 
-        emit MapleDeposited(msg.sender, depositAmount, phoMinted);
+        emit Deposited(msg.sender, depositAmount, phoMinted);
     }
 
     /// @notice User redeems PHO for their original tokens
@@ -161,8 +165,8 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
         depositedAmount[msg.sender] -= depositAmount;
         stakedAmount[msg.sender] -= stakedPoolTokenAmount;
 
-        // Note: amount unused here (full)
+        // Note: Always a full withdrawal
         IModuleAMO(mapleModuleAMO).withdrawAllFor(msg.sender);
-        emit MapleRedeemed(msg.sender, redeemAmount);
+        emit Redeemed(msg.sender, redeemAmount);
     }
 }

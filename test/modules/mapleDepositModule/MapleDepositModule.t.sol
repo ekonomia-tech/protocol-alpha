@@ -5,6 +5,7 @@ pragma solidity ^0.8.13;
 import "forge-std/console2.sol";
 import "../../BaseSetup.t.sol";
 import "@modules/mapleDepositModule/MapleDepositModule.sol";
+import "@modules/mapleDepositModule/MapleModuleAMONew.sol";
 import "@modules/mapleDepositModule/IMplRewards.sol";
 import "@modules/mapleDepositModule/IPool.sol";
 import "@modules/interfaces/IModuleAMO.sol";
@@ -17,8 +18,8 @@ contract MapleDepositModuleTest is BaseSetup {
     error CannotRedeemZeroTokens();
 
     /// Events
-    event MapleDeposited(address indexed depositor, uint256 depositAmount, uint256 phoMinted);
-    event MapleRedeemed(address indexed redeemer, uint256 redeemAmount);
+    event Deposited(address indexed depositor, uint256 depositAmount, uint256 phoMinted);
+    event Redeemed(address indexed redeemer, uint256 redeemAmount);
 
     // Track balance for stablecoins and PHO
     struct MapleBalance {
@@ -141,6 +142,10 @@ contract MapleDepositModuleTest is BaseSetup {
         usdc.approve(address(mapleDepositModuleUSDC), TEN_THOUSAND_D6);
         // Approve sending WETH to WETH MapleDeposit contract
         weth.approve(address(mapleDepositModuleWETH), TEN_THOUSAND_D18);
+
+        // Do same for maple AMO
+        usdc.approve(address(mapleDepositModuleUSDC.mapleModuleAMO()), TEN_THOUSAND_D6);
+        weth.approve(address(mapleDepositModuleWETH.mapleModuleAMO()), TEN_THOUSAND_D18);
 
         // Allow sending PHO (redemptions) to MapleDeposit contracts
         pho.approve(address(mapleDepositModuleUSDC), TEN_THOUSAND_D18);
@@ -308,7 +313,7 @@ contract MapleDepositModuleTest is BaseSetup {
 
         // Deposit - TODO: event
         vm.expectEmit(true, true, true, true);
-        emit MapleDeposited(user1, _depositAmount, expectedIssuedAmount);
+        emit Deposited(user1, _depositAmount, expectedIssuedAmount);
         vm.prank(user1);
         _module.deposit(_depositAmount);
 
@@ -418,7 +423,7 @@ contract MapleDepositModuleTest is BaseSetup {
         // Redeem - after cooldown period
         vm.warp(intendToWithdrawTimestamp + mplGlobalLpCooldownPeriod);
         vm.expectEmit(true, true, true, true);
-        emit MapleRedeemed(user1, before.userIssuedAmount);
+        emit Redeemed(user1, before.userIssuedAmount);
         vm.prank(user1);
         _module.redeem();
 
@@ -434,51 +439,27 @@ contract MapleDepositModuleTest is BaseSetup {
         aft.maplePoolRewardsBalance =
             MapleModuleAMO(moduleRewardPool).mplRewards().balanceOf(moduleRewardPool);
 
-        // // User balance - depositToken up and PHO down
-        // assertEq(
-        //     aft.userDepositTokenBalance,
-        //     before.userDepositTokenBalance + _redeemAmount
-        // );
-        // assertEq(
-        //     aft.userPHOBalance + expectedRedeemAmount,
-        //     before.userPHOBalance
-        // );
+        // User balance - depositToken up and PHO down
+        assertEq(aft.userDepositTokenBalance, before.userDepositTokenBalance + _redeemAmount);
+        assertEq(aft.userPHOBalance + expectedRedeemAmount, before.userPHOBalance);
 
-        // // Deposit module balance - depositToken same (goes to Maple pool)
-        // assertEq(
-        //     aft.moduleDepositTokenBalance,
-        //     before.moduleDepositTokenBalance
-        // );
+        // Deposit module balance - depositToken same (goes to Maple pool)
+        assertEq(aft.moduleDepositTokenBalance, before.moduleDepositTokenBalance);
 
-        // // Check issued amount goes down
-        // assertEq(
-        //     aft.userIssuedAmount + expectedRedeemAmount,
-        //     before.userIssuedAmount
-        // );
+        // Check issued amount goes down
+        assertEq(aft.userIssuedAmount + expectedRedeemAmount, before.userIssuedAmount);
 
-        // // Check staked amount goes down
-        // assertEq(
-        //     aft.userStakedAmount + scaledRedeemAmount,
-        //     before.userStakedAmount
-        // );
+        // Check staked amount goes down
+        assertEq(aft.userStakedAmount + scaledRedeemAmount, before.userStakedAmount);
 
-        // // Check PHO total supply goes down
-        // assertEq(
-        //     aft.totalPHOSupply + expectedRedeemAmount,
-        //     before.totalPHOSupply
-        // );
+        // Check PHO total supply goes down
+        assertEq(aft.totalPHOSupply + expectedRedeemAmount, before.totalPHOSupply);
 
-        // // Check Maple pool balance goes down
-        // assertEq(
-        //     aft.maplePoolBalance + scaledRedeemAmount,
-        //     before.maplePoolBalance
-        // );
+        // Check Maple pool balance goes down
+        assertEq(aft.maplePoolBalance + scaledRedeemAmount, before.maplePoolBalance);
 
-        // // Check Maple pool rewards balance goes down
-        // assertEq(
-        //     aft.maplePoolRewardsBalance + scaledRedeemAmount,
-        //     before.maplePoolRewardsBalance
-        // );
+        // Check Maple pool rewards balance goes down
+        assertEq(aft.maplePoolRewardsBalance + scaledRedeemAmount, before.maplePoolRewardsBalance);
     }
 
     // Test Reward - USDC
@@ -582,7 +563,7 @@ contract MapleDepositModuleTest is BaseSetup {
         vm.warp(block.timestamp + 1 days);
 
         vm.prank(user1);
-        IModuleAMO(moduleRewardPool).getReward(user1);
+        MapleModuleAMONew(moduleRewardPool).getReward(user1);
 
         uint256 finalUserRewardsBalance =
             IERC20(MapleModuleAMO(moduleRewardPool).mplRewards().rewardsToken()).balanceOf(user1);

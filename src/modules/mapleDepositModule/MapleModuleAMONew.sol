@@ -28,19 +28,14 @@ contract MapleModuleAMONew is IModuleAMO, ERC20 {
     address public stakingToken;
     address public operator;
     address public module;
-    uint256 private _totalSupply;
-    mapping(address => uint256) public claimedRewards;
-    mapping(address => uint256) private _balances;
-
-    // Other state vars
-    mapping(address => uint256) public depositedAmount; // MPL deposited
-    mapping(address => uint256) public stakedAmount; // MPL staked
-
-    // Tracking vars
-    mapping(address => uint256) private _shares;
     uint256 private _totalDeposits;
     uint256 private _totalShares;
     uint256 private _totalRewards;
+
+    mapping(address => uint256) public depositedAmount; // MPL deposited
+    mapping(address => uint256) public stakedAmount; // MPL staked
+    mapping(address => uint256) public claimedRewards; // rewards claimed
+    mapping(address => uint256) private _shares;
 
     // Needed for interactions w/ external contracts
     address public depositToken;
@@ -49,8 +44,8 @@ contract MapleModuleAMONew is IModuleAMO, ERC20 {
 
     // Events
     event RewardAdded(uint256 reward);
-    event Staked(address indexed user, uint256 amount);
-    event Withdrawn(address indexed user, uint256 amount);
+    event Staked(address indexed user, uint256 amount, uint256 shares);
+    event Withdrawn(address indexed user, uint256 amount, uint256 shares);
     event RewardPaid(address indexed user, uint256 reward);
     event MapleRewardsReceived(uint256 totalRewards);
 
@@ -131,36 +126,36 @@ contract MapleModuleAMONew is IModuleAMO, ERC20 {
     /// @notice Stake for
     /// @param account For
     /// @param amount Amount
-    function stakeFor(address account, uint256 amount) public returns (bool) {
+    function stakeFor(address account, uint256 amount) public onlyModule returns (bool) {
         if (amount == 0) {
             revert CannotStakeZero();
         }
 
-        uint256 mplBalanceBeforeDeposit = mplPool.balanceOf(address(this));
+        // Get depositToken from user
+        IERC20(depositToken).safeTransferFrom(account, address(this), amount);
+
+        uint256 mapleBalanceBeforeDeposit = mplPool.balanceOf(address(this));
         mplPool.deposit(amount);
 
         // Pool tokens received
-        uint256 mplPoolTokensReceived = mplPool.balanceOf(address(this)) - mplBalanceBeforeDeposit;
+        uint256 mapleLPReceived = mplPool.balanceOf(address(this)) - mapleBalanceBeforeDeposit;
 
-        if (mplPoolTokensReceived == 0) {
+        if (mapleLPReceived == 0) {
             revert CannotReceiveZeroMPT();
         }
 
         // Approve pool tokens for mplStakingAMO
-        mplPool.increaseCustodyAllowance(address(mplRewards), mplPoolTokensReceived);
+        mplPool.increaseCustodyAllowance(address(mplRewards), mapleLPReceived);
 
         // Stakes deposit token in mplStakingAMO
-        mplRewards.stake(mplPoolTokensReceived);
+        mplRewards.stake(mapleLPReceived);
 
         depositedAmount[account] += amount;
-        stakedAmount[account] += mplPoolTokensReceived;
+        stakedAmount[account] += mapleLPReceived;
         _totalDeposits += amount;
 
-        _totalSupply = _totalSupply.add(mplPoolTokensReceived);
-        _balances[account] = _balances[account].add(mplPoolTokensReceived);
-
         uint256 shares = _trackDepositShares(account, amount);
-        emit Staked(account, mplPoolTokensReceived); // TODO: shares
+        emit Staked(account, mapleLPReceived, shares);
         return true;
     }
 
@@ -189,13 +184,13 @@ contract MapleModuleAMONew is IModuleAMO, ERC20 {
 
         // Transfer depositToken to caller
         IERC20(depositToken).transfer(account, depositAmount);
-        emit Withdrawn(account, amount); // TODO: shares
+        emit Withdrawn(account, amount, shares);
     }
 
     /// @notice Withdraw all for
     /// @param account Account
     function withdrawAllFor(address account) external {
-        withdrawFor(account, _balances[account]);
+        withdrawFor(account, 0);
     }
 
     /// @notice gets reward from maple pool
@@ -223,10 +218,5 @@ contract MapleModuleAMONew is IModuleAMO, ERC20 {
     function getReward() external returns (bool) {
         getReward(msg.sender);
         return true;
-    }
-
-    /// TODO: remove
-    function queueNewRewards(uint256 _rewards) external returns (bool) {
-        return true; // TODO: remove
     }
 }
