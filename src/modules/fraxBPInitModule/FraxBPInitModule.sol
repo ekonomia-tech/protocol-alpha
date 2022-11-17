@@ -12,7 +12,6 @@ import "@protocol/interfaces/IPHO.sol";
 import "@protocol/interfaces/IModuleManager.sol";
 import "@external/curve/ICurvePool.sol";
 import "@external/curve/ICurveFactory.sol";
-import "forge-std/console2.sol";
 
 /// @title FraxBP Init module
 /// @author Ekonomia: https://github.com/ekonomia-tech
@@ -28,9 +27,13 @@ contract FraxBPInitModule is ERC20, Ownable, ReentrancyGuard {
     error MaxCapNotMet();
     error FraxBPPHOMetapoolNotSet();
     error MustHaveEqualAmounts();
+    error OnlyModuleManager();
+    error CannotDepositZero();
 
     /// Events
-    event BondIssued(address indexed depositor, uint256 depositAmount, uint256 mintAmount);
+    event BondIssued(
+        address indexed depositor, uint256 usdcAmount, uint256 fraxAmount, uint256 mintAmount
+    );
     event BondRedeemed(address indexed redeemer, uint256 redeemAmount);
     event TokensExchanged(
         address indexed dexPool,
@@ -42,29 +45,25 @@ contract FraxBPInitModule is ERC20, Ownable, ReentrancyGuard {
 
     /// State vars
     IModuleManager public moduleManager;
-    IERC20Metadata public frax;
-    IERC20Metadata public usdc;
-    //IERC20 public usdc = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
-    IERC20Metadata public fraxBPLp;
-    ICurvePool public fraxBPPool;
+    IERC20Metadata public frax = IERC20Metadata(0x853d955aCEf822Db058eb8505911ED77F175b99e);
+    IERC20Metadata public usdc = IERC20Metadata(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+    IERC20Metadata public fraxBPLp = IERC20Metadata(0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC);
+    ICurvePool public fraxBPPool = ICurvePool(0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2);
     ICurveFactory public curveFactory = ICurveFactory(0xB9fC157394Af804a3578134A6585C0dc9cc990d4);
-    address public fraxBPPHOMetapool;
+    ICurvePool public fraxBPPHOMetapool;
     uint256 public maxCap;
     uint256 public currentDeposits;
     uint256 public constant FRAX_DECIMALS = 18;
     uint256 public constant USDC_DECIMALS = 6;
+    uint256 private constant USDC_SCALE = 10 ** 12;
+    uint256 public saleEndDate; // when sale ends
     address public kernel;
     IPHO public pho;
-    bool public saleEnded; // did sale end
+
     mapping(address => uint256) public issuedAmount;
 
-    // TODO:
-    uint256 public maxSlippage = 10 ** 5;
-    uint256 private constant PERCENTAGE_PRECISION = 10 ** 5;
-    uint256 private constant USDC_SCALE = 10 ** 12;
-
     modifier onlyModuleManager() {
-        require(msg.sender == address(moduleManager), "Only ModuleManager");
+        if (msg.sender != address(moduleManager)) revert OnlyModuleManager();
         _;
     }
 
@@ -74,73 +73,57 @@ contract FraxBPInitModule is ERC20, Ownable, ReentrancyGuard {
         address _kernel,
         string memory _bondTokenName,
         string memory _bondTokenSymbol,
-        address _frax,
-        address _usdc,
-        address _fraxBPLp,
-        address _fraxBPPool,
+        address _fraxBPPHOMetapool,
         address _pho,
-        uint256 _maxCap
+        uint256 _maxCap,
+        uint256 _saleEndDate
     ) ERC20(_bondTokenName, _bondTokenSymbol) {
         if (
-            _moduleManager == address(0) || _frax == address(0) || _usdc == address(0)
-                || _fraxBPLp == address(0) || _fraxBPPool == address(0) || _kernel == address(0)
-                || _pho == address(0)
+            _moduleManager == address(0) || _fraxBPPHOMetapool == address(0)
+                || _kernel == address(0) || _pho == address(0)
         ) {
             revert ZeroAddressDetected();
         }
         moduleManager = IModuleManager(_moduleManager);
-        frax = IERC20Metadata(_frax);
-        usdc = IERC20Metadata(_usdc);
-        fraxBPLp = IERC20Metadata(_fraxBPLp);
-        fraxBPPool = ICurvePool(_fraxBPPool);
+        fraxBPPHOMetapool = ICurvePool(_fraxBPPHOMetapool);
         kernel = _kernel;
         pho = IPHO(_pho);
         maxCap = _maxCap;
+        saleEndDate = _saleEndDate;
     }
 
     /// @notice user deposits both FRAX and USDC
-    /// @param depositAmount deposit amount
-    function deposit(uint256 depositAmount) external nonReentrant {
-        if (saleEnded) {
+    /// @param usdcAmount USDC deposit amount
+    /// @param fraxAmount FRAX deposit amount
+    function deposit(uint256 usdcAmount, uint256 fraxAmount) external nonReentrant {
+        if (block.timestamp > saleEndDate) {
             revert CannotDepositAfterSaleEnded();
         }
-        // scale if decimals < 18
-        uint256 fraxDepositAmount = depositAmount;
-        uint256 usdcDepositAmount = depositAmount / (10 ** (18 - USDC_DECIMALS));
-
-        // transfer FRAX and USDC from caller
-        frax.safeTransferFrom(msg.sender, address(this), fraxDepositAmount);
-        usdc.safeTransferFrom(msg.sender, address(this), usdcDepositAmount);
-
-        issuedAmount[msg.sender] += depositAmount;
-        currentDeposits += depositAmount;
-        _mint(msg.sender, depositAmount);
-
-        emit BondIssued(msg.sender, depositAmount, depositAmount);
-    }
-
-    /// @notice Sets whether sale ended
-    function setSaleEnded(bool _saleEnded) external onlyOwner {
-        saleEnded = _saleEnded;
-    }
-
-    /// @notice sets FraxBP/PHO pool
-    /// @param _fraxBPPHOMetapool FraxBP / PHO mpool
-    function setFraxBpPHOPool(address _fraxBPPHOMetapool) external onlyOwner {
-        if (_fraxBPPHOMetapool == address(0)) {
-            revert ZeroAddressDetected();
+        uint256 totalAmount = usdcAmount * USDC_SCALE + fraxAmount;
+        if (totalAmount == 0) {
+            revert CannotDepositZero();
         }
-        fraxBPPHOMetapool = _fraxBPPHOMetapool;
+
+        // transfer USDC and FRAX from caller
+        usdc.safeTransferFrom(msg.sender, address(this), usdcAmount);
+        frax.safeTransferFrom(msg.sender, address(this), fraxAmount);
+
+        issuedAmount[msg.sender] += totalAmount;
+        currentDeposits += totalAmount;
+        _mint(msg.sender, totalAmount);
+
+        emit BondIssued(msg.sender, usdcAmount, fraxAmount, totalAmount);
     }
 
-    /// @notice Adds USDC and FRAX to FraxBP in order to get FraxBP LP tokens
+    /// @notice Adds PHO and FraxBP LP to FraxBP/PHO pool
     /// @param usdcAmount amount of USDC to deposit
     /// @param fraxAmount amount of FRAX to deposit
-    function addFraxBPLiquidity(uint256 usdcAmount, uint256 fraxAmount)
-        external
-        onlyOwner
-        returns (uint256)
-    {
+    function addFraxBPPHOLiquidity(uint256 usdcAmount, uint256 fraxAmount) external {
+        // Steps:
+        // 1. Adds USDC and FRAX (say N total) to FraxBP in order to get FraxBP LP tokens
+        // 2. Mints N/2 PHO based on USDC and FRAX amounts
+        // 3. Add liquidity to fraxBP PHO pool
+
         uint256[2] memory fraxBPmetaLiquidity;
         fraxBPmetaLiquidity[0] = fraxAmount; // frax
         fraxBPmetaLiquidity[1] = usdcAmount; // usdc
@@ -150,19 +133,7 @@ contract FraxBPInitModule is ERC20, Ownable, ReentrancyGuard {
 
         fraxBPPool.add_liquidity(fraxBPmetaLiquidity, 0);
 
-        uint256 fraxBPLPbalanceAfter = fraxBPLp.balanceOf(address(this));
-        return fraxBPLPbalanceAfter;
-    }
-
-    /// @notice Adds PHO and FraxBP LP to FraxBP/PHO pool
-    /// @param fraxBPLPAmuont amount of FRAXBP LP token to deposit
-    /// @param usdcAmount amount of USDC to deposit
-    /// @param fraxAmount amount of FRAX to deposit
-    function addFraxBPPHOLiquidity(uint256 fraxBPLPAmuont, uint256 usdcAmount, uint256 fraxAmount)
-        external
-    {
-        // mint N/2 PHO based on USDC and FRAX amounts
-        // then add liquidity to fraxBP PHO pool
+        uint256 fraxBPLPAmount = fraxBPLp.balanceOf(address(this));
 
         if (usdcAmount * USDC_SCALE != fraxAmount) {
             revert MustHaveEqualAmounts();
@@ -170,21 +141,20 @@ contract FraxBPInitModule is ERC20, Ownable, ReentrancyGuard {
 
         uint256 phoAmount = fraxAmount * 2;
 
-        pho.approve(fraxBPPHOMetapool, phoAmount);
-        fraxBPLp.approve(fraxBPPHOMetapool, fraxBPLPAmuont);
+        moduleManager.mintPHO(address(this), phoAmount);
+
+        pho.approve(address(fraxBPPHOMetapool), phoAmount);
+        fraxBPLp.approve(address(fraxBPPHOMetapool), fraxBPLPAmount);
 
         uint256[2] memory metaLiquidity;
         metaLiquidity[0] = phoAmount;
-        metaLiquidity[1] = fraxBPLPAmuont;
+        metaLiquidity[1] = fraxBPLPAmount;
 
         ICurvePool(fraxBPPHOMetapool).add_liquidity(metaLiquidity, 0);
     }
 
     /// @notice user redeems and gets back PHO
     function redeem() external nonReentrant {
-        if (fraxBPPHOMetapool == address(0)) {
-            revert FraxBPPHOMetapoolNotSet();
-        }
         uint256 redeemAmount = issuedAmount[msg.sender];
         issuedAmount[msg.sender] -= redeemAmount;
 
@@ -207,6 +177,7 @@ contract FraxBPInitModule is ERC20, Ownable, ReentrancyGuard {
         // Send user back FraxBP LP and PHO
         fraxBPLp.transfer(msg.sender, fraxBPLPBalanceToSend);
         pho.transfer(msg.sender, phoBalanceToSend);
+        _burn(msg.sender, redeemAmount);
 
         emit BondRedeemed(msg.sender, redeemAmount);
     }
