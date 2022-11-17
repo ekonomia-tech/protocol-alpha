@@ -12,6 +12,9 @@ import "@oracle/DummyOracle.sol";
 import "@modules/interfaces/Generics.sol";
 
 contract wstETHCDPWrapperTest is BaseSetup {
+
+    error NotETHVariant();
+
     struct PoolBalances {
         uint256 debt;
         uint256 collateral;
@@ -112,35 +115,6 @@ contract wstETHCDPWrapperTest is BaseSetup {
         vm.prank(user2);
         pho.approve(address(kernel), type(uint256).max);
     }
-
-    // /// processDeposit()
-
-    // function testProcessDepositETH() public {
-    //     uint256 ethAmount = 2 ether;
-    //     uint256 expectedWst = WSTETH.getWstETHByStETH(ethAmount);
-    //     vm.prank(user1);
-    //     uint256 wstETHAmount = cdpWrapper.processDeposit(user1, ethAmount, address(0), true);
-
-    //     assertEq(expectedWst, wstETHAmount);
-    // }
-
-    // function testProcessDepositWETH() public {
-    //     uint256 wethAmount = 2 ether;
-    //     uint256 expectedWst = WSTETH.getWstETHByStETH(wethAmount);
-    //     vm.prank(user2);
-    //     uint256 wstETHAmount = cdpWrapper.processDeposit(user2, wethAmount, WETH_ADDRESS, false);
-
-    //     assertEq(expectedWst, wstETHAmount);
-    // }
-
-    // function testProcessDepositSTETH() public {
-    //     uint256 stETHAmount = 2 ether;
-    //     uint256 expectedWst = WSTETH.getWstETHByStETH(stETHAmount);
-    //     vm.prank(user3);
-    //     uint256 wstETHAmount = cdpWrapper.processDeposit(user3, stETHAmount, STETH_ADDRESS, false);
-
-    //     assertEq(expectedWst, wstETHAmount);
-    // }
 
     /// open()
 

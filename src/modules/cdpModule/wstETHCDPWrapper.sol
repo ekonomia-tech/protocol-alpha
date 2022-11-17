@@ -1,18 +1,27 @@
 /// SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.13;
 
-import "forge-std/console.sol";
 import "@modules/cdpModule/ICDPPool.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@modules/interfaces/Generics.sol";
 
 contract wstETHCDPWrapper {
-    error NotAuthorized();
+    error NotETHVariant();
 
     ICDPPool public pool;
     ISTETH public STETH = ISTETH(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
     IWSTETH public WSTETH = IWSTETH(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
     IWETH public WETH = IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+
+    modifier onlyETHVariants(address _depositToken) {
+        if (
+            _depositToken != address(STETH) && _depositToken != address(WSTETH)
+                && _depositToken != address(WETH) && msg.value == 0
+        ) {
+            revert NotETHVariant();
+        }
+        _;
+    }
 
     constructor(address _pool) {
         pool = ICDPPool(_pool);
@@ -27,6 +36,7 @@ contract wstETHCDPWrapper {
     function open(uint256 _depositAmount, uint256 _debtAmount, address _depositToken)
         external
         payable
+        onlyETHVariants(_depositToken)
     {
         address depositor = address(this);
         uint256 wstETHAmount = _depositAmount;
@@ -41,7 +51,11 @@ contract wstETHCDPWrapper {
     /// @notice takes in a collateral in a form of ETH/wETH/stETH/wstETH, automatically converts it to wstETH if needed and add collateral to a position
     /// @param _depositAmount the collateral amount to deposit
     /// @param _depositToken the address of the token submitted. if ETH submitted, address will be address(0)
-    function addCollateral(uint256 _depositAmount, address _depositToken) external payable {
+    function addCollateral(uint256 _depositAmount, address _depositToken)
+        external
+        payable
+        onlyETHVariants(_depositToken)
+    {
         address depositor = address(this);
         uint256 wstETHAmount = _depositAmount;
         if (_depositToken != address(WSTETH)) {
