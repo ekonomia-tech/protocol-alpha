@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.13;
 
-import "forge-std/console2.sol";
 import "../../BaseSetup.t.sol";
 import "@modules/mapleDepositModule/MapleDepositModule.sol";
 import "@modules/mapleDepositModule/MapleModuleAMO.sol";
@@ -40,6 +39,12 @@ contract MapleDepositModuleTest is BaseSetup {
         uint256 lastTimeRewardApplicable;
         uint256 periodFinish;
         uint256 blockTimestamp;
+    }
+
+    struct SharesVars {
+        uint256 shares;
+        uint256 earned;
+        uint256 totalShares;
     }
 
     // USDC
@@ -125,19 +130,25 @@ contract MapleDepositModuleTest is BaseSetup {
         moduleManager.executeCeilingUpdate(address(mapleDepositModuleUSDC));
         moduleManager.executeCeilingUpdate(address(mapleDepositModuleWETH));
 
-        // Fund user with USDC
+        // Fund users 1 & 2 with USDC
         vm.prank(richGuy);
         usdc.transfer(user1, TEN_THOUSAND_D6);
+        vm.prank(richGuy);
+        usdc.transfer(user2, TEN_THOUSAND_D6);
 
-        // Fund user with WETH
+        // Fund users 1 & 2 with WETH
         vm.prank(wethWhale);
         weth.transfer(user1, TEN_THOUSAND_D18);
+        vm.prank(wethWhale);
+        weth.transfer(user2, TEN_THOUSAND_D18);
 
-        // Mint PHO to user
+        // Mint PHO to users 1 & 2
         vm.prank(address(moduleManager));
         kernel.mintPHO(address(user1), ONE_HUNDRED_D18);
+        vm.prank(address(moduleManager));
+        kernel.mintPHO(address(user2), ONE_HUNDRED_D18);
 
-        // Approve sending USDC to USDC MapleDeposit contract
+        // Approve sending USDC to USDC MapleDeposit contract - user 1
         vm.startPrank(user1);
         usdc.approve(address(mapleDepositModuleUSDC), TEN_THOUSAND_D6);
         // Approve sending WETH to WETH MapleDeposit contract
@@ -158,16 +169,35 @@ contract MapleDepositModuleTest is BaseSetup {
         // Allow transferring rewards
 
         address moduleRewardPoolUSDC = mapleDepositModuleUSDC.mapleModuleAMO();
-        uint256 preAllowance =
-            IERC20(rewardToken).allowance(address(mapleDepositModuleUSDC), moduleRewardPoolUSDC);
         vm.prank(address(mapleDepositModuleUSDC));
         IERC20(rewardToken).approve(moduleRewardPoolUSDC, ONE_MILLION_D18);
         address moduleRewardPoolWETH = mapleDepositModuleWETH.mapleModuleAMO();
         vm.prank(address(mapleDepositModuleWETH));
         IERC20(rewardToken).approve(moduleRewardPoolWETH, ONE_MILLION_D18);
 
-        uint256 postAllowance =
-            IERC20(rewardToken).allowance(address(mapleDepositModuleUSDC), moduleRewardPoolUSDC);
+        // Approve sending USDC to USDC MapleDeposit contract - user 2
+        vm.startPrank(user2);
+        usdc.approve(address(mapleDepositModuleUSDC), TEN_THOUSAND_D6);
+        // Approve sending WETH to WETH MapleDeposit contract
+        weth.approve(address(mapleDepositModuleWETH), TEN_THOUSAND_D18);
+
+        // Do same for maple AMO
+        usdc.approve(address(mapleDepositModuleUSDC.mapleModuleAMO()), TEN_THOUSAND_D6);
+        weth.approve(address(mapleDepositModuleWETH.mapleModuleAMO()), TEN_THOUSAND_D18);
+
+        // Allow sending PHO (redemptions) to MapleDeposit contracts
+        pho.approve(address(mapleDepositModuleUSDC), TEN_THOUSAND_D18);
+        pho.approve(address(mapleDepositModuleWETH), TEN_THOUSAND_D18);
+
+        // Approve PHO burnFrom() via moduleManager calling kernel
+        pho.approve(address(kernel), ONE_MILLION_D18);
+        vm.stopPrank();
+
+        // Allow transferring rewards
+        vm.prank(address(mapleDepositModuleUSDC));
+        IERC20(rewardToken).approve(moduleRewardPoolUSDC, ONE_MILLION_D18);
+        vm.prank(address(mapleDepositModuleWETH));
+        IERC20(rewardToken).approve(moduleRewardPoolWETH, ONE_MILLION_D18);
     }
 
     // Cannot set any 0 addresses for constructor
@@ -570,5 +600,265 @@ contract MapleDepositModuleTest is BaseSetup {
 
         // Check that user got rewards and protocol has none
         assertTrue(finalUserRewardsBalance > 0);
+    }
+
+    /// Testing shares
+
+    // Test basic shares for deposit - USDC
+    function testSharesDepositMapleUSDC() public {
+        uint256 depositAmount = ONE_HUNDRED_D6;
+        _testSharesDepositAnyModule(depositAmount, address(usdc), mapleDepositModuleUSDC);
+    }
+
+    // Test basic shares for deposit - WETH
+    function testSharesDepositMapleWETH() public {
+        uint256 depositAmount = ONE_HUNDRED_D18;
+        _testSharesDepositAnyModule(depositAmount, address(weth), mapleDepositModuleWETH);
+    }
+
+    // Helper function to test shares for Maple deposit from any module
+    function _testSharesDepositAnyModule(
+        uint256 _depositAmount,
+        address _depositToken,
+        MapleDepositModule _module
+    ) public {
+        MapleModuleAMO amo = MapleModuleAMO(_module.mapleModuleAMO());
+
+        // Shares tracking before - users 1 & 2
+        SharesVars memory before1;
+        before1.shares = amo.sharesOf(user1);
+        before1.earned = amo.earned(user1);
+        before1.totalShares = amo.totalShares();
+        SharesVars memory before2;
+        before2.shares = amo.sharesOf(user2);
+        before2.earned = amo.earned(user2);
+        before2.totalShares = amo.totalShares();
+
+        // Deposit - user 1
+        vm.prank(user1);
+        _module.deposit(_depositAmount);
+
+        // Shares tracking afterwards for user 1
+        SharesVars memory aft1;
+        aft1.shares = amo.sharesOf(user1);
+        aft1.earned = amo.earned(user1);
+        aft1.totalShares = amo.totalShares();
+
+        // After deposit 1 checks
+
+        // Check that before state was all 0
+        assertEq(before1.shares, 0);
+        assertEq(before1.earned, 0);
+        assertEq(before1.totalShares, 0);
+
+        // Check that after state was modified except earned
+        assertEq(aft1.shares, _depositAmount);
+        assertEq(aft1.earned, 0);
+        assertEq(aft1.totalShares, _depositAmount);
+
+        // Deposit - user 2
+        vm.prank(user2);
+        _module.deposit(_depositAmount / 4);
+
+        // Shares tracking afterwards for user 2
+        SharesVars memory aft2;
+        aft2.shares = amo.sharesOf(user2);
+        aft2.earned = amo.earned(user2);
+        aft2.totalShares = amo.totalShares();
+
+        // After deposit 2 checks - total deposits was N, they put in N/4
+        // Should have N/4 / (N/4 + N) = N/5 of total shares
+
+        // Check that before state was all 0
+        assertEq(before2.shares, 0);
+        assertEq(before2.earned, 0);
+        assertEq(before2.totalShares, 0);
+
+        // Check that after state was modified except earned
+        assertEq(aft2.shares, _depositAmount / 5);
+        assertEq(aft2.earned, 0);
+        assertEq(aft2.totalShares, _depositAmount + _depositAmount / 5);
+    }
+
+    // Test Redeem - USDC
+    function testSharesRedeemMapleUSDC() public {
+        uint256 depositAmount = ONE_HUNDRED_D6;
+        uint256 redeemAmount = ONE_HUNDRED_D6;
+        uint256 intendToWithdrawTimestamp = block.timestamp + mplPoolUSDCLockupPeriod - 10 days;
+        _testSharesDepositAnyModule(depositAmount, address(usdc), mapleDepositModuleUSDC);
+        uint256 startingTotalDeposits = depositAmount + depositAmount / 4;
+        uint256 startingTotalShares = depositAmount + depositAmount / 5;
+        _testSharesRedeemAnyModule(
+            redeemAmount,
+            address(usdc),
+            mapleDepositModuleUSDC,
+            intendToWithdrawTimestamp,
+            startingTotalDeposits,
+            startingTotalShares
+        );
+    }
+
+    // Test Redeem - WETH
+    function testSharesRedeemMapleWETH() public {
+        uint256 depositAmount = ONE_HUNDRED_D18;
+        uint256 redeemAmount = ONE_HUNDRED_D18;
+        uint256 intendToWithdrawTimestamp = block.timestamp + mplPoolWETHLockupPeriod - 10 days;
+        _testSharesDepositAnyModule(depositAmount, address(weth), mapleDepositModuleWETH);
+        uint256 startingTotalDeposits = depositAmount + depositAmount / 4;
+        uint256 startingTotalShares = depositAmount + depositAmount / 5;
+        _testSharesRedeemAnyModule(
+            redeemAmount,
+            address(weth),
+            mapleDepositModuleWETH,
+            intendToWithdrawTimestamp,
+            startingTotalDeposits,
+            startingTotalShares
+        );
+    }
+
+    // Helper function to test shares for Maple redeem from any module
+    function _testSharesRedeemAnyModule(
+        uint256 _redeemAmount,
+        address _depositToken,
+        MapleDepositModule _module,
+        uint256 intendToWithdrawTimestamp,
+        uint256 _startingTotalDeposits,
+        uint256 _startingTotalShares
+    ) public {
+        // Convert expected issue amount based on stablecoin decimals
+        address moduleRewardPool = _module.mapleModuleAMO();
+
+        MapleModuleAMO amo = MapleModuleAMO(_module.mapleModuleAMO());
+
+        // Shares tracking before - users 1 & 2
+        SharesVars memory before1;
+        before1.shares = amo.sharesOf(user1);
+        before1.earned = amo.earned(user1);
+        before1.totalShares = amo.totalShares();
+        SharesVars memory before2;
+        before2.shares = amo.sharesOf(user2);
+        before2.earned = amo.earned(user2);
+        before2.totalShares = amo.totalShares();
+
+        vm.warp(intendToWithdrawTimestamp);
+
+        vm.prank(owner);
+        MapleModuleAMO(moduleRewardPool).intendToWithdraw();
+
+        // Redeem for user 1 - after cooldown period
+        vm.warp(intendToWithdrawTimestamp + mplGlobalLpCooldownPeriod);
+        vm.prank(user1);
+        _module.redeem();
+
+        // Shares tracking afterwards - user 1
+        SharesVars memory aft1;
+        aft1.shares = amo.sharesOf(user1);
+        aft1.earned = amo.earned(user1);
+        aft1.totalShares = amo.totalShares();
+
+        // // User 2 redeems
+        vm.prank(user2);
+        _module.redeem();
+
+        // Shares tracking afterwards - user 2
+        SharesVars memory aft2;
+        aft2.shares = amo.sharesOf(user2);
+        aft2.earned = amo.earned(user2);
+        aft2.totalShares = amo.totalShares();
+
+        // Check before state
+        assertEq(before1.shares, _redeemAmount);
+        assertEq(before1.earned, 0);
+        assertEq(before1.totalShares, _startingTotalShares);
+        assertEq(before2.shares, _redeemAmount / 5);
+        assertEq(before2.earned, 0);
+        assertEq(before2.totalShares, _startingTotalShares);
+
+        // Check after state
+        assertEq(aft1.shares, 0);
+        assertEq(aft1.earned, 0);
+        assertEq(aft1.totalShares, _startingTotalShares - _redeemAmount);
+        assertEq(aft2.shares, 0);
+        assertEq(aft2.earned, 0);
+        assertEq(aft2.totalShares, 0);
+    }
+
+    // Test Reward - USDC
+    function testSharesRewardUSDC() public {
+        uint256 depositAmount = ONE_HUNDRED_D6;
+        vm.prank(orthogonalPoolOwner);
+        mplRewardsUSDC.notifyRewardAmount(ONE_HUNDRED_D18);
+        _testSharesGetRewardAnyModule(depositAmount, mapleDepositModuleUSDC);
+    }
+
+    // Test Reward - WETH
+    function testSharesRewardWETH() public {
+        uint256 depositAmount = ONE_HUNDRED_D18;
+        vm.prank(mavenPoolOwner);
+        mplRewardsWETH.notifyRewardAmount(ONE_HUNDRED_D18);
+        _testSharesGetRewardAnyModule(depositAmount, mapleDepositModuleWETH);
+    }
+
+    // Helper function to test Maple rewards from any module
+    function _testSharesGetRewardAnyModule(uint256 _depositAmount, MapleDepositModule _module)
+        public
+    {
+        address moduleRewardPool = _module.mapleModuleAMO();
+
+        MapleModuleAMO amo = MapleModuleAMO(_module.mapleModuleAMO());
+
+        // Shares tracking before - users 1 & 2
+        SharesVars memory before1;
+        before1.shares = amo.sharesOf(user1);
+        before1.earned = amo.earned(user1);
+        before1.totalShares = amo.totalShares();
+        SharesVars memory before2;
+        before2.shares = amo.sharesOf(user2);
+        before2.earned = amo.earned(user2);
+        before2.totalShares = amo.totalShares();
+
+        // Deposit - user 1 and user 2
+        vm.prank(user1);
+        _module.deposit(_depositAmount);
+        vm.prank(user2);
+        _module.deposit(_depositAmount / 4);
+
+        // Advance days to accrue rewards
+        vm.warp(block.timestamp + 7 days);
+
+        // Get reward
+        vm.prank(owner);
+        uint256 rewardsMaple = amo.getRewardMaple();
+
+        // User gets the reward
+        vm.warp(block.timestamp + 1 days);
+
+        // Shares tracking afterwards - user 1
+        SharesVars memory aft1;
+        aft1.shares = amo.sharesOf(user1);
+        aft1.earned = amo.earned(user1);
+        aft1.totalShares = amo.totalShares();
+        // Shares tracking afterwards - user 2
+        SharesVars memory aft2;
+        aft2.shares = amo.sharesOf(user2);
+        aft2.earned = amo.earned(user2);
+        aft2.totalShares = amo.totalShares();
+
+        // Rewards for user 2 should be 1/5 of the rewards for user 1
+        // As per similar logic above, since user 2 has 1/5 total shares
+        assertTrue(aft1.earned > 0 && aft2.earned > 0);
+        assertEq(aft1.earned, 5 * aft2.earned);
+
+        // Get actual rewards, earned() should reset to 0
+        vm.prank(user1);
+        amo.getReward(user1);
+        vm.prank(user2);
+        amo.getReward(user2);
+
+        aft1.earned = amo.earned(user1);
+        aft2.earned = amo.earned(user2);
+
+        assertEq(aft1.earned, 0);
+        assertEq(aft2.earned, 0);
     }
 }

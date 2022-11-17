@@ -89,11 +89,25 @@ contract MapleModuleAMO is IModuleAMO, ERC20 {
         IERC20(depositToken).safeIncreaseAllowance(address(mplPool), type(uint256).max);
     }
 
+    /// @notice Get total shares
+    function totalShares() public view returns (uint256) {
+        return _totalShares;
+    }
+
+    /// @notice Get shares of account
+    /// @param account Account
+    function sharesOf(address account) public view returns (uint256) {
+        return _shares[account];
+    }
+
     /// @notice Get earned amount by account (total available - claimed)
     /// @param account Account
     function earned(address account) public view returns (uint256) {
-        uint256 earnedRewards =
-            (balanceOf(account) * _totalRewards) / totalSupply() - claimedRewards[account];
+        uint256 ts = totalSupply();
+        if (ts == 0) {
+            return 0;
+        }
+        uint256 earnedRewards = (balanceOf(account) * _totalRewards) / ts - claimedRewards[account];
         return earnedRewards;
     }
 
@@ -115,9 +129,9 @@ contract MapleModuleAMO is IModuleAMO, ERC20 {
     }
 
     /// @notice Tracks shares for withdrawals
-    function _trackWithdrawShares(address account, uint256 amount) private returns (uint256) {
-        uint256 shares = _toShares(amount);
-        _shares[account] -= shares;
+    function _trackWithdrawShares(address account) private returns (uint256) {
+        uint256 shares = _shares[account];
+        _shares[account] = 0;
         _totalShares -= shares;
         _burn(account, shares);
         return shares;
@@ -179,7 +193,7 @@ contract MapleModuleAMO is IModuleAMO, ERC20 {
         // Withdraw from pool
         mplPool.withdraw(depositAmount);
 
-        uint256 shares = _trackWithdrawShares(account, depositAmount);
+        uint256 shares = _trackWithdrawShares(account);
         _totalDeposits -= depositAmount;
 
         // Transfer depositToken to caller
