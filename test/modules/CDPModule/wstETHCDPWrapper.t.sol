@@ -12,7 +12,6 @@ import "@oracle/DummyOracle.sol";
 import "@modules/interfaces/Generics.sol";
 
 contract wstETHCDPWrapperTest is BaseSetup {
-
     error NotETHVariant();
 
     struct PoolBalances {
