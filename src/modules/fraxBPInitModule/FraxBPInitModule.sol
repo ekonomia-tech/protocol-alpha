@@ -52,7 +52,6 @@ contract FraxBPInitModule is ERC20, Ownable, ReentrancyGuard {
     ICurveFactory public curveFactory = ICurveFactory(0xB9fC157394Af804a3578134A6585C0dc9cc990d4);
     ICurvePool public fraxBPPHOMetapool;
     uint256 public maxCap;
-    uint256 public currentDeposits;
     uint256 public constant FRAX_DECIMALS = 18;
     uint256 public constant USDC_DECIMALS = 6;
     uint256 private constant USDC_SCALE = 10 ** 12;
@@ -109,20 +108,20 @@ contract FraxBPInitModule is ERC20, Ownable, ReentrancyGuard {
         frax.safeTransferFrom(msg.sender, address(this), fraxAmount);
 
         issuedAmount[msg.sender] += totalAmount;
-        currentDeposits += totalAmount;
         _mint(msg.sender, totalAmount);
 
         emit BondIssued(msg.sender, usdcAmount, fraxAmount, totalAmount);
     }
 
     /// @notice Adds PHO and FraxBP LP to FraxBP/PHO pool
-    /// @param usdcAmount amount of USDC to deposit
-    /// @param fraxAmount amount of FRAX to deposit
-    function addFraxBPPHOLiquidity(uint256 usdcAmount, uint256 fraxAmount) external {
+    function addFraxBPPHOLiquidity() external {
         // Steps:
         // 1. Adds USDC and FRAX (say N total) to FraxBP in order to get FraxBP LP tokens
         // 2. Mints N/2 PHO based on USDC and FRAX amounts
         // 3. Add liquidity to fraxBP PHO pool
+
+        uint256 usdcAmount = usdc.balanceOf(address(this));
+        uint256 fraxAmount = frax.balanceOf(address(this));
 
         uint256[2] memory fraxBPmetaLiquidity;
         fraxBPmetaLiquidity[0] = fraxAmount; // frax

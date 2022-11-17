@@ -83,14 +83,6 @@ contract FraxBPInitModuleTest is BaseSetup {
         vm.warp(block.timestamp + moduleManager.moduleDelay());
         moduleManager.executeCeilingUpdate(address(fraxBPInitModule));
 
-        // TODO: edit?
-        _fundAndApproveUSDC(
-            address(fraxBPInitModule),
-            address(fraxBPPHOMetapool),
-            ONE_HUNDRED_THOUSAND_D6,
-            ONE_HUNDRED_THOUSAND_D6
-        );
-
         // Approve sending USDC to FraxBP Init Module
         vm.startPrank(user1);
         usdc.approve(address(fraxBPInitModule), TEN_THOUSAND_D6);
@@ -238,7 +230,7 @@ contract FraxBPInitModuleTest is BaseSetup {
         uint256 fraxBalanceBefore = frax.balanceOf(address(fraxBPInitModule));
 
         // Add to FraxBP/PHO
-        fraxBPInitModule.addFraxBPPHOLiquidity(usdcAmount, fraxAmount);
+        fraxBPInitModule.addFraxBPPHOLiquidity();
 
         uint256 usdcBalanceAfter = usdc.balanceOf(address(fraxBPInitModule));
         uint256 fraxBalanceAfter = frax.balanceOf(address(fraxBPInitModule));
@@ -252,15 +244,15 @@ contract FraxBPInitModuleTest is BaseSetup {
     // Cannot add FraxBP / PHO liquidity if USDC/FRAX amounts imbalanced
     function testCannotAddFraxBPPHOLiquidityNonEqualAmounts() public {
         uint256 usdcDepositAmount = ONE_HUNDRED_D6;
-        uint256 fraxDepositAmount = ONE_HUNDRED_D18;
-        uint256 expectedMint = 2 * ONE_HUNDRED_D18;
+        uint256 fraxDepositAmount = 2 * ONE_HUNDRED_D18;
+        uint256 expectedMint = 3 * ONE_HUNDRED_D18;
         _testDepositAnyModule(
             usdcDepositAmount, fraxDepositAmount, expectedMint, fraxBPInitModule, saleEndDate - 500
         );
 
         // Add to FraxBP/PHO
         vm.expectRevert(abi.encodeWithSelector(MustHaveEqualAmounts.selector));
-        fraxBPInitModule.addFraxBPPHOLiquidity(ONE_HUNDRED_D6 * 2, ONE_HUNDRED_D18);
+        fraxBPInitModule.addFraxBPPHOLiquidity();
     }
 
     // Test addFraxBPLiquidity()
