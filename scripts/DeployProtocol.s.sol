@@ -19,11 +19,12 @@ contract DeployProtocol is Script, Addresses {
     ModuleManager public moduleManager;
     ChainlinkPriceFeed public chainlinkOracle;
 
-    function run() external {
+    function run(address pauseGuardian) external {
+
         vm.startBroadcast();
 
-        phoGovernance = msg.sender;
-        tonGovernance = msg.sender;
+        address phoGovernance = getAddress(".phoGovernance");
+        address tonGovernance = getAddress(".tonGovernance");
 
         pho = new PHO("PHO", "PHO");
         ton = new TON("TON", "TON");
@@ -31,12 +32,15 @@ contract DeployProtocol is Script, Addresses {
         moduleManager = new ModuleManager(
             address(kernel),
             phoGovernance,
-            tonGovernance
+            tonGovernance,
+            pauseGuardian
         );
+        
         chainlinkOracle = new ChainlinkPriceFeed(10);
         pho.setKernel(address(kernel));
         kernel.updateModuleManager(address(moduleManager));
         
         vm.stopBroadcast();
+    
     }
 }

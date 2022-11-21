@@ -15,9 +15,12 @@ contract DeployCDPModuleWETH is Script, Addresses {
     function run() external {
         vm.startBroadcast();
         
+        address moduleManagerAddress = getAddress(".ModuleManager");
+        address chainlinkPriceFeedAddress = getAddress(".ChainlinkPriceFeed");
+
         wethPool = new CDPPool(
             moduleManagerAddress,
-            chainlinkOracleAddress,
+            chainlinkPriceFeedAddress,
             WETH_ADDRESS,
             170000,
             150000,

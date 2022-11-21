@@ -19,11 +19,11 @@ contract DeployCurvePool is Script, Addresses {
     function run() external {
         vm.startBroadcast();
 
-        address curvePoolAddress = curveFactory.deploy_metapool(
+        address phoAddress = getAddress(".PHO");
+
+        curveFactory.deploy_metapool(
             fraxBP, "FRAXBP/PHO", "FRAXBPPHO", phoAddress, 200, 4000000, 0
         );
-
-        console.log(curvePoolAddress);
         
         vm.stopBroadcast();
     }

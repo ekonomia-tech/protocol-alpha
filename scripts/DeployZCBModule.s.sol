@@ -11,33 +11,33 @@ import "./Addresses.sol";
 
 /// Script to deploy ZCB module
 contract DeployZCBModule is Script, Addresses {
+    
     ZeroCouponBondModule public zeroCouponBondModule;
-    address depositToken = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-    string bondTokenName = "Test USDC Bond";
-    string bondTokenSymbol = "USDC-TEST";
-    uint256 interestRate = 1000;
-    uint256 depositWindowOpen = block.timestamp + 1 days;
-    uint256 depositWindowEnd = block.timestamp + 1000 days;
-    address depositTokenAddress = usdcAddress;
 
-    function run() external {
+    function run(
+        address depositToken, 
+        string memory bondTokenName, 
+        string memory bondTokenSymbol, 
+        uint256 interestRate, 
+        uint256 depositWindowOpen, 
+        uint256 depositWindowEnd
+    ) external {
         vm.startBroadcast();
+
+        address phoAddress = getAddress(".PHO");
+        address moduleManagerAddress = getAddress(".ModuleManager");
+        address kernelAddress = getAddress(".Kernel");
 
         zeroCouponBondModule = new ZeroCouponBondModule(
             moduleManagerAddress,
             kernelAddress,
             phoAddress,
-            depositTokenAddress,
+            depositToken,
             bondTokenName,
             bondTokenSymbol,
             interestRate,
-            depositWindowOpen,
-            depositWindowEnd
-        );
-
-        console.log(
-            "Deployed zeroCouponBondModule address: ",
-            address(zeroCouponBondModule)
+            block.timestamp + depositWindowOpen,
+            block.timestamp + depositWindowEnd
         );
 
         vm.stopBroadcast();

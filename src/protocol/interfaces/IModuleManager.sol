@@ -60,4 +60,5 @@ interface IModuleManager {
     function pauseModule(address _module) external;
     function unpauseModule(address _module) external;
     function setPauseGuardian(address _pauseGuardian) external;
+    function executeCeilingUpdate(address _module) external;
 }

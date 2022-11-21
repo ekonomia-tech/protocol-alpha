@@ -15,20 +15,26 @@ import "./Addresses.sol";
 contract DeployPriceController is Script, Addresses {
 
     PriceController public priceController;
-    
-    function run() external {
+
+    function run(uint256 cooldownPeriod, uint256 priceBand, uint256 priceMitigationPercentage, uint256 maxSlippage) external {
         vm.startBroadcast();
-        
+
+        address phoAddress = getAddress(".PHO");
+        address moduleManagerAddress = getAddress(".ModuleManager");
+        address kernelAddress = getAddress(".Kernel");
+        address chainlinkPriceFeedAddress = getAddress(".ChainlinkPriceFeed");
+        address curvePoolAddress = getAddress(".CurvePool"); 
+
         priceController = new PriceController(
             phoAddress,
             moduleManagerAddress,
             kernelAddress,
-            chainlinkOracleAddress,
-            curvePool,
-            1 weeks,
-            10 ** 4,
-            50000,
-            99000
+            chainlinkPriceFeedAddress,
+            curvePoolAddress,
+            cooldownPeriod,
+            priceBand,
+            priceMitigationPercentage,
+            maxSlippage
         );
         
         vm.stopBroadcast();
