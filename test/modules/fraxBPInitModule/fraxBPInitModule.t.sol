@@ -15,15 +15,16 @@ contract FraxBPInitModuleTest is BaseSetup {
     error CannotRedeemMoreThanDeposited();
     error OverEighteenDecimals();
     error CannotDepositAfterSaleEnded();
-    error MaxCapNotMet();
     error FraxBPPHOMetapoolNotSet();
     error MustHaveEqualAmounts();
+    error CannotDepositZero();
+    error InvalidTimeWindows();
+    error CannotRedeemBeforeRedemptionStart();
+    error CannotRedeemZero();
 
     /// Events
-    event BondIssued(
-        address indexed depositor, uint256 usdcAmount, uint256 fraxAmount, uint256 mintAmount
-    );
-    event BondRedeemed(address indexed redeemer, uint256 redeemAmount);
+    event Deposited(address indexed depositor, uint256 fraxBPLpAmount, uint256 phoAmount);
+    event Redeemed(address indexed redeemer, uint256 redeemAmount, uint256 phoAmount);
 
     ICurvePool public fraxBPPHOMetapool;
     FraxBPInitModule public fraxBPInitModule;
@@ -34,6 +35,7 @@ contract FraxBPInitModuleTest is BaseSetup {
     uint256 public constant USDC_SCALE = 10 ** 12;
     uint256 public constant maxCap = 20000000 * 10 ** 18;
     uint256 public saleEndDate;
+    uint256 public redemptionStartDate;
 
     // Track balance for FRAX, USDC, FRAXBP LP, & PHO
     struct DepositTokenBalance {
@@ -57,28 +59,36 @@ contract FraxBPInitModuleTest is BaseSetup {
         _getFRAX(user1, TEN_THOUSAND_D18);
         _getUSDC(user1, TEN_THOUSAND_D6);
 
+        _getFRAX(user2, ONE_MILLION_D18);
+        _getUSDC(user2, ONE_MILLION_D6);
+
+        // Update oracle
+        vm.startPrank(owner);
+        priceFeed.addFeed(FRAX_ADDRESS, PRICEFEED_FRAXUSD);
+        priceFeed.addFeed(USDC_ADDRESS, PRICEFEED_USDCUSD);
+        vm.stopPrank();
+
         fraxBPPHOMetapool = ICurvePool(_deployFraxBPPHOPoolCustom(20));
 
         //_deployFraxBPPHOPoolCustom
         saleEndDate = block.timestamp + 10000;
+        redemptionStartDate = block.timestamp + 20000;
 
         vm.prank(owner);
         fraxBPInitModule = new FraxBPInitModule(
             address(moduleManager),
-            address(kernel),
-            FRAX_BP_BOND_TOKEN_NAME,
-            FRAX_BP_BOND_TOKEN_SYMBOL,
             address(fraxBPPHOMetapool),
             address(pho),
-            maxCap,
-            saleEndDate
+            address(priceFeed),
+            saleEndDate,
+            redemptionStartDate
         );
 
         vm.prank(PHOGovernance);
         moduleManager.addModule(address(fraxBPInitModule));
 
         vm.prank(TONGovernance);
-        moduleManager.setPHOCeilingForModule(address(fraxBPInitModule), ONE_MILLION_D18 * 10);
+        moduleManager.setPHOCeilingForModule(address(fraxBPInitModule), ONE_MILLION_D18 * 100);
 
         vm.warp(block.timestamp + moduleManager.moduleDelay());
         moduleManager.executeCeilingUpdate(address(fraxBPInitModule));
@@ -86,9 +96,19 @@ contract FraxBPInitModuleTest is BaseSetup {
         // Approve sending USDC to FraxBP Init Module
         vm.startPrank(user1);
         usdc.approve(address(fraxBPInitModule), TEN_THOUSAND_D6);
-        // Approve sending DAI to DAI ZCB contract
         frax.approve(address(fraxBPInitModule), TEN_THOUSAND_D18);
+        fraxBPLP.approve(address(fraxBPInitModule), TEN_THOUSAND_D18);
+        pho.approve(address(fraxBPInitModule), TEN_THOUSAND_D18);
+        pho.approve(address(kernel), ONE_MILLION_D18);
         vm.stopPrank();
+        vm.startPrank(user2);
+        usdc.approve(address(fraxBPInitModule), ONE_MILLION_D6);
+        frax.approve(address(fraxBPInitModule), ONE_MILLION_D18);
+        fraxBPLP.approve(address(fraxBPInitModule), ONE_MILLION_D18);
+        vm.stopPrank();
+
+        // vm.prank(address(fraxBPInitModule));
+        // fraxBPLP.approve(address(user1), TEN_THOUSAND_D18);
     }
 
     // Cannot set addresses to 0
@@ -98,121 +118,47 @@ contract FraxBPInitModuleTest is BaseSetup {
         vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
         fraxBPInitModule = new FraxBPInitModule(
             address(0),
-            address(kernel),
-            FRAX_BP_BOND_TOKEN_NAME,
-            FRAX_BP_BOND_TOKEN_SYMBOL,
             address(fraxBPPHOMetapool),
             address(pho),
-            maxCap,
-            block.timestamp + 1000
-        );
-
-        // Kernel
-        vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
-        fraxBPInitModule = new FraxBPInitModule(
-            address(moduleManager),
-            address(0),
-            FRAX_BP_BOND_TOKEN_NAME,
-            FRAX_BP_BOND_TOKEN_SYMBOL,
-            address(fraxBPPHOMetapool),
-            address(pho),
-            maxCap,
-            block.timestamp + 1000
+            address(priceFeed),
+            saleEndDate,
+            redemptionStartDate
         );
 
         // Frax BP / PHO Pool
         vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
         fraxBPInitModule = new FraxBPInitModule(
             address(moduleManager),
-            address(kernel),
-            FRAX_BP_BOND_TOKEN_NAME,
-            FRAX_BP_BOND_TOKEN_SYMBOL,
             address(0),
             address(pho),
-            maxCap,
-            block.timestamp + 1000
+            address(priceFeed),
+            saleEndDate,
+            redemptionStartDate
         );
 
         // PHO
         vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
         fraxBPInitModule = new FraxBPInitModule(
             address(moduleManager),
-            address(kernel),
-            FRAX_BP_BOND_TOKEN_NAME,
-            FRAX_BP_BOND_TOKEN_SYMBOL,
             address(fraxBPPHOMetapool),
             address(0),
-            maxCap,
-            block.timestamp + 1000
+            address(priceFeed),
+            saleEndDate,
+            redemptionStartDate
+        );
+
+        // Oracle
+        vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
+        fraxBPInitModule = new FraxBPInitModule(
+            address(moduleManager),
+            address(fraxBPPHOMetapool),
+            address(pho),
+            address(0),
+            saleEndDate,
+            redemptionStartDate
         );
 
         vm.stopPrank();
-    }
-
-    // Basic deposit
-    function testDepositFull() public {
-        uint256 usdcDepositAmount = ONE_HUNDRED_D6;
-        uint256 fraxDepositAmount = ONE_HUNDRED_D18;
-        uint256 expectedMint = 2 * fraxDepositAmount;
-        _testDepositAnyModule(
-            usdcDepositAmount, fraxDepositAmount, expectedMint, fraxBPInitModule, saleEndDate - 500
-        );
-    }
-
-    // Helper function to test deposit from any FraxBPInitModule
-    function _testDepositAnyModule(
-        uint256 _usdcDepositAmount,
-        uint256 _fraxDepositAmount,
-        uint256 _expectedMintAmount,
-        FraxBPInitModule _module,
-        uint256 _depositTimestamp
-    ) public {
-        uint256 usdcDepositAmount = _usdcDepositAmount;
-        uint256 fraxDepositAmount = _fraxDepositAmount;
-        // USDC, FRAX and PHO balances before
-        DepositTokenBalance memory before;
-        before.userUSDCBalance = usdc.balanceOf(address(user1));
-        before.moduleUSDCBalance = usdc.balanceOf(address(_module));
-        before.userFRAXBalance = frax.balanceOf(address(user1));
-        before.moduleFRAXBalance = frax.balanceOf(address(_module));
-        before.userPHOBalance = pho.balanceOf(user1);
-        before.modulePHOBalance = pho.balanceOf(address(_module));
-        before.userIssuedAmount = _module.issuedAmount(user1);
-        before.totalPHOSupply = pho.totalSupply();
-
-        // Deposit
-        vm.warp(_depositTimestamp);
-        vm.expectEmit(true, true, true, true);
-        emit BondIssued(user1, _usdcDepositAmount, _fraxDepositAmount, _expectedMintAmount);
-        vm.prank(user1);
-        _module.deposit(_usdcDepositAmount, _fraxDepositAmount);
-
-        // depositToken and PHO balances after
-        DepositTokenBalance memory aft; // note that after is a reserved keyword
-        aft.userUSDCBalance = usdc.balanceOf(address(user1));
-        aft.moduleUSDCBalance = usdc.balanceOf(address(_module));
-        aft.userFRAXBalance = frax.balanceOf(address(user1));
-        aft.moduleFRAXBalance = frax.balanceOf(address(_module));
-        aft.modulePHOBalance = pho.balanceOf(address(_module));
-        aft.userPHOBalance = pho.balanceOf(user1);
-        aft.userIssuedAmount = _module.issuedAmount(user1);
-        aft.totalPHOSupply = pho.totalSupply();
-
-        // User balance - PHO same and USDC & FRAX down
-        assertEq(aft.userPHOBalance, before.userPHOBalance);
-        assertEq(aft.userUSDCBalance, before.userUSDCBalance - usdcDepositAmount);
-        assertEq(aft.userFRAXBalance, before.userFRAXBalance - fraxDepositAmount);
-
-        // Frax BP Init module balance - PHO same, USDC & FRAX up
-        assertEq(aft.modulePHOBalance, before.modulePHOBalance);
-        assertEq(aft.moduleUSDCBalance, before.moduleUSDCBalance + usdcDepositAmount);
-        assertEq(aft.moduleFRAXBalance, before.moduleFRAXBalance + fraxDepositAmount);
-
-        // Check issued amount goes up
-        assertEq(aft.userIssuedAmount, before.userIssuedAmount + _expectedMintAmount);
-
-        // Check PHO supply stays same
-        assertEq(aft.totalPHOSupply, before.totalPHOSupply);
     }
 
     // Cannot deposit if sale ended
@@ -221,55 +167,120 @@ contract FraxBPInitModuleTest is BaseSetup {
 
         vm.expectRevert(abi.encodeWithSelector(CannotDepositAfterSaleEnded.selector));
         vm.prank(user1);
-        fraxBPInitModule.deposit(ONE_HUNDRED_D6, ONE_HUNDRED_D18);
+        fraxBPInitModule.depositHelper(ONE_HUNDRED_D6, ONE_HUNDRED_D18);
     }
 
-    // Helper function for testing adding FraxBP / PHO liquidity
-    function _testAddFraxBPPHOLiquidity(uint256 usdcAmount, uint256 fraxAmount) public {
-        uint256 usdcBalanceBefore = usdc.balanceOf(address(fraxBPInitModule));
-        uint256 fraxBalanceBefore = frax.balanceOf(address(fraxBPInitModule));
+    // Cannot deposit zero
+    function testCannotDepositZero() public {
+        vm.warp(saleEndDate - 1);
 
-        // Add to FraxBP/PHO
-        fraxBPInitModule.addFraxBPPHOLiquidity();
-
-        uint256 usdcBalanceAfter = usdc.balanceOf(address(fraxBPInitModule));
-        uint256 fraxBalanceAfter = frax.balanceOf(address(fraxBPInitModule));
-        uint256 fraxBPLPBalanceAfter = fraxBPLP.balanceOf(address(fraxBPInitModule));
-
-        assertEq(fraxBPLPBalanceAfter, 0);
-        assertEq(usdcBalanceAfter, usdcBalanceBefore - usdcAmount);
-        assertEq(fraxBalanceAfter, fraxBalanceBefore - fraxAmount);
+        vm.expectRevert(abi.encodeWithSelector(CannotDepositZero.selector));
+        vm.prank(user1);
+        fraxBPInitModule.depositHelper(0, 0);
     }
 
-    // Cannot add FraxBP / PHO liquidity if USDC/FRAX amounts imbalanced
-    function testCannotAddFraxBPPHOLiquidityNonEqualAmounts() public {
-        uint256 usdcDepositAmount = ONE_HUNDRED_D6;
-        uint256 fraxDepositAmount = 2 * ONE_HUNDRED_D18;
-        uint256 expectedMint = 3 * ONE_HUNDRED_D18;
-        _testDepositAnyModule(
-            usdcDepositAmount, fraxDepositAmount, expectedMint, fraxBPInitModule, saleEndDate - 500
-        );
-
-        // Add to FraxBP/PHO
-        vm.expectRevert(abi.encodeWithSelector(MustHaveEqualAmounts.selector));
-        fraxBPInitModule.addFraxBPPHOLiquidity();
-    }
-
-    // Test addFraxBPLiquidity()
-    function testAddFraxBPPHOLiquidity() public {
+    // Basic deposit
+    function testDepositFull() public {
         uint256 usdcDepositAmount = ONE_HUNDRED_D6;
         uint256 fraxDepositAmount = ONE_HUNDRED_D18;
-        uint256 expectedMint = 2 * ONE_HUNDRED_D18;
+        uint256 expectedMint = 2 * fraxDepositAmount;
         _testDepositAnyModule(
-            usdcDepositAmount, fraxDepositAmount, expectedMint, fraxBPInitModule, saleEndDate - 500
+            user1,
+            usdcDepositAmount,
+            fraxDepositAmount,
+            expectedMint,
+            fraxBPInitModule,
+            saleEndDate - 500,
+            1
+        );
+    }
+
+    // Helper function to test deposit from any FraxBPInitModule
+    function _testDepositAnyModule(
+        address user,
+        uint256 _usdcDepositAmount,
+        uint256 _fraxDepositAmount,
+        uint256 _expectedMintAmount,
+        FraxBPInitModule _module,
+        uint256 _depositTimestamp,
+        uint256 deltaThreshold
+    ) public {
+        uint256 usdcDepositAmount = _usdcDepositAmount;
+        uint256 fraxDepositAmount = _fraxDepositAmount;
+        // USDC, FRAX and PHO balances before
+        DepositTokenBalance memory before;
+        before.userUSDCBalance = usdc.balanceOf(user);
+        before.moduleUSDCBalance = usdc.balanceOf(address(_module));
+        before.userFRAXBalance = frax.balanceOf(user);
+        before.moduleFRAXBalance = frax.balanceOf(address(_module));
+        before.userFraxBPLPBalance = fraxBPLP.balanceOf(user);
+        before.moduleFraxBPLPBalance = fraxBPLP.balanceOf(address(_module));
+        before.userPHOBalance = pho.balanceOf(user);
+        before.modulePHOBalance = pho.balanceOf(address(_module));
+        before.userIssuedAmount = _module.issuedAmount(user);
+        before.totalPHOSupply = pho.totalSupply();
+
+        // Deposit - event topic check false since FraxBPLP amount is not precomputed here
+        vm.warp(_depositTimestamp);
+        vm.expectEmit(true, false, false, false);
+        emit Deposited(user, _usdcDepositAmount, _fraxDepositAmount);
+        vm.prank(user);
+        _module.depositHelper(_usdcDepositAmount, _fraxDepositAmount);
+
+        // depositToken and PHO balances after
+        DepositTokenBalance memory aft; // note that after is a reserved keyword
+        aft.userUSDCBalance = usdc.balanceOf(user);
+        aft.moduleUSDCBalance = usdc.balanceOf(address(_module));
+        aft.userFRAXBalance = frax.balanceOf(user);
+        aft.moduleFRAXBalance = frax.balanceOf(address(_module));
+        aft.userFraxBPLPBalance = fraxBPLP.balanceOf(user);
+        aft.moduleFraxBPLPBalance = fraxBPLP.balanceOf(address(_module));
+        aft.modulePHOBalance = pho.balanceOf(address(_module));
+        aft.userPHOBalance = pho.balanceOf(user);
+        aft.userIssuedAmount = _module.issuedAmount(user);
+        aft.totalPHOSupply = pho.totalSupply();
+
+        uint256 moduleFraxBPLPDiff = aft.moduleFraxBPLPBalance - before.moduleFraxBPLPBalance;
+        uint256 getUSDPerFraxBP = _module.getUSDPerFraxBP();
+        uint256 expectedPHOAmount = (getUSDPerFraxBP * moduleFraxBPLPDiff) / 10 ** 18;
+
+        // User balance - PHO balance up and USDC & FRAX down
+        assertEq(aft.userPHOBalance, expectedPHOAmount);
+        assertEq(aft.userUSDCBalance, before.userUSDCBalance - usdcDepositAmount);
+        assertEq(aft.userFRAXBalance, before.userFRAXBalance - fraxDepositAmount);
+
+        // Frax BP Init module balance - PHO, USDC & FRAX same
+        assertEq(aft.modulePHOBalance, before.modulePHOBalance);
+        assertEq(aft.moduleUSDCBalance, before.moduleUSDCBalance);
+        assertEq(aft.moduleFRAXBalance, before.moduleFRAXBalance);
+
+        // Check issued amount goes up
+        assertApproxEqAbs(
+            aft.userIssuedAmount,
+            before.userIssuedAmount + _expectedMintAmount,
+            deltaThreshold * 10 ** 18
         );
 
-        _testAddFraxBPPHOLiquidity(ONE_HUNDRED_D6, ONE_HUNDRED_D18);
+        // // Check PHO supply goes up
+        assertEq(aft.totalPHOSupply, before.totalPHOSupply + expectedPHOAmount);
+    }
 
-        uint256 redeemAmount = 2 * ONE_HUNDRED_D18;
-        uint256 redeemTimestamp = block.timestamp;
+    // Cannot redeem before redemption start
+    function testCannotRedeemBeforeRedemptionStart() public {
+        vm.warp(redemptionStartDate - 1);
 
-        _testRedeemAnyModule(redeemAmount, fraxBPInitModule, redeemTimestamp);
+        vm.expectRevert(abi.encodeWithSelector(CannotRedeemBeforeRedemptionStart.selector));
+        vm.prank(user1);
+        fraxBPInitModule.redeem();
+    }
+
+    // Cannot redeem zero
+    function testCannotRedeemZero() public {
+        vm.warp(redemptionStartDate + 1);
+
+        vm.expectRevert(abi.encodeWithSelector(CannotRedeemZero.selector));
+        vm.prank(user1);
+        fraxBPInitModule.redeem();
     }
 
     // Basic redeem
@@ -278,76 +289,105 @@ contract FraxBPInitModuleTest is BaseSetup {
         uint256 fraxDepositAmount = ONE_HUNDRED_D18;
         uint256 expectedMint = 2 * ONE_HUNDRED_D18;
         _testDepositAnyModule(
-            usdcDepositAmount, fraxDepositAmount, expectedMint, fraxBPInitModule, saleEndDate - 500
+            user1,
+            usdcDepositAmount,
+            fraxDepositAmount,
+            expectedMint,
+            fraxBPInitModule,
+            saleEndDate - 500,
+            1
         );
 
-        // Add liquidity to FraxBP / PHO pool
-        _testAddFraxBPPHOLiquidity(ONE_HUNDRED_D6, ONE_HUNDRED_D18);
+        uint256 usdcDepositAmount2 = TEN_THOUSAND_D6;
+        uint256 fraxDepositAmount2 = TEN_THOUSAND_D18;
+        uint256 expectedMint2 = 2 * TEN_THOUSAND_D18;
+        _testDepositAnyModule(
+            user2,
+            usdcDepositAmount2,
+            fraxDepositAmount2,
+            expectedMint2,
+            fraxBPInitModule,
+            saleEndDate - 400,
+            15
+        );
 
         uint256 redeemAmount = 2 * ONE_HUNDRED_D18;
-        uint256 redeemTimestamp = block.timestamp;
+        uint256 redeemTimestamp = redemptionStartDate + 1;
 
-        _testRedeemAnyModule(redeemAmount, fraxBPInitModule, redeemTimestamp);
+        _testRedeemAnyModule(user1, redeemAmount, fraxBPInitModule, redeemTimestamp, 1);
     }
 
     // Helper function to test redeem from any FraxBPInitModule
     function _testRedeemAnyModule(
+        address user,
         uint256 _redeemAmount,
         FraxBPInitModule _module,
-        uint256 _redeemTimestamp
+        uint256 _redeemTimestamp,
+        uint256 deltaThreshold
     ) public {
-        //uint256 usdcDepositAmount = _redeemAmount / 10**12;
         // USDC, FRAX and PHO balances before
         DepositTokenBalance memory before;
-        before.userUSDCBalance = usdc.balanceOf(address(user1));
+        before.userUSDCBalance = usdc.balanceOf(user);
         before.moduleUSDCBalance = usdc.balanceOf(address(_module));
-        before.userFRAXBalance = frax.balanceOf(address(user1));
+        before.userFRAXBalance = frax.balanceOf(user);
         before.moduleFRAXBalance = frax.balanceOf(address(_module));
-        before.userFraxBPLPBalance = fraxBPLP.balanceOf(user1);
+        before.userFraxBPLPBalance = fraxBPLP.balanceOf(user);
         before.moduleFraxBPLPBalance = fraxBPLP.balanceOf(address(_module));
-        before.userPHOBalance = pho.balanceOf(user1);
+        before.userPHOBalance = pho.balanceOf(user);
         before.modulePHOBalance = pho.balanceOf(address(_module));
-        before.userIssuedAmount = _module.issuedAmount(user1);
+        before.userIssuedAmount = _module.issuedAmount(user);
         before.totalPHOSupply = pho.totalSupply();
 
-        // Deposit
+        uint256 getUSDPerFraxBP = _module.getUSDPerFraxBP();
+        uint256 redeemAmount = _module.issuedAmount(user);
+        uint256 expectedPHOAmountBurnt = (redeemAmount * 10 ** 18) / getUSDPerFraxBP;
+
+        // Redeem - note for event, third topic (phoAmount) is false,
         vm.warp(_redeemTimestamp);
         vm.expectEmit(true, true, true, true);
-        emit BondRedeemed(user1, _redeemAmount);
-        vm.prank(user1);
+        emit Redeemed(user, redeemAmount, expectedPHOAmountBurnt);
+        vm.prank(user);
         _module.redeem();
 
         // depositToken and PHO balances after
         DepositTokenBalance memory aft; // note that after is a reserved keyword
-        aft.userUSDCBalance = usdc.balanceOf(address(user1));
+        aft.userUSDCBalance = usdc.balanceOf(user);
         aft.moduleUSDCBalance = usdc.balanceOf(address(_module));
-        aft.userFRAXBalance = frax.balanceOf(address(user1));
+        aft.userFRAXBalance = frax.balanceOf(user);
         aft.moduleFRAXBalance = frax.balanceOf(address(_module));
-        aft.userFraxBPLPBalance = fraxBPLP.balanceOf(user1);
+        aft.userFraxBPLPBalance = fraxBPLP.balanceOf(user);
         aft.moduleFraxBPLPBalance = fraxBPLP.balanceOf(address(_module));
         aft.modulePHOBalance = pho.balanceOf(address(_module));
-        aft.userPHOBalance = pho.balanceOf(user1);
-        aft.userIssuedAmount = _module.issuedAmount(user1);
+        aft.userPHOBalance = pho.balanceOf(user);
+        aft.userIssuedAmount = _module.issuedAmount(user);
         aft.totalPHOSupply = pho.totalSupply();
+
+        uint256 moduleFraxBPLPDiff = before.moduleFraxBPLPBalance - aft.moduleFraxBPLPBalance;
 
         // User balance - FraxBPLP and PHO up, USDC/FRAX same
         assertApproxEqAbs(
-            aft.userFraxBPLPBalance, before.userFraxBPLPBalance + _redeemAmount / 2, 10 ** 18
+            aft.userFraxBPLPBalance,
+            before.userFraxBPLPBalance + moduleFraxBPLPDiff,
+            deltaThreshold * 10 ** 18
         );
-        assertApproxEqAbs(aft.userPHOBalance, before.userPHOBalance + _redeemAmount / 2, 10 ** 18);
+        assertApproxEqAbs(
+            before.userPHOBalance,
+            aft.userPHOBalance + expectedPHOAmountBurnt,
+            deltaThreshold * 10 ** 18
+        );
         assertEq(aft.userUSDCBalance, before.userUSDCBalance);
         assertEq(aft.userFRAXBalance, before.userFRAXBalance);
 
         // Frax BP Init module balance - FraxBPLP and PHO same, USDC & FRAX same
-        assertEq(aft.moduleFraxBPLPBalance, before.moduleFraxBPLPBalance);
+        assertEq(aft.moduleFraxBPLPBalance, before.moduleFraxBPLPBalance - moduleFraxBPLPDiff);
         assertEq(aft.modulePHOBalance, before.modulePHOBalance);
         assertEq(aft.moduleUSDCBalance, before.moduleUSDCBalance);
         assertEq(aft.moduleFRAXBalance, before.moduleFRAXBalance);
 
         // Check issued amount goes down
-        assertEq(aft.userIssuedAmount, before.userIssuedAmount - _redeemAmount);
+        assertEq(aft.userIssuedAmount, 0);
 
         // Check PHO supply same
-        assertEq(aft.totalPHOSupply, before.totalPHOSupply);
+        assertEq(aft.totalPHOSupply, before.totalPHOSupply - expectedPHOAmountBurnt);
     }
 }
