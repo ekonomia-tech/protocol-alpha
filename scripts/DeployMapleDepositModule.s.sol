@@ -16,24 +16,22 @@ contract DeployMapleDepositModule is Script, Addresses {
     address oracleAddress = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
     address mplRewardsAddress = 0x7869D7a3B074b5fa484dc04798E254c9C06A5e90;
     address mplPoolAddress = 0xFeBd6F15Df3B73DC4307B1d7E65D46413e710C27;
-    address depositTokenAddress = usdcAddress;
 
-    function run() external {
+    function run(address depositToken) external {
         vm.startBroadcast();
+
+        address moduleManagerAddress = getAddress(".ModuleManager");
+        address kernelAddress = getAddress(".Kernel");
+        address phoAddress = getAddress(".PHO");
 
         mapleDepositModule = new MapleDepositModule(
             moduleManagerAddress,
             kernelAddress,
             phoAddress,
             oracleAddress,
-            depositTokenAddress,
+            depositToken,
             mplRewardsAddress,
             mplPoolAddress
-        );
-
-        console.log(
-            "Deployed mapleDepositModule address: ",
-            address(mapleDepositModule)
         );
 
         vm.stopBroadcast();
