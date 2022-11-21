@@ -1,0 +1,43 @@
+name: Publish build in GitHub Package Registry
+
+on:
+  release:
+    types: [published]
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Git checkout
+      - uses: actions/checkout@v3
+
+      # - name: Run deployment script
+      #   run: TODO
+
+      # - name: Run ABI parsing script
+      #   run: TODO
+
+      - name: Setup Node.js version
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: Install dependencies
+        run: npm i
+
+      # - name: Run typechain script
+      #   run: TODO
+
+      - name: Configure GitHub Package Registry as Publish Target
+        uses: actions/setup-node@v3
+        with:
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@ekonomia-tech'
+
+      - name: Publish to GitHub Package Registry
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GH_PUBLISH_GPR_TOKEN }}
