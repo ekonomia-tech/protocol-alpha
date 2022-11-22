@@ -68,7 +68,7 @@ contract wstETHCDPWrapper {
     }
 
     function _wrap(uint256 _amount, address _depositToken) private returns (uint256) {
-        if(_depositToken == address(WETH)) {
+        if (_depositToken == address(WETH)) {
             return _processWETH(_amount);
         } else if (_depositToken == address(STETH)) {
             return _processSTETH(_amount);
@@ -85,7 +85,7 @@ contract wstETHCDPWrapper {
         return _processETH(_amount);
     }
 
-    function _processETH(uint256 _amount) private returns (uint256){
+    function _processETH(uint256 _amount) private returns (uint256) {
         uint256 balBefore = WSTETH.balanceOf(address(this));
         address(WSTETH).call{value: _amount}("");
         uint256 balAfter = WSTETH.balanceOf(address(this));
