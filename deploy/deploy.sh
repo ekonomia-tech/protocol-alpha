@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source "deploy/shared.sh"
+
 while getopts n:f:c:p:l:s:A:C:P: flag
 do
     case "${flag}" in
@@ -13,16 +15,31 @@ do
 
     esac
 done
-   
-log_path="broadcast/$CONTRACT_NAME.s.sol/1/run-latest.json"
+
+addresses_last_json="deployments/addresses_last.json"
+if [[ ! -f $addresses_last_json ]]
+then
+    if [[ ! -f "deployments/$NETWORK/addresses_latest.json" ]]
+    then
+        echo "------------------------------------------------------------------------------------"
+        echo "Error:"
+        echo "There are contract addresses missing that are needed run this process."
+        echo "Please run a full deployment on $NETWORK and try to run this process again."
+        echo "------------------------------------------------------------------------------------"
+        exit 0
+    fi
+
+    cp "deployments/$NETWORK/addresses_latest.json" $addresses_last_json
+    SINGLE_DEPLOYMENT=1
+fi
 
 if [[ -z $SIG ]]
 then 
     SIG=0xc0406226
-else 
-    func_sig=${SIG:2:8}
-    log_path="broadcast/$CONTRACT_NAME.s.sol/1/$func_sig-latest.json"
 fi
+
+func_sig=${SIG:2:8}
+log_path="broadcast/$CONTRACT_NAME.s.sol/1/$func_sig-latest.json"
 
 forge script scripts/$CONTRACT_NAME.s.sol:$CONTRACT_NAME --fork-url $FORK_URL --private-key $PRIVATE_KEY --sig $SIG --silent --broadcast 
 
@@ -45,9 +62,18 @@ do
             address=$(jq ".transactions[$i] | .additionalContracts[0].address" $log_path)
         fi
         
-        contents="$(jq .[$name]="$address" deployments/addresses_last.json)" && echo -E "${contents}" > deployments/addresses_last.json
+        contents="$(jq .[$name]="$address" $addresses_last_json)" && echo -E "${contents}" > deployments/addresses_last.json
+        contents="$(jq .$NETWORK[$name]="$address" addresses_master.json)" && echo -E "${contents}" > addresses_master.json
         
     fi
 done
 
 
+
+if [[ $SINGLE_DEPLOYMENT == 1 ]]
+then
+    create_log_folder $NETWORK
+    cp $addresses_last_json "$logs_dir/addresses.json"
+    cp $addresses_last_json "$logs_dir/../addresses_latest.json"
+    rm $addresses_last_json
+fi

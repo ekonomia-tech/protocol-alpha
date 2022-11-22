@@ -1,4 +1,5 @@
-
+#!/bin/bash
+source "deploy/shared.sh"
 
 while getopts n:f:p: flag
 do
@@ -9,15 +10,9 @@ do
     esac
 done
 
-timestamp=$(date +%Y_%b_%d_%H%M%S)
+# $logs_dir is returning from create_log_folder function.
+create_log_folder $NETWORK
 
-if [ ! -d "deployments/${NETWORK}" ]
-then
-    mkdir "deployments/${NETWORK}"
-fi
-
-logs_dir="deployments/${NETWORK}/${timestamp}"
-mkdir $logs_dir
 cp deployments/.addresses_last.example.json deployments/addresses_last.json
 
 # Deploy Protocol
