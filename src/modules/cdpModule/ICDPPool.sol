@@ -27,7 +27,6 @@ interface ICDPPool {
     event DebtAdded(address indexed user, uint256 addedDebt, uint256 debt);
     event DebtRemoved(address indexed user, uint256 removedDebt, uint256 debt);
     event Closed(address indexed user);
-    event StrategySet(address indexed strategy);
 
     /// @notice Event emitted when a liquidation is happening
     /// @param user The user being liquidated
@@ -67,5 +66,4 @@ interface ICDPPool {
     function getCollateralUSDTotal() external view returns (uint256);
     function getCollateralBalance() external view returns (uint256);
     function getFeesCollected() external view returns (uint256);
-    function setStrategy(address _strategy) external;
 }

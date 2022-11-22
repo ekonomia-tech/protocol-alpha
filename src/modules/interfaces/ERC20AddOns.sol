@@ -18,16 +18,8 @@ interface IWSTETH is IERC20 {
     function getWstETHByStETH(uint256 _stETHAmount) external view returns (uint256);
 }
 
-interface IUSDC {
-    function balanceOf(address account) external view returns (uint256);
-
+interface IUSDC is IERC20 {
     function mint(address to, uint256 amount) external;
-
-    function approve(address spender, uint256 amount) external returns (bool);
-
-    function transfer(address to, uint256 amount) external;
-
     function configureMinter(address minter, uint256 minterAllowedAmount) external;
-
     function masterMinter() external view returns (address);
 }
