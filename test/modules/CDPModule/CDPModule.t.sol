@@ -612,36 +612,6 @@ contract CDPPoolTest is BaseSetup {
         assertEq(wethPool.collateralToUSD(collateralAmount), expected);
     }
 
-    /// setStrategy
-
-    function testSetStrategy() public {
-        vm.expectEmit(true, false, false, true);
-        emit StrategySet(address(555));
-        vm.prank(TONGovernance);
-        wethPool.setStrategy(address(555));
-
-        assertEq(address(wethPool.strategy()), address(555));
-    }
-
-    function testCannotSetStrategyZeroAddress() public {
-        vm.expectRevert(abi.encodeWithSelector(ZeroAddress.selector));
-        vm.prank(TONGovernance);
-        wethPool.setStrategy(address(0));
-    }
-
-    function testCannotSetStrategySameAddress() public {
-        testSetStrategy();
-        vm.expectRevert(abi.encodeWithSelector(SameAddress.selector));
-        vm.prank(TONGovernance);
-        wethPool.setStrategy(address(555));
-    }
-
-    function testCannotSetStrategyNotAuthorized() public {
-        vm.expectRevert(abi.encodeWithSelector(NotTONGovernance.selector));
-        vm.prank(user1);
-        wethPool.setStrategy(address(555));
-    }
-
     /// private functions
 
     /// @notice opens a position for a user with certain debt and specific CR
