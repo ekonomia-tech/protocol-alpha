@@ -47,7 +47,6 @@ contract CDPPool is ICDPPool {
     address public TONGovernance;
 
     PoolBalances public pool;
-    IModuleAMO public strategy;
 
     mapping(address => CDP) public cdps;
 
@@ -420,13 +419,5 @@ contract CDPPool is ICDPPool {
 
     function getFeesCollected() external view returns (uint256) {
         return feesCollected;
-    }
-
-    function setStrategy(address _strategy) external onlyTONGovernance {
-        if (_strategy == address(0)) revert ZeroAddress();
-        if (_strategy == address(strategy)) revert SameAddress();
-        strategy = IModuleAMO(_strategy);
-
-        emit StrategySet(_strategy);
     }
 }
