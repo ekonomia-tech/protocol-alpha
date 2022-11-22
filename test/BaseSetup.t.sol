@@ -13,7 +13,7 @@ import "@oracle/IPHOOracle.sol";
 import "@oracle/DummyOracle.sol";
 import "@external/curve/ICurvePool.sol";
 import "@external/curve/ICurveFactory.sol";
-import "@modules/interfaces/Generics.sol";
+import "@modules/interfaces/ERC20AddOns.sol";
 
 abstract contract BaseSetup is Test {
     struct Balance {

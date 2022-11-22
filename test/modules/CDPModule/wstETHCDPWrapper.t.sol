@@ -9,7 +9,7 @@ import {wstETHCDPWrapper} from "@modules/cdpModule/wstETHCDPWrapper.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@oracle/IPriceOracle.sol";
 import "@oracle/DummyOracle.sol";
-import "@modules/interfaces/Generics.sol";
+import "@modules/interfaces/ERC20AddOns.sol";
 
 contract wstETHCDPWrapperTest is BaseSetup {
     error NotETHVariant();
@@ -172,9 +172,9 @@ contract wstETHCDPWrapperTest is BaseSetup {
 
         Balances memory _after = _getBalances(user3);
 
-        assertEq(_after.pool.collateral, _before.pool.collateral + expectedWst);
-        assertEq(_after.pool.debt, _before.pool.debt + debtAmount);
-        assertEq(_after.user.stETH, _before.user.stETH - collateralAmount);
+        assertApproxEqAbs(_after.pool.collateral, _before.pool.collateral + expectedWst, 1 wei);
+        assertApproxEqAbs(_after.pool.debt, _before.pool.debt + debtAmount, 1 wei);
+        assertApproxEqAbs(_after.user.stETH, _before.user.stETH - collateralAmount, 1 wei);
     }
 
     function testOpenWithWSTETH() public {
