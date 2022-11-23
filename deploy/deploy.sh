@@ -63,7 +63,14 @@ do
         fi
         
         contents="$(jq .[$name]="$address" $addresses_last_json)" && echo -E "${contents}" > deployments/addresses_last.json
-        contents="$(jq .$NETWORK[$name]="$address" addresses_master.json)" && echo -E "${contents}" > addresses_master.json
+
+        if [[ $IS_CORE == 1 ]] 
+        then
+            contents="$(jq .$NETWORK.core[$name]="$address" addresses_master.json)" && echo -E "${contents}" > addresses_master.json
+        else
+            contents="$(jq .$NETWORK.modules[$name]="$address" addresses_master.json)" && echo -E "${contents}" > addresses_master.json
+        fi
+        
         
     fi
 done

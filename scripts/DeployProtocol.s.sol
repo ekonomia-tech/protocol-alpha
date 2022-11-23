@@ -8,7 +8,7 @@ import "@protocol/contracts/TON.sol";
 import "@protocol/contracts/Kernel.sol";
 import "@protocol/contracts/ModuleManager.sol";
 import "@oracle/ChainlinkPriceFeed.sol";
-import "./Addresses.sol";
+import "./Addresses.s.sol";
 
 /// Script to deploy protocol (PHO, TON, Kernel, ModuleManager)
 contract DeployProtocol is Script, Addresses {

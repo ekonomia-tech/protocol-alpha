@@ -48,7 +48,7 @@ To deploy the code onto a persistent mainnet fork, first make sure you have a `.
 # Deploy Price Controller module
 
 To deploy the price controller:
-1. follow the `Addresses.example` template to update `Addresses.sol`:
+1. follow the `Addresses.example` template to update `Addresses.s.sol`:
 - ```kernelAddress```
 - ```moduleManagerAddress```
 - ```phoAddress```
@@ -59,14 +59,14 @@ To deploy the price controller:
 3. copy the curve pool address from the printed log
 4. run cast command to checksum the pool address
 - ```cast to-checksum-address <pool address>```
-5. add the checksum curve pool address to `Addresses.sol`
+5. add the checksum curve pool address to `Addresses.s.sol`
 6. deploy the price controller by running the following command:
 - ```forge script scripts/DeployPriceController.s.sol:DeployPriceController --fork-url $FORK_URL --broadcast --json  --private-key $PRIVATE_KEY -vvvv```
 
 # Deploy the CDP Module using WETH as collateral
 
 To deploy a CDP module with WETH as collateral, follow the following steps:
-1. follow the `Addresses.example` template to update `Addresses.sol`:
+1. follow the `Addresses.example` template to update `Addresses.s.sol`:
 - ```moduleManagerAddress```
 - ```chainlinkOracleAddress```
 

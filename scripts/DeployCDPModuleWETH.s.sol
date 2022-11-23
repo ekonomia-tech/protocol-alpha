@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Script.sol";
 import "@modules/cdpModule/CDPPool.sol";
-import "./Addresses.sol";
+import "./Addresses.s.sol";
 
 /// Script to deploy protocol (PHO, TON, Kernel, ModuleManager)
 contract DeployCDPModuleWETH is Script, Addresses {

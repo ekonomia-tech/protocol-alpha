@@ -1,0 +1,33 @@
+{
+  "name": "protocol-alpha",
+  "version": "0.0.1",
+  "description": "Alpha version of the Photon Finance Decentralized Stablecoin protocol. Photon is a modular, risk and profit separated decentralized stablecoin.",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "typechain": "typechain --target ethers-v5 --out-dir typechain_types out/*[^.s][^.t].sol/*.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ekonomia-tech/protocol-alpha.git"
+  },
+  "author": "Ekonomia",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ekonomia-tech/protocol-alpha/issues"
+  },
+  "homepage": "https://github.com/ekonomia-tech/protocol-alpha#readme",
+  "devDependencies": {
+    "@typechain/ethers-v5": "^10.1.1",
+    "@types/node": "^18.11.9",
+    "dotenv": "^16.0.3",
+    "ethers": "^5.7.2",
+    "ts-node": "^10.9.1",
+    "typechain": "^8.1.1",
+    "typescript": "^4.9.3"
+  }
+}
