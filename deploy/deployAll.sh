@@ -17,10 +17,10 @@ cp deployments/.addresses_last.example.json deployments/addresses_last.json
 
 # Deploy Protocol
 DEPLOY_SIG=$(cast calldata "run(address)" 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266)
-deploy/deploy.sh -n $NETWORK -f $FORK_URL -c "DeployProtocol" -p $PRIVATE_KEY -s $DEPLOY_SIG;
+deploy/deploy.sh -n $NETWORK -f $FORK_URL -c "DeployProtocol" -p $PRIVATE_KEY -s $DEPLOY_SIG -C 1;
 
 # Deploy Curve pool
-deploy/deploy.sh -n $NETWORK -f $FORK_URL -c "DeployCurvePool" -p $PRIVATE_KEY -l CurvePool;
+deploy/deploy.sh -n $NETWORK -f $FORK_URL -c "DeployCurvePool" -p $PRIVATE_KEY -l CurvePool -C 1;
 
 # Deploy Price Controller
 PRICE_CONTROLLER_SIG=$(cast calldata "run(uint256,uint256,uint256,uint256)" 604800 10000 50000 99000)

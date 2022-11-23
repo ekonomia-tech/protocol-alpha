@@ -7,7 +7,7 @@ import "@protocol/interfaces/IPHO.sol";
 import "@protocol/interfaces/IKernel.sol";
 import "@protocol/interfaces/IModuleManager.sol";
 import "@modules/mapleDepositModule/MapleDepositModule.sol";
-import "./Addresses.sol";
+import "./Addresses.s.sol";
 
 /// Script to deploy Maple Deposit module
 contract DeployMapleDepositModule is Script, Addresses {

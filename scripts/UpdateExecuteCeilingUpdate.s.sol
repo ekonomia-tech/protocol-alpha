@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Script.sol";
 import "@protocol/interfaces/IModuleManager.sol";
-import "./Addresses.sol";
+import "./Addresses.s.sol";
 
 /// Script to deploy Stablecoin Deposit module
 contract UpdateExecuteCeilingUpdate is Script, Addresses {

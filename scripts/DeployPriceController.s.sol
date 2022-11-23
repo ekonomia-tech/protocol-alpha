@@ -9,7 +9,7 @@ import "@protocol/interfaces/IModuleManager.sol";
 import "@modules/priceController/PriceController.sol";
 import "@oracle/ChainlinkPriceFeed.sol";
 
-import "./Addresses.sol";
+import "./Addresses.s.sol";
 
 /// Script to deploy protocol (PHO, TON, Kernel, ModuleManager)
 contract DeployPriceController is Script, Addresses {

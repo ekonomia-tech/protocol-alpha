@@ -21,6 +21,9 @@ jobs:
       - name: Run forge install
         run: forge install
 
+      - name: Run forge build
+        run: forge build
+
       - name: Run tests
         env:
           RPC_URL: ${{ secrets.RPC_URL }}
@@ -42,3 +45,36 @@ jobs:
 
       - name: Check if forge fmt was run
         run: forge fmt --check
+
+  typechain:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Run forge install
+        run: forge install
+
+      - name: Run forge build
+        run: forge build
+
+      - name: Setup Node.js version
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: Install dependencies
+        run: npm i
+
+      - name: Run typechain types creation
+        run: npm run typechain
+
+      - uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: Typechain types generation
+          file_pattern: typechain_types/*

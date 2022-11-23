@@ -8,7 +8,7 @@ import "@protocol/contracts/PHO.sol";
 import "@external/curve/ICurveFactory.sol";
 import "@external/curve/ICurvePool.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./Addresses.sol";
+import "./Addresses.s.sol";
 
 /// Script to deploy protocol (PHO, TON, Kernel, ModuleManager)
 contract DeployCurvePool is Script, Addresses {

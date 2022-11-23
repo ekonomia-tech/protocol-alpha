@@ -1,18 +1,20 @@
 {
-  "mainnet": {},
   "render": {
-    "PHO": "0x43F332A84f571626fAdDfA669d78187c18977879",
-    "TON": "0x92A50F3B3E88C81310AD48cEB46e1F6C332C850e",
-    "Kernel": "0x7eb918Ff18Aa8F20e319d3479CB46833a58a32Cb",
-    "ModuleManager": "0x23De02D83eb0D192CDc5fd578C284A2b2722cafF",
-    "ChainlinkPriceFeed": "0x30da3b78B86e8842cB1386F199D4D6e7ae8Fca58",
-    "CurvePool": "0xc3b19502F8c02be75F3f77fd673503520DEB51dD",
-    "PriceController": "0x3179588E9774bC6ee1B4AF8Db55Fb8e1500649C1",
-    "StablecoinDepositModuleUSDC": "0xC1C9c9a09B314cfEFC39BF4EE9460c4c33aCD070",
-    "StablecoinDepositModuleFRAX": "0x4de030b5f6b86a2b875953D919238e9AA3C2F506",
-    "StablecoinDepositModuleLUSD": "0xc00a268Fbcbb00a72bfc8CD0FE7CfE26dad3BEd8",
-    "MapleDepositModuleUSDC": "0x29e07cEFDAABDaCA2AD956adbC3110eB2268C0E8",
-    "ZCBModuleUSDC": "0xA4a75B3f3e957222E0d67Ea8b643F137BDFCe03B"
-  },
-  "goerli": {}
+    "core": {
+      "PHO": "0xC0aBdd4dbc131B916AF8Fc448153F38aBe69E370",
+      "TON": "0x18B458D6f2349b293C624693bEdcFfE15C49543e",
+      "Kernel": "0x38a264A473A182d988b0Ebe351Ef431cA5CCD3A7",
+      "ModuleManager": "0x52C7a9DDC1fE319a98Bd193b758Eaa4735738dDB",
+      "ChainlinkPriceFeed": "0x6c86D03392528DFebd8Cd83E0F567e6B0429e175",
+      "CurvePool": "0xB657B895B265C38c53FFF00166cF7F6A3C70587d"
+    },
+    "modules": {
+      "PriceController": "0xB5AFb7CD0FaDDD27785dFb9bC02Cc5E4C3D4378e",
+      "StablecoinDepositModuleUSDC": "0xf44a9741E029783CEF812bAEd86b4f02B8391a2F",
+      "StablecoinDepositModuleFRAX": "0xD4609ECDd0fBFd0AE78E185f973238D1355d772F",
+      "StablecoinDepositModuleLUSD": "0xB7c61e6987144bC0E692E6Bde2B845B9e29D4cD9",
+      "MapleDepositModuleUSDC": "0x5416adf327242B7224413Dcd6E454FfcB5C1e73C",
+      "ZCBModuleUSDC": "0x73c1A1437920ECFEC6Ac079d717CB75c0B0e9086"
+    }
+  }
 }

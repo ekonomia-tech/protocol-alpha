@@ -8,7 +8,7 @@ import "@protocol/interfaces/IKernel.sol";
 import "@protocol/interfaces/IModuleManager.sol";
 import "@modules/stablecoinDepositModule/StablecoinDepositModule.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "./Addresses.sol";
+import "./Addresses.s.sol";
 
 /// Script to deploy Stablecoin Deposit module
 contract DeployStablecoinDepositModule is Script, Addresses {

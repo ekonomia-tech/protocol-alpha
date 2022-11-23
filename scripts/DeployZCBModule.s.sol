@@ -7,7 +7,7 @@ import "@protocol/interfaces/IPHO.sol";
 import "@protocol/interfaces/IKernel.sol";
 import "@protocol/interfaces/IModuleManager.sol";
 import "@modules/zeroCouponBondModule/ZeroCouponBondModule.sol";
-import "./Addresses.sol";
+import "./Addresses.s.sol";
 
 /// Script to deploy ZCB module
 contract DeployZCBModule is Script, Addresses {
