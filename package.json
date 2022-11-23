@@ -9,7 +9,8 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "typechain": "typechain --target ethers-v5 --out-dir typechain_types out/*[^.s][^.t].sol/*.json"
+    "typechain": "typechain --target ethers-v5 --out-dir typechain_types out/*[^.s][^.t].sol/*.json",
+    "prepublish": "forge build && npm run typechain"
   },
   "repository": {
     "type": "git",
