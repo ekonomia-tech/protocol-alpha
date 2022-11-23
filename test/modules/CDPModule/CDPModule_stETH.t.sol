@@ -132,13 +132,13 @@ contract CDP_stETHTest is BaseSetup {
         (uint256 debtBalanceAfter, uint256 collateralBalanceAfter) = cdpPool.pool();
         (uint256 userPositionDebt, uint256 userPositionCollateral) = cdpPool.cdps(user1);
 
-        assertEq(collateralBalanceBefore + collateralAmount, collateralBalanceAfter);
-        assertEq(debtBalanceBefore + debtAmount, debtBalanceAfter);
-        assertEq(userPositionDebt, debtAmount);
-        assertEq(userPositionCollateral, collateralAmount);
-        assertApproxEqAbs(collToken.balanceOf(address(cdpPool)), collateralAmount, 1 wei);
+        assertApproxEqAbs(collateralBalanceBefore + collateralAmount, collateralBalanceAfter, 2 wei);
+        assertApproxEqAbs(debtBalanceBefore + debtAmount, debtBalanceAfter, 2 wei);
+        assertApproxEqAbs(userPositionDebt, debtAmount, 2 wei);
+        assertApproxEqAbs(userPositionCollateral, collateralAmount, 2 wei);
+        assertApproxEqAbs(collToken.balanceOf(address(cdpPool)), collateralAmount, 2 wei);
         assertApproxEqAbs(
-            userCollTokenBalanceBefore, userCollTokenBalanceAfter + collateralAmount, 1 wei
+            userCollTokenBalanceBefore, userCollTokenBalanceAfter + collateralAmount, 2 wei
         );
         assertEq(pho.balanceOf(address(user1)), debtAmount);
     }
@@ -185,13 +185,13 @@ contract CDP_stETHTest is BaseSetup {
         (uint256 debtBalanceAfter, uint256 collateralBalanceAfter) = cdpPool.pool();
         (uint256 userPositionDebt, uint256 userPositionCollateral) = cdpPool.cdps(user1);
 
-        assertEq(collateralBalanceBefore + collateralAmount, collateralBalanceAfter);
-        assertEq(debtBalanceBefore + debtAmount, debtBalanceAfter);
-        assertEq(userPositionDebt, debtAmount);
-        assertEq(userPositionCollateral, collateralAmount);
-        assertApproxEqAbs(collToken.balanceOf(address(cdpPool)), collateralAmount, 1 wei);
+        assertApproxEqAbs(collateralBalanceBefore + collateralAmount, collateralBalanceAfter, 2 wei);
+        assertApproxEqAbs(debtBalanceBefore + debtAmount, debtBalanceAfter, 2 wei);
+        assertApproxEqAbs(userPositionDebt, debtAmount, 2 wei);
+        assertApproxEqAbs(userPositionCollateral, collateralAmount, 2 wei);
+        assertApproxEqAbs(collToken.balanceOf(address(cdpPool)), collateralAmount, 2 wei);
         assertApproxEqAbs(
-            userCollTokenBalanceBefore, userCollTokenBalanceAfter + collateralAmount, 1 wei
+            userCollTokenBalanceBefore, userCollTokenBalanceAfter + collateralAmount, 2 wei
         );
         assertEq(pho.balanceOf(address(user1)), debtAmount);
     }
