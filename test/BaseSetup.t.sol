@@ -29,6 +29,7 @@ abstract contract BaseSetup is Test {
     DummyOracle public priceOracle;
     ChainlinkPriceFeed public priceFeed;
     IERC20 dai;
+    IERC20 lusd;
     IUSDC usdc;
     IERC20 frax;
     IERC20 mpl;
@@ -53,6 +54,7 @@ abstract contract BaseSetup is Test {
     address public richGuy = 0x72A53cDBBcc1b9efa39c834A540550e23463AAcB;
     address public mplWhale = 0xd6d4Bcde6c816F17889f1Dd3000aF0261B03a196;
     address public daiWhale = 0xc08a8a9f809107c5A7Be6d90e315e4012c99F39a;
+    address public lusdWhale = 0x7C22547779c8aa41bAE79E03E8383a0BefBCecf0;
     address public wethWhale = 0x2F0b23f53734252Bda2277357e97e1517d6B042A;
     address public fraxBPLPToken = 0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC;
     address public fraxBPAddress = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
@@ -70,6 +72,7 @@ abstract contract BaseSetup is Test {
     address public constant FRAXBP_LUSD = 0x497CE58F34605B9944E6b15EcafE6b001206fd25;
     address public constant WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant DAI_ADDRESS = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    address public constant LUSD_ADDRESS = 0x5f98805A4E8be255a32880FDeC7F6728C6568bA0;
 
     address public constant ETH_NULL_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address public constant PRICEFEED_ETHUSD = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
@@ -145,6 +148,7 @@ abstract contract BaseSetup is Test {
         dai = IERC20(DAI_ADDRESS);
         usdc = IUSDC(USDC_ADDRESS);
         dai = IERC20(DAI_ADDRESS);
+        lusd = IERC20(LUSD_ADDRESS);
         frax = IERC20(FRAX_ADDRESS);
 
         mpl = IERC20(MPL_ADDRESS);
@@ -207,6 +211,26 @@ abstract contract BaseSetup is Test {
     ) internal {
         _getDAI(_owner, _amountIn);
         _approveDAI(_owner, _spender, _amountOut);
+    }
+
+    function _getLUSD(address to, uint256 _amount) internal {
+        vm.prank(lusdWhale);
+        lusd.transfer(to, _amount);
+    }
+
+    function _approveLUSD(address _owner, address _spender, uint256 _amount) internal {
+        vm.prank(_owner);
+        lusd.approve(_spender, _amount);
+    }
+
+    function _fundAndApproveLUSD(
+        address _owner,
+        address _spender,
+        uint256 _amountIn,
+        uint256 _amountOut
+    ) internal {
+        _getLUSD(_owner, _amountIn);
+        _approveLUSD(_owner, _spender, _amountOut);
     }
 
     function _getTON(address _to, uint256 _amount) internal {
