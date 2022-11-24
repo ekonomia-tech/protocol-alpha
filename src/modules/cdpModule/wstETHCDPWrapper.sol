@@ -30,7 +30,8 @@ contract wstETHCDPWrapper {
 
     receive() external payable {}
 
-    /// @notice takes in a collateral in a form of ETH/wETH/stETH/wstETH, automatically converts it to wstETH if needed and opens a position
+    /// @notice takes in collateral in the form of ETH/wETH/stETH/wstETH and
+    /// automatically converts it to wstETH if needed and opens a position
     /// @param _depositAmount the collateral amount to deposit
     /// @param _debtAmount the amount of debt to take
     /// @param _depositToken the address of the token submitted. if ETH submitted, address will be address(0)
@@ -39,17 +40,16 @@ contract wstETHCDPWrapper {
         payable
         onlyETHVariants(_depositToken)
     {
-        address depositor = address(this);
-        uint256 wstETHAmount = _depositAmount;
         if (_depositToken != address(WSTETH)) {
-            wstETHAmount = _wrap(_depositAmount, _depositToken);
+            uint256 convertedWSTETH = _convertToWSTETH(_depositAmount, _depositToken);
+            pool.openFor(address(this), msg.sender, convertedWSTETH, _debtAmount);
         } else {
-            depositor = msg.sender;
+            pool.openFor(msg.sender, msg.sender, _depositAmount, _debtAmount);
         }
-        pool.openFor(depositor, msg.sender, wstETHAmount, _debtAmount);
     }
 
-    /// @notice takes in a collateral in a form of ETH/wETH/stETH/wstETH, automatically converts it to wstETH if needed and add collateral to a position
+    /// @notice takes in collateral in the form of ETH/wETH/stETH/wstETH and
+    /// automatically converts it to wstETH if needed and adds collateral to a position
     /// @param _depositAmount the collateral amount to deposit
     /// @param _depositToken the address of the token submitted. if ETH submitted, address will be address(0)
     function addCollateral(uint256 _depositAmount, address _depositToken)
@@ -57,42 +57,39 @@ contract wstETHCDPWrapper {
         payable
         onlyETHVariants(_depositToken)
     {
-        address depositor = address(this);
-        uint256 wstETHAmount = _depositAmount;
         if (_depositToken != address(WSTETH)) {
-            wstETHAmount = _wrap(_depositAmount, _depositToken);
+            uint256 convertedWSTETH = _convertToWSTETH(_depositAmount, _depositToken);
+            pool.addCollateralFor(address(this), msg.sender, convertedWSTETH);
         } else {
-            depositor = msg.sender;
+            pool.addCollateralFor(msg.sender, msg.sender, _depositAmount);
         }
-        pool.addCollateralFor(depositor, msg.sender, wstETHAmount);
     }
 
-    function _wrap(uint256 _amount, address _depositToken) private returns (uint256) {
+    function _convertToWSTETH(uint256 _amount, address _depositToken) private returns (uint256) {
         if (_depositToken == address(WETH)) {
-            return _processWETH(_amount);
+            return _convertWETH(_amount);
         } else if (_depositToken == address(STETH)) {
-            return _processSTETH(_amount);
+            return _convertSTETH(_amount);
         }
-        return _processETH(_amount);
+        return _convertETH(_amount);
     }
 
-    function _processWETH(uint256 _amount) private returns (uint256) {
+    function _convertWETH(uint256 _amount) private returns (uint256) {
         uint256 ethBalanceBefore = address(this).balance;
         WETH.transferFrom(msg.sender, address(this), _amount);
         WETH.withdraw(_amount);
         uint256 ethBalanceAfter = address(this).balance;
-        _amount = ethBalanceAfter - ethBalanceBefore;
-        return _processETH(_amount);
+        return _convertETH(ethBalanceAfter - ethBalanceBefore);
     }
 
-    function _processETH(uint256 _amount) private returns (uint256) {
+    function _convertETH(uint256 _amount) private returns (uint256) {
         uint256 balBefore = WSTETH.balanceOf(address(this));
-        address(WSTETH).call{value: _amount}("");
+        address(WSTETH).call{value: _amount}(""); // Automatically converts ETH to wstETH with fallback function
         uint256 balAfter = WSTETH.balanceOf(address(this));
         return balAfter - balBefore;
     }
 
-    function _processSTETH(uint256 _amount) private returns (uint256) {
+    function _convertSTETH(uint256 _amount) private returns (uint256) {
         uint256 balBefore = WSTETH.balanceOf(address(this));
         STETH.transferFrom(msg.sender, address(this), _amount);
         WSTETH.wrap(_amount);
