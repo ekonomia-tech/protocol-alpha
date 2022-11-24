@@ -64,6 +64,4 @@ interface ICDPPool {
     function liquidate(address _user) external;
     function withdrawFees() external;
     function getCollateralUSDTotal() external view returns (uint256);
-    function getCollateralBalance() external view returns (uint256);
-    function getFeesCollected() external view returns (uint256);
 }
