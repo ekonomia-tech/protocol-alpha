@@ -7,10 +7,10 @@ interface IModuleAMO {
     function stakeFor(address account, uint256 amount) external returns (bool);
 
     // Withdraw amount for user
-    function withdrawFor(address account, uint256 amount) external;
+    function withdrawFor(address account, uint256 amount) external returns (bool);
 
     // Withdraw all for user
-    function withdrawAllFor(address account) external;
+    function withdrawAllFor(address account) external returns (bool);
 
     // Staking token
     function stakingToken() external view returns (address);

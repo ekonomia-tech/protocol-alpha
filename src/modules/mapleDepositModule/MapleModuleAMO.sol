@@ -22,6 +22,9 @@ contract MapleModuleAMO is IModuleAMO, ERC20 {
     error CannotReceiveZeroMPT();
     error ZeroAddressDetected();
     error CannotStakeZero();
+    error OnlyOperator();
+    error OnlyModule();
+    error CannotStakeWhenOperatorWithdrawing();
 
     /// State vars
     address public rewardToken;
@@ -32,30 +35,34 @@ contract MapleModuleAMO is IModuleAMO, ERC20 {
     uint256 private _totalShares;
     uint256 private _totalRewards;
 
-    mapping(address => uint256) public depositedAmount; // MPL deposited
+    mapping(address => uint256) public depositedAmount; // depositToken deposited
     mapping(address => uint256) public stakedAmount; // MPL staked
-    mapping(address => uint256) public claimedRewards; // rewards claimed
+    mapping(address => uint256) public claimedRewards; // rewards claimed in MPL
     mapping(address => uint256) private _shares;
 
     // Needed for interactions w/ external contracts
     address public depositToken;
     IMplRewards public mplRewards;
     IPool public mplPool;
+    bool public isWithdrawing;
 
     // Events
-    event RewardAdded(uint256 reward);
     event Staked(address indexed user, uint256 amount, uint256 shares);
     event Withdrawn(address indexed user, uint256 amount, uint256 shares);
     event RewardPaid(address indexed user, uint256 reward);
     event MapleRewardsReceived(uint256 totalRewards);
 
     modifier onlyOperator() {
-        require(msg.sender == address(operator), "Only Operator");
+        if (msg.sender != address(operator)) {
+            revert OnlyOperator();
+        }
         _;
     }
 
     modifier onlyModule() {
-        require(msg.sender == address(module), "Only Module");
+        if (msg.sender != address(module)) {
+            revert OnlyModule();
+        }
         _;
     }
 
@@ -107,8 +114,7 @@ contract MapleModuleAMO is IModuleAMO, ERC20 {
         if (ts == 0) {
             return 0;
         }
-        uint256 earnedRewards = (balanceOf(account) * _totalRewards) / ts - claimedRewards[account];
-        return earnedRewards;
+        return (balanceOf(account) * _totalRewards) / ts - claimedRewards[account];
     }
 
     /// @notice Convert a deposit/withdraw amount into shares
@@ -144,6 +150,9 @@ contract MapleModuleAMO is IModuleAMO, ERC20 {
         if (amount == 0) {
             revert CannotStakeZero();
         }
+        if (isWithdrawing) {
+            revert CannotStakeWhenOperatorWithdrawing();
+        }
 
         // Get depositToken from user
         IERC20(depositToken).safeTransferFrom(account, address(this), amount);
@@ -176,12 +185,19 @@ contract MapleModuleAMO is IModuleAMO, ERC20 {
     /// @notice Intend to withdraw
     function intendToWithdraw() external onlyOperator {
         mplPool.intendToWithdraw();
+        isWithdrawing = true;
+    }
+
+    /// @notice Cancel withdraw
+    function cancelWithdraw() external onlyOperator {
+        mplPool.cancelWithdraw();
+        isWithdrawing = false;
     }
 
     /// @notice Withdraw
     /// @param account Account
     /// @param amount amount
-    function withdrawFor(address account, uint256 amount) public onlyModule {
+    function withdrawFor(address account, uint256 amount) public onlyModule returns (bool) {
         uint256 depositAmount = depositedAmount[account];
         uint256 stakedPoolTokenAmount = stakedAmount[account];
         depositedAmount[account] -= depositAmount;
@@ -199,12 +215,15 @@ contract MapleModuleAMO is IModuleAMO, ERC20 {
         // Transfer depositToken to caller
         IERC20(depositToken).transfer(account, depositAmount);
         emit Withdrawn(account, amount, shares);
+        return true;
     }
 
     /// @notice Withdraw all for
     /// @param account Account
-    function withdrawAllFor(address account) external {
-        withdrawFor(account, 0);
+    function withdrawAllFor(address account) external returns (bool) {
+        uint256 depositAmount = depositedAmount[account];
+        withdrawFor(account, depositAmount);
+        return true;
     }
 
     /// @notice gets reward from maple pool

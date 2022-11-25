@@ -15,6 +15,9 @@ contract MapleDepositModuleTest is BaseSetup {
     error OverEighteenDecimals();
     error DepositTokenMustBeMaplePoolAsset();
     error CannotRedeemZeroTokens();
+    error OnlyOperator();
+    error OnlyModule();
+    error CannotStakeWhenOperatorWithdrawing();
 
     /// Events
     event Deposited(address indexed depositor, uint256 depositAmount, uint256 phoMinted);
@@ -384,12 +387,45 @@ contract MapleDepositModuleTest is BaseSetup {
         assertEq(aft.maplePoolRewardsBalance, before.maplePoolRewardsBalance + scaledDepositAmount);
     }
 
-    // Only owner can call intendToWithdraw()
+    // Only operator can call intendToWithdraw()
     function testCannotIntendToWithdrawOnlyOperator() public {
         address moduleRewardPool = mapleDepositModuleUSDC.mapleModuleAMO();
-        vm.expectRevert("Only Operator");
+        vm.expectRevert(abi.encodeWithSelector(OnlyOperator.selector));
         vm.prank(user1);
         MapleModuleAMO(moduleRewardPool).intendToWithdraw();
+    }
+
+    // Only operator can call intendToWithdraw()
+    function testCannotCancelWithdrawOnlyOperator() public {
+        address moduleRewardPool = mapleDepositModuleUSDC.mapleModuleAMO();
+        vm.expectRevert(abi.encodeWithSelector(OnlyOperator.selector));
+        vm.prank(user1);
+        MapleModuleAMO(moduleRewardPool).cancelWithdraw();
+        assertEq(MapleModuleAMO(moduleRewardPool).isWithdrawing(), false);
+    }
+
+    // Basic intend to withdraw and cancel
+    function testBasicWithdrawAndCancel() public {
+        uint256 depositAmount = ONE_HUNDRED_D6;
+        uint256 redeemAmount = ONE_HUNDRED_D6;
+        uint256 intendToWithdrawTimestamp = block.timestamp + mplPoolUSDCLockupPeriod - 10 days;
+        _testDepositAnyModule(depositAmount, address(usdc), mapleDepositModuleUSDC);
+        address moduleRewardPool = mapleDepositModuleUSDC.mapleModuleAMO();
+
+        // Intend to withdraw
+        vm.prank(owner);
+        MapleModuleAMO(moduleRewardPool).intendToWithdraw();
+        assertEq(MapleModuleAMO(moduleRewardPool).isWithdrawing(), true);
+
+        // Cannot deposit while withdrawing
+        vm.expectRevert(abi.encodeWithSelector(CannotStakeWhenOperatorWithdrawing.selector));
+        vm.prank(user1);
+        mapleDepositModuleUSDC.deposit(depositAmount);
+
+        // Cancel withdraw
+        vm.prank(owner);
+        MapleModuleAMO(moduleRewardPool).cancelWithdraw();
+        assertEq(MapleModuleAMO(moduleRewardPool).isWithdrawing(), false);
     }
 
     // Test Redeem - USDC
@@ -847,7 +883,7 @@ contract MapleDepositModuleTest is BaseSetup {
         // Rewards for user 2 should be 1/5 of the rewards for user 1
         // As per similar logic above, since user 2 has 1/5 total shares
         assertTrue(aft1.earned > 0 && aft2.earned > 0);
-        assertEq(aft1.earned, 5 * aft2.earned);
+        assertApproxEqAbs(aft1.earned, 5 * aft2.earned, 100 wei);
 
         // Get actual rewards, earned() should reset to 0
         vm.prank(user1);

@@ -28,6 +28,7 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
     error MaplePoolNotOpen();
     error CannotReceiveZeroMPT();
     error CannotRedeemZeroTokens();
+    error OnlyModuleManager();
 
     /// State vars
     IModuleManager public moduleManager;
@@ -38,11 +39,8 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
     ChainlinkPriceFeed public oracle;
     IPool public mplPool;
     address public mapleModuleAMO;
-    mapping(address => uint256) public depositedAmount; // MPL deposited
     mapping(address => uint256) public issuedAmount; // PHO issued
-    mapping(address => uint256) public stakedAmount; // MPL staked
 
-    address public stakingToken = 0x6F6c8013f639979C84b756C7FC1500eB5aF18Dc4; // MPL-LP
     address rewardToken = 0x33349B282065b0284d756F0577FB39c158F935e6; // MPL
 
     /// Events
@@ -52,7 +50,9 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
     event Withdrawn(address to, uint256 amount);
 
     modifier onlyModuleManager() {
-        require(msg.sender == address(moduleManager), "Only ModuleManager");
+        if (msg.sender != address(moduleManager)) {
+            revert OnlyModuleManager();
+        }
         _;
     }
 
@@ -91,9 +91,9 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
         }
 
         MapleModuleAMO mapleModuleAMOInstance = new MapleModuleAMO(
-            "MPL-AMO",
+            "Photon Maple AMO",
             "MPLAMO",
-            stakingToken,
+            0x6F6c8013f639979C84b756C7FC1500eB5aF18Dc4, // MPL-LP
             rewardToken,
             msg.sender,
             address(this),
@@ -112,7 +112,7 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
         uint256 phoMinted = depositAmount * (10 ** (18 - depositTokenDecimals));
         phoMinted = (phoMinted * oracle.getPrice(depositToken)) / 10 ** 18;
 
-        depositedAmount[msg.sender] += depositAmount;
+        //depositedAmount[msg.sender] += depositAmount;
         issuedAmount[msg.sender] += phoMinted;
 
         // Mints PHO
@@ -135,15 +135,6 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
 
         // Burn PHO
         moduleManager.burnPHO(msg.sender, redeemAmount);
-
-        // Adjust based on oracle price
-        uint256 scaledRedeemAmount = redeemAmount / (10 ** (18 - depositTokenDecimals));
-        scaledRedeemAmount = (scaledRedeemAmount * oracle.getPrice(depositToken)) / 10 ** 18;
-
-        uint256 depositAmount = depositedAmount[msg.sender];
-        uint256 stakedPoolTokenAmount = stakedAmount[msg.sender];
-        depositedAmount[msg.sender] -= depositAmount;
-        stakedAmount[msg.sender] -= stakedPoolTokenAmount;
 
         // Note: Always a full withdrawal
         IModuleAMO(mapleModuleAMO).withdrawAllFor(msg.sender);
