@@ -39,8 +39,6 @@ contract FraxBPInitModule is Ownable, ReentrancyGuard {
     IERC20Metadata public usdc = IERC20Metadata(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
     IERC20Metadata public fraxBPLp = IERC20Metadata(0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC);
     ICurvePool public fraxBPPool = ICurvePool(0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2);
-    // ICurveFactory public curveFactory =
-    //     ICurveFactory(0xB9fC157394Af804a3578134A6585C0dc9cc990d4);
     ICurvePool public fraxBPPHOMetapool;
     IPriceOracle public priceOracle;
     uint256 public constant FRAX_DECIMALS = 18;
@@ -128,6 +126,18 @@ contract FraxBPInitModule is Ownable, ReentrancyGuard {
         depositFor(msg.sender, amount);
     }
 
+    /// @notice Helper function for deposits in FraxBP LP token for user
+    /// @param depositor Depositor
+    /// @param amount Amount in FraxBP LP
+    function _depositFor(address depositor, uint256 amount) private {
+        uint256 usdPerFraxBP = getUSDPerFraxBP();
+        uint256 phoAmount = (usdPerFraxBP * amount) / 10 ** 18;
+        moduleManager.mintPHO(address(this), phoAmount);
+
+        issuedAmount[depositor] += phoAmount;
+        emit Deposited(depositor, amount, phoAmount);
+    }
+
     /// @notice Places deposits in FraxBP LP token for user
     /// @param depositor Depositor
     /// @param amount Amount in FraxBP LP
@@ -138,17 +148,8 @@ contract FraxBPInitModule is Ownable, ReentrancyGuard {
         if (amount == 0) {
             revert CannotDepositZero();
         }
-
-        // transfer FraxBP LP from caller and mint PHO against
         fraxBPLp.safeTransferFrom(depositor, address(this), amount);
-        uint256 usdPerFraxBP = getUSDPerFraxBP();
-        uint256 phoAmount = (usdPerFraxBP * amount) / 10 ** 18;
-
-        // Mint to contract for use later in FraxBP/PHO pool
-        moduleManager.mintPHO(address(this), phoAmount);
-
-        issuedAmount[depositor] += phoAmount;
-        emit Deposited(depositor, amount, phoAmount);
+        _depositFor(depositor, amount);
     }
 
     /// @notice Adds FraxBP LP and PHO to FraxBP/PHO pool

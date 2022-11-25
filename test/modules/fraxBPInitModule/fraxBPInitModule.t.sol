@@ -12,7 +12,6 @@ import "@modules/fraxBPInitModule/FraxBPInitModule.sol";
 contract FraxBPInitModuleTest is BaseSetup {
     /// Errors
     error ZeroAddressDetected();
-    error CannotRedeemMoreThanDeposited();
     error CannotDepositAfterSaleEnded();
     error OnlyModuleManager();
     error CannotDepositZero();
