@@ -41,8 +41,6 @@ contract FraxBPInitModule is Ownable, ReentrancyGuard {
     ICurvePool public fraxBPPool = ICurvePool(0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2);
     ICurvePool public fraxBPPHOMetapool;
     IPriceOracle public priceOracle;
-    uint256 public constant FRAX_DECIMALS = 18;
-    uint256 public constant USDC_DECIMALS = 6;
     uint256 private constant USDC_SCALE = 10 ** 12;
     uint256 public constant PRICE_PRECISION = 10 ** 18;
     uint256 public saleEndDate; // when sale ends
@@ -120,12 +118,6 @@ contract FraxBPInitModule is Ownable, ReentrancyGuard {
         depositFor(msg.sender, fraxBPLpAmount);
     }
 
-    /// @notice Accept deposits in FraxBP LP token
-    /// @param amount Amount in FraxBP LP
-    function deposit(uint256 amount) external nonReentrant {
-        depositFor(msg.sender, amount);
-    }
-
     /// @notice Helper function for deposits in FraxBP LP token for user
     /// @param depositor Depositor
     /// @param amount Amount in FraxBP LP
@@ -150,6 +142,12 @@ contract FraxBPInitModule is Ownable, ReentrancyGuard {
         }
         fraxBPLp.safeTransferFrom(depositor, address(this), amount);
         _depositFor(depositor, amount);
+    }
+
+    /// @notice Accept deposits in FraxBP LP token
+    /// @param amount Amount in FraxBP LP
+    function deposit(uint256 amount) external nonReentrant {
+        depositFor(msg.sender, amount);
     }
 
     /// @notice Adds FraxBP LP and PHO to FraxBP/PHO pool

@@ -29,10 +29,6 @@ contract FraxBPInitModuleTest is BaseSetup {
     FraxBPInitModule public fraxBPInitModule;
 
     /// Constants
-    string public FRAX_BP_BOND_TOKEN_NAME = "FraxBP-3mo";
-    string public FRAX_BP_BOND_TOKEN_SYMBOL = "FRAXBP-3M";
-    uint256 public constant USDC_SCALE = 10 ** 12;
-    uint256 public constant maxCap = 20000000 * 10 ** 18;
     uint256 public saleEndDate;
     uint256 public redemptionStartDate;
 
@@ -67,9 +63,9 @@ contract FraxBPInitModuleTest is BaseSetup {
         priceFeed.addFeed(USDC_ADDRESS, PRICEFEED_USDCUSD);
         vm.stopPrank();
 
+        // Frax BP / PHO metapool
         fraxBPPHOMetapool = ICurvePool(_deployFraxBPPHOPoolCustom(20));
 
-        //_deployFraxBPPHOPoolCustom
         saleEndDate = block.timestamp + 10000;
         redemptionStartDate = block.timestamp + 20000;
 
