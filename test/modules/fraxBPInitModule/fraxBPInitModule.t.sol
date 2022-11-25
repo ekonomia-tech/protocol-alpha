@@ -13,10 +13,8 @@ contract FraxBPInitModuleTest is BaseSetup {
     /// Errors
     error ZeroAddressDetected();
     error CannotRedeemMoreThanDeposited();
-    error OverEighteenDecimals();
     error CannotDepositAfterSaleEnded();
-    error FraxBPPHOMetapoolNotSet();
-    error MustHaveEqualAmounts();
+    error OnlyModuleManager();
     error CannotDepositZero();
     error InvalidTimeWindows();
     error CannotRedeemBeforeRedemptionStart();
@@ -24,7 +22,9 @@ contract FraxBPInitModuleTest is BaseSetup {
 
     /// Events
     event Deposited(address indexed depositor, uint256 fraxBPLpAmount, uint256 phoAmount);
-    event Redeemed(address indexed redeemer, uint256 redeemAmount, uint256 phoAmount);
+    event Redeemed(
+        address indexed redeemer, uint256 redeemAmount, uint256 fraxBPLPAmount, uint256 phoAmount
+    );
 
     ICurvePool public fraxBPPHOMetapool;
     FraxBPInitModule public fraxBPInitModule;
@@ -106,9 +106,6 @@ contract FraxBPInitModuleTest is BaseSetup {
         frax.approve(address(fraxBPInitModule), ONE_MILLION_D18);
         fraxBPLP.approve(address(fraxBPInitModule), ONE_MILLION_D18);
         vm.stopPrank();
-
-        // vm.prank(address(fraxBPInitModule));
-        // fraxBPLP.approve(address(user1), TEN_THOUSAND_D18);
     }
 
     // Cannot set addresses to 0
@@ -195,6 +192,32 @@ contract FraxBPInitModuleTest is BaseSetup {
         );
     }
 
+    // Cannot set time windows as invalid
+    function testCannotMakeFraxBpModuleWithInvalidTimeWindows() public {
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(InvalidTimeWindows.selector));
+        fraxBPInitModule = new FraxBPInitModule(
+            address(moduleManager),
+            address(fraxBPPHOMetapool),
+            address(pho),
+            address(priceFeed),
+            block.timestamp - 1,
+            redemptionStartDate
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(InvalidTimeWindows.selector));
+        fraxBPInitModule = new FraxBPInitModule(
+            address(moduleManager),
+            address(fraxBPPHOMetapool),
+            address(pho),
+            address(priceFeed),
+            saleEndDate,
+            saleEndDate
+        );
+
+        vm.stopPrank();
+    }
+
     // Helper function to test deposit from any FraxBPInitModule
     function _testDepositAnyModule(
         address user,
@@ -244,13 +267,13 @@ contract FraxBPInitModuleTest is BaseSetup {
         uint256 getUSDPerFraxBP = _module.getUSDPerFraxBP();
         uint256 expectedPHOAmount = (getUSDPerFraxBP * moduleFraxBPLPDiff) / 10 ** 18;
 
-        // User balance - PHO balance up and USDC & FRAX down
-        assertEq(aft.userPHOBalance, expectedPHOAmount);
+        // User balance - PHO balance same and USDC & FRAX down
+        assertEq(aft.userPHOBalance, before.userPHOBalance);
         assertEq(aft.userUSDCBalance, before.userUSDCBalance - usdcDepositAmount);
         assertEq(aft.userFRAXBalance, before.userFRAXBalance - fraxDepositAmount);
 
-        // Frax BP Init module balance - PHO, USDC & FRAX same
-        assertEq(aft.modulePHOBalance, before.modulePHOBalance);
+        // Frax BP Init module balance - PHO up, USDC & FRAX same
+        assertEq(aft.modulePHOBalance, before.modulePHOBalance + expectedPHOAmount);
         assertEq(aft.moduleUSDCBalance, before.moduleUSDCBalance);
         assertEq(aft.moduleFRAXBalance, before.moduleFRAXBalance);
 
@@ -263,6 +286,15 @@ contract FraxBPInitModuleTest is BaseSetup {
 
         // // Check PHO supply goes up
         assertEq(aft.totalPHOSupply, before.totalPHOSupply + expectedPHOAmount);
+    }
+
+    // Cannot add liquidity unless moduleManager
+    function testCannotAddLiquidityOnlyModuleManager() public {
+        vm.warp(redemptionStartDate + 1);
+
+        vm.expectRevert(abi.encodeWithSelector(OnlyModuleManager.selector));
+        vm.prank(user1);
+        fraxBPInitModule.addFraxBPPHOLiquidity();
     }
 
     // Cannot redeem before redemption start
@@ -311,6 +343,9 @@ contract FraxBPInitModuleTest is BaseSetup {
             15
         );
 
+        vm.prank(address(moduleManager));
+        fraxBPInitModule.addFraxBPPHOLiquidity();
+
         uint256 redeemAmount = 2 * ONE_HUNDRED_D18;
         uint256 redeemTimestamp = redemptionStartDate + 1;
 
@@ -342,10 +377,10 @@ contract FraxBPInitModuleTest is BaseSetup {
         uint256 redeemAmount = _module.issuedAmount(user);
         uint256 expectedPHOAmountBurnt = (redeemAmount * 10 ** 18) / getUSDPerFraxBP;
 
-        // Redeem - note for event, third topic (phoAmount) is false,
+        // Redeem - note for event, amounts are not exact,
         vm.warp(_redeemTimestamp);
-        vm.expectEmit(true, true, true, true);
-        emit Redeemed(user, redeemAmount, expectedPHOAmountBurnt);
+        vm.expectEmit(true, false, false, false);
+        emit Redeemed(user, redeemAmount, before.userIssuedAmount / 2, before.userIssuedAmount / 2);
         vm.prank(user);
         _module.redeem();
 
@@ -364,22 +399,18 @@ contract FraxBPInitModuleTest is BaseSetup {
 
         uint256 moduleFraxBPLPDiff = before.moduleFraxBPLPBalance - aft.moduleFraxBPLPBalance;
 
-        // User balance - FraxBPLP and PHO up, USDC/FRAX same
+        // User balance - FraxBPLP and PHO up (~issuedAmount / 2), USDC/FRAX same
         assertApproxEqAbs(
-            aft.userFraxBPLPBalance,
-            before.userFraxBPLPBalance + moduleFraxBPLPDiff,
-            deltaThreshold * 10 ** 18
+            aft.userFraxBPLPBalance, before.userIssuedAmount / 2, deltaThreshold * 10 ** 18
         );
         assertApproxEqAbs(
-            before.userPHOBalance,
-            aft.userPHOBalance + expectedPHOAmountBurnt,
-            deltaThreshold * 10 ** 18
+            aft.userPHOBalance, before.userIssuedAmount / 2, deltaThreshold * 10 ** 18
         );
         assertEq(aft.userUSDCBalance, before.userUSDCBalance);
         assertEq(aft.userFRAXBalance, before.userFRAXBalance);
 
         // Frax BP Init module balance - FraxBPLP and PHO same, USDC & FRAX same
-        assertEq(aft.moduleFraxBPLPBalance, before.moduleFraxBPLPBalance - moduleFraxBPLPDiff);
+        assertEq(aft.moduleFraxBPLPBalance, before.moduleFraxBPLPBalance);
         assertEq(aft.modulePHOBalance, before.modulePHOBalance);
         assertEq(aft.moduleUSDCBalance, before.moduleUSDCBalance);
         assertEq(aft.moduleFRAXBalance, before.moduleFRAXBalance);
@@ -388,6 +419,6 @@ contract FraxBPInitModuleTest is BaseSetup {
         assertEq(aft.userIssuedAmount, 0);
 
         // Check PHO supply same
-        assertEq(aft.totalPHOSupply, before.totalPHOSupply - expectedPHOAmountBurnt);
+        assertEq(aft.totalPHOSupply, before.totalPHOSupply);
     }
 }

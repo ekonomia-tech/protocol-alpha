@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.13;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -22,11 +20,7 @@ contract FraxBPInitModule is Ownable, ReentrancyGuard {
 
     /// Errors
     error ZeroAddressDetected();
-    error CannotRedeemMoreThanDeposited();
-    error OverEighteenDecimals();
     error CannotDepositAfterSaleEnded();
-    error FraxBPPHOMetapoolNotSet();
-    error MustHaveEqualAmounts();
     error OnlyModuleManager();
     error CannotDepositZero();
     error InvalidTimeWindows();
@@ -35,7 +29,9 @@ contract FraxBPInitModule is Ownable, ReentrancyGuard {
 
     /// Events
     event Deposited(address indexed depositor, uint256 fraxBPLpAmount, uint256 phoAmount);
-    event Redeemed(address indexed redeemer, uint256 redeemAmount, uint256 phoAmount);
+    event Redeemed(
+        address indexed redeemer, uint256 redeemAmount, uint256 fraxBPLPAmount, uint256 phoAmount
+    );
 
     /// State vars
     IModuleManager public moduleManager;
@@ -43,7 +39,8 @@ contract FraxBPInitModule is Ownable, ReentrancyGuard {
     IERC20Metadata public usdc = IERC20Metadata(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
     IERC20Metadata public fraxBPLp = IERC20Metadata(0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC);
     ICurvePool public fraxBPPool = ICurvePool(0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2);
-    ICurveFactory public curveFactory = ICurveFactory(0xB9fC157394Af804a3578134A6585C0dc9cc990d4);
+    // ICurveFactory public curveFactory =
+    //     ICurveFactory(0xB9fC157394Af804a3578134A6585C0dc9cc990d4);
     ICurvePool public fraxBPPHOMetapool;
     IPriceOracle public priceOracle;
     uint256 public constant FRAX_DECIMALS = 18;
@@ -85,6 +82,9 @@ contract FraxBPInitModule is Ownable, ReentrancyGuard {
         priceOracle = IPriceOracle(_priceOracle);
         saleEndDate = _saleEndDate;
         redemptionStartDate = _redemptionStartDate;
+
+        usdc.approve(address(fraxBPPool), type(uint256).max);
+        frax.approve(address(fraxBPPool), type(uint256).max);
     }
 
     /// @notice Helper for user depositing both FRAX and USDC
@@ -112,9 +112,6 @@ contract FraxBPInitModule is Ownable, ReentrancyGuard {
         uint256[2] memory fraxBPmetaLiquidity;
         fraxBPmetaLiquidity[0] = fraxAmount; // frax
         fraxBPmetaLiquidity[1] = usdcAmount; // usdc
-
-        usdc.approve(address(fraxBPPool), usdcAmount);
-        frax.approve(address(fraxBPPool), fraxAmount);
 
         fraxBPPool.add_liquidity(fraxBPmetaLiquidity, 0);
         uint256 fraxBPLpBalanceAfter = fraxBPLp.balanceOf(address(this));
@@ -146,10 +143,27 @@ contract FraxBPInitModule is Ownable, ReentrancyGuard {
         fraxBPLp.safeTransferFrom(depositor, address(this), amount);
         uint256 usdPerFraxBP = getUSDPerFraxBP();
         uint256 phoAmount = (usdPerFraxBP * amount) / 10 ** 18;
-        moduleManager.mintPHO(address(depositor), phoAmount);
+
+        // Mint to contract for use later in FraxBP/PHO pool
+        moduleManager.mintPHO(address(this), phoAmount);
 
         issuedAmount[depositor] += phoAmount;
         emit Deposited(depositor, amount, phoAmount);
+    }
+
+    /// @notice Adds FraxBP LP and PHO to FraxBP/PHO pool
+    function addFraxBPPHOLiquidity() external onlyModuleManager {
+        uint256 fraxBPLPAmount = fraxBPLp.balanceOf(address(this));
+        uint256 phoAmount = pho.balanceOf(address(this));
+
+        pho.approve(address(fraxBPPHOMetapool), phoAmount);
+        fraxBPLp.approve(address(fraxBPPHOMetapool), fraxBPLPAmount);
+
+        uint256[2] memory metaLiquidity;
+        metaLiquidity[0] = phoAmount;
+        metaLiquidity[1] = fraxBPLPAmount;
+
+        ICurvePool(fraxBPPHOMetapool).add_liquidity(metaLiquidity, 0);
     }
 
     /// @notice user redeems and gets back FraxBP and PHO
@@ -163,14 +177,26 @@ contract FraxBPInitModule is Ownable, ReentrancyGuard {
         }
         issuedAmount[msg.sender] -= redeemAmount;
 
-        uint256 usdPerFraxBP = getUSDPerFraxBP();
-        uint256 phoAmount = (redeemAmount * (10 ** 18)) / usdPerFraxBP;
+        // Get balances before
+        uint256 fraxBPLPbalanceBefore = fraxBPLp.balanceOf(address(this));
+        uint256 phoBalanceBefore = pho.balanceOf(address(this));
 
-        // user gets back Frax BP LP, PHO is burnt
-        fraxBPLp.transfer(msg.sender, redeemAmount);
-        moduleManager.burnPHO(msg.sender, phoAmount);
+        // Remove liquidity from Frax BP / PHO Metapool
+        uint256[2] memory minAmounts = [uint256(0), uint256(0)];
+        ICurvePool(fraxBPPHOMetapool).remove_liquidity(redeemAmount, minAmounts, address(this));
 
-        emit Redeemed(msg.sender, redeemAmount, phoAmount);
+        // Check balances after
+        uint256 fraxBPLPbalanceAfter = fraxBPLp.balanceOf(address(this));
+        uint256 phoBalanceAfter = pho.balanceOf(address(this));
+
+        // Delta is how much to send to user
+        uint256 fraxBPLPBalanceToSend = fraxBPLPbalanceAfter - fraxBPLPbalanceBefore;
+        uint256 phoBalanceToSend = phoBalanceAfter - phoBalanceBefore;
+
+        fraxBPLp.transfer(msg.sender, fraxBPLPBalanceToSend);
+        pho.transfer(msg.sender, phoBalanceToSend);
+
+        emit Redeemed(msg.sender, redeemAmount, fraxBPLPBalanceToSend, phoBalanceToSend);
     }
 
     /// @notice gets USD per FraxBP LP by checking underlying asset composition (FRAX and USDC)
