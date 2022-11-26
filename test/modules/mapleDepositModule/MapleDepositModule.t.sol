@@ -12,9 +12,8 @@ import "@modules/interfaces/IModuleAMO.sol";
 contract MapleDepositModuleTest is BaseSetup {
     /// Errors
     error ZeroAddressDetected();
-    error OverEighteenDecimals();
     error DepositTokenMustBeMaplePoolAsset();
-    error CannotRedeemZeroTokens();
+    error CannotDepositZero();
     error OnlyOperator();
     error OnlyModule();
     error CannotStakeWhenOperatorWithdrawing();
@@ -300,6 +299,14 @@ contract MapleDepositModuleTest is BaseSetup {
             address(mplRewardsUSDC),
             address(mplPoolUSDC)
         );
+    }
+
+    // Cannot deposit 0
+    function testCannotDepositStakeZero() public {
+        uint256 depositAmount = 0;
+        vm.expectRevert(abi.encodeWithSelector(CannotDepositZero.selector));
+        vm.prank(user1);
+        mapleDepositModuleUSDC.deposit(depositAmount);
     }
 
     // Test basic deposit - USDC

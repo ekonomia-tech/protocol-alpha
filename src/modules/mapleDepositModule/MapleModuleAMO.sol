@@ -3,10 +3,8 @@
 pragma solidity ^0.8.13;
 
 import "../interfaces/IModuleAMO.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./IMplRewards.sol";
 import "./IPool.sol";
@@ -15,7 +13,6 @@ import "./IPool.sol";
 /// @notice Maple Module AMO
 /// @author Ekonomia: https://github.com/Ekonomia
 contract MapleModuleAMO is IModuleAMO, ERC20 {
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     // Errors
@@ -36,7 +33,7 @@ contract MapleModuleAMO is IModuleAMO, ERC20 {
     uint256 private _totalRewards;
 
     mapping(address => uint256) public depositedAmount; // depositToken deposited
-    mapping(address => uint256) public stakedAmount; // MPL staked
+    mapping(address => uint256) public stakedAmount; // Maple LP token staked
     mapping(address => uint256) public claimedRewards; // rewards claimed in MPL
     mapping(address => uint256) private _shares;
 

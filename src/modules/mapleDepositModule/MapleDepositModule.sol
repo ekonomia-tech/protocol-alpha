@@ -26,9 +26,9 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
     error OverEighteenDecimals();
     error DepositTokenMustBeMaplePoolAsset();
     error MaplePoolNotOpen();
-    error CannotReceiveZeroMPT();
     error CannotRedeemZeroTokens();
     error OnlyModuleManager();
+    error CannotDepositZero();
 
     /// State vars
     IModuleManager public moduleManager;
@@ -108,6 +108,9 @@ contract MapleDepositModule is Ownable, ReentrancyGuard {
     /// @notice Deposit into underlying MPL pool and rewards
     /// @param depositAmount Deposit amount (in depositToken decimals)
     function deposit(uint256 depositAmount) external nonReentrant {
+        if (depositAmount == 0) {
+            revert CannotDepositZero();
+        }
         // Adjust based on oracle price
         uint256 phoMinted = depositAmount * (10 ** (18 - depositTokenDecimals));
         phoMinted = (phoMinted * oracle.getPrice(depositToken)) / 10 ** 18;
