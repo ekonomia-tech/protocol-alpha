@@ -7,6 +7,7 @@ import "@protocol/contracts/PHO.sol";
 import "@protocol/contracts/TON.sol";
 import "@protocol/contracts/Kernel.sol";
 import "@protocol/contracts/ModuleManager.sol";
+import "@protocol/contracts/Treasury.sol";
 import "@oracle/ChainlinkPriceFeed.sol";
 import "@oracle/PHOTWAPOracle.sol";
 import "@oracle/IPHOOracle.sol";
@@ -26,6 +27,7 @@ abstract contract BaseSetup is Test {
     TON public ton;
     ModuleManager public moduleManager;
     Kernel public kernel;
+    Treasury public treasury;
     DummyOracle public priceOracle;
     ChainlinkPriceFeed public priceFeed;
     IERC20 dai;
@@ -125,6 +127,7 @@ abstract contract BaseSetup is Test {
         ton = new TON("TON", "TON");
 
         kernel = new Kernel(address(pho), TONGovernance);
+        treasury = new Treasury(TONGovernance);
 
         moduleManager = new ModuleManager(
             address(kernel),

@@ -10,5 +10,7 @@ interface ITreasury {
     event Withdrawn(address indexed to, address indexed asset, uint256 amount);
 
     function withdrawTokens(address to, address asset, uint256 amount) external;
-    function withdrawETH(address payable to, uint256 amount) external;
+    function execute(address _to, uint256 _value, bytes calldata _data)
+        external
+        returns (bool, bytes memory);
 }

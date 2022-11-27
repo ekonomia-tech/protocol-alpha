@@ -6,7 +6,6 @@ import "@protocol/interfaces/ITreasury.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract Treasury is ITreasury {
-
     address public tonGovernance;
 
     modifier onlyTONGovernance() {
@@ -28,9 +27,14 @@ contract Treasury is ITreasury {
         emit Withdrawn(to, asset, amount);
     }
 
-    function withdrawETH(address payable to, uint256 amount) external onlyTONGovernance {
-        if (amount == 0) revert ZeroValue();
-        to.transfer(amount);
+    function execute(address to, uint256 value, bytes calldata data)
+        external
+        onlyTONGovernance
+        returns (bool, bytes memory)
+    {
+        if (to == address(0)) revert ZeroAddress();
+        if (value == 0) revert ZeroValue();
+        (bool success, bytes memory result) = to.call{value: value}(data);
+        return (success, result);
     }
-
 }
