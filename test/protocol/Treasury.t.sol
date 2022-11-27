@@ -61,7 +61,9 @@ contract TreasuryTest is BaseSetup {
         uint256 treasuryBalanceBefore = address(treasury).balance;
         uint256 treasuryStEthBalanceBefore = ERC20(STETH_ADDRESS).balanceOf(address(treasury));
         vm.prank(TONGovernance);
-        (bool success,) = treasury.execute(STETH_ADDRESS, ONE_D18, abi.encodeWithSignature("submit(address)",ONE_D18));
+        (bool success,) = treasury.execute(
+            STETH_ADDRESS, ONE_D18, abi.encodeWithSignature("submit(address)", ONE_D18)
+        );
 
         uint256 treasuryBalanceAfter = address(treasury).balance;
         uint256 treasuryStEthBalanceAfter = ERC20(STETH_ADDRESS).balanceOf(address(treasury));
@@ -73,14 +75,12 @@ contract TreasuryTest is BaseSetup {
     function testCannotExecuteZeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(ZeroAddress.selector));
         vm.prank(TONGovernance);
-        treasury.execute(address(0), ONE_D18, abi.encodeWithSignature("submit(address)",ONE_D18));
+        treasury.execute(address(0), ONE_D18, abi.encodeWithSignature("submit(address)", ONE_D18));
     }
 
     function testCannotExecuteZeroValue() public {
         vm.expectRevert(abi.encodeWithSelector(ZeroValue.selector));
         vm.prank(TONGovernance);
-        treasury.execute(STETH_ADDRESS, 0, abi.encodeWithSignature("submit(address)",0));
+        treasury.execute(STETH_ADDRESS, 0, abi.encodeWithSignature("submit(address)", 0));
     }
-
-
 }
