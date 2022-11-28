@@ -1,7 +1,15 @@
-import { SignatureParam, DeployParams, MasterAddresses } from "./types";
+import { SignatureParam, DeployParams, MasterAddresses, Networks, CommandParams, AddressParams } from "./types";
 import {exec} from "child_process";
 import * as addresses from "../../addresses_master_ts.json";
+import {  writeFileSync, statSync, readdirSync, lstatSync } from "fs";
+import * as networks from "./networks.json";
+import { copyFile } from "fs/promises";
+import path = require("path");
 
+export function getNetworkRPC(network: string): string {
+    let n: Networks = networks;
+    return n[network];
+}
 
 export async function generateSignature(params: SignatureParam[], ): Promise<string> {
     let typeString: string = "";
@@ -14,7 +22,7 @@ export async function generateSignature(params: SignatureParam[], ): Promise<str
     params.forEach((param: SignatureParam, i: number) => {
         let { type, value } = param;
         typeString += type;
-        valueString += value;
+        valueString += type == "string" ? `"${value}"` : value;
         if (i+1 != params.length) {
             typeString += ",";
             valueString += " ";
@@ -25,18 +33,6 @@ export async function generateSignature(params: SignatureParam[], ): Promise<str
     return await execute(command);
 }
 
-export function checkRequired(addresses: any): boolean {
-    if (Object(addresses).entries().length == 0) {
-        console.log("------------------------------------------------------------------------------------");
-        console.log("Error:");
-        console.log("There are contract addresses missing that are needed run this process.");
-        console.log("Please run a full deployment on $NETWORK and try to run this process again.");
-        console.log("------------------------------------------------------------------------------------");
-        return false;
-    }
-    return true;
-}
-
 export async function execute(command: string): Promise<any> {
     return new Promise((resolve) => {
             exec(command, (e, r) => {
@@ -44,31 +40,66 @@ export async function execute(command: string): Promise<any> {
                 console.log(e);
                 return;
             }
-            resolve(r);
+            let res: string = r.replace(/^\s+|\s+$/g, '')
+            resolve(res);
         });
     })
 }
 
-export function generateForgeCommand(params: DeployParams, sig: string): string {
-    let { contractName, forkUrl, privateKey } = params;
-    return `forge script scripts/${contractName}.s.sol:${contractName} --fork-url ${forkUrl} --private-key ${privateKey} --sig ${sig} --silent --broadcast`;
+export function generateForgeCommand(p: CommandParams): string {
+    return `forge script scripts/${p.contractName}.s.sol:${p.contractName} --fork-url ${p.forkUrl} --private-key ${p.privateKey} --sig ${p.sig} --broadcast -vvvv`;
 }
 
-export function updateAddresses(contractName: string, sig: string, network: string, contractType: string, contractLabel: string | null): void {
+export async function updateAddresses(p: AddressParams): Promise<void> {
+    await copyFile(
+        "deployments/addresses_last.example.json",
+        "deployments/addresses_last.json",
+        0
+    )
+    let tempAddresses: {[key:string]: string} = require("../../deployments/addresses_last.json");
     let updated: MasterAddresses = addresses;
-    let json = require(`../../broadcast/${contractName}.s.sol/1/${sig}-latest.json`);
-    json.transactions.forEach((trx: any) => {
-        if (contractName == "CurvePool") {
-            let { transactionType, address } = trx.additionalContracts;
-            if (transactionType == "CREATE") {
-                updated[network].core.CurvePool = address;
+    return new Promise<{ 
+        updated: MasterAddresses, 
+        tempAddresses: {[key:string]: string}
+    }>(((resolve) => {
+        let latestLog: string | undefined = getMostRecentFile(`broadcast/${p.contractName}.s.sol/1/`);
+        if (!latestLog) return;
+        let json = require(`../../broadcast/${p.contractName}.s.sol/1/${latestLog}`);
+        json.transactions.forEach((trx: any) => {
+            if (p.contractName == "DeployCurvePool") {
+                let { transactionType, address } = trx.additionalContracts[0];
+                if (transactionType == "CREATE") {
+                    updated[p.network].core.CurvePool = address;
+                    tempAddresses.CurvePool = address;
+                }
+            } else {
+                if (trx.transactionType == "CREATE") {
+                    let cl = p.contractLabel || trx.contractName;
+                    if (p.isCore) {
+                        updated[p.network].core[cl] = trx.contractAddress; 
+                    } else {
+                        updated[p.network].modules[cl] = trx.contractAddress; 
+                    }
+                    tempAddresses[cl] = trx.contractAddress;
+                }
             }
-        } else {
-            if (trx.transactionType == "CREATE") {
-                let cl = contractLabel || trx.contractName;
-                updated[network].core[cl] = trx.contractAddress; 
-            }
-        }
+        });
+        resolve({ updated, tempAddresses })
+    })).then((res) => {
+        let { updated, tempAddresses } = res;
+        writeFileSync("addresses_master_ts.json", JSON.stringify(updated), { flag: "w+" });
+        writeFileSync("deployments/addresses_last.json", JSON.stringify(tempAddresses), { flag: "w+" });
     })
-    console.log(updated.render.core.PHO);
 }
+
+function getMostRecentFile(dir: string): string | undefined{
+    const files = orderRecentFiles(dir);
+    return files.length ? files[0].file : undefined;
+  };
+  
+function orderRecentFiles(dir: string): {file: string, mtime: Date}[] {
+    return readdirSync(dir)
+      .filter((file) => lstatSync(path.join(dir, file)).isFile())
+      .map((file) => ({ file, mtime: lstatSync(path.join(dir, file)).mtime }))
+      .sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
+  };

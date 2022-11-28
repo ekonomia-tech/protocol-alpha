@@ -1,9 +1,122 @@
 {
-    "protocol": {
-        "contractName": "DeployProtocol",
-        "sigParams": [{ 
-            "type": "address", 
-            "value": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
-        }]
-    }
+    "deployData" : [
+        {
+            "name": "protocol",
+            "description": "deploys main protocol contracts: TON, PHO, Kernel, ModuleManager, ChainlinkPriceFeed",
+            "deploy": true,
+            "contractName": "DeployProtocol",
+            "sigParams": [{ 
+                "type": "address", 
+                "value": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
+            }],
+            "isCore": true,
+            "contractLabel": null
+        },
+        {
+            "name": "CurvePool",
+            "description": "Deploys a new FraxBP-PHO curve pool",
+            "deploy": true,
+            "contractName": "DeployCurvePool",
+            "sigParams": [],
+            "isCore": true,
+            "contractLabel": "CurvePool"
+        },
+        {
+            "name": "Price Controller",
+            "description": "Deploys price controller module",
+            "deploy": true,
+            "contractName": "DeployPriceController",
+            "sigParams": [{
+                "type": "uint256",
+                "value": 604800
+            }, {
+                "type": "uint256",
+                "value": 10000
+            }, {
+                "type": "uint256",
+                "value": 50000
+            }, {
+                "type": "uint256",
+                "value": 99000
+            }],
+            "isCore": false,
+            "contractLabel": "PriceController"
+        },
+        {
+            "name": "USDC stablecoin module",
+            "description": "Deploys USDC Stablecoin module",
+            "deploy": true,
+            "contractName": "DeployStablecoinDepositModule",
+            "sigParams": [{
+                "type": "address",
+                "value": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+            }],
+            "isCore": false,
+            "contractLabel": "StablecoinDepositModuleUSDC"
+        },
+        {
+            "name": "FRAX stablecoin module",
+            "description": "Deploys FRAX Stablecoin module",
+            "deploy": true,
+            "contractName": "DeployStablecoinDepositModule",
+            "sigParams": [{
+                "type": "address",
+                "value": "0x853d955aCEf822Db058eb8505911ED77F175b99e"
+            }],
+            "isCore": false,
+            "contractLabel": "StablecoinDepositModuleFRAX"
+        },
+        {
+            "name": "LUSD stablecoin module",
+            "description": "Deploys LUSD Stablecoin module",
+            "deploy": true,
+            "contractName": "DeployStablecoinDepositModule",
+            "sigParams": [{
+                "type": "address",
+                "value": "0x5f98805A4E8be255a32880FDeC7F6728C6568bA0"
+            }],
+            "isCore": false,
+            "contractLabel": "StablecoinDepositModuleLUSD"
+        },
+        {
+            "name": "Maple deposit module",
+            "description": "Deploys maple deposit module",
+            "deploy": true,
+            "contractName": "DeployMapleDepositModule",
+            "sigParams": [{
+                "type": "address",
+                "value": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+            }],
+            "isCore": false,
+            "contractLabel": "MapleDepositModuleUSDC"
+        },
+        {
+            "name": "USDC Zero Coupon Bond module",
+            "description": "Deploys Zero coupon bonds module with USDC",
+            "deploy": true,
+            "contractName": "DeployZCBModule",
+            "sigParams": [{
+                "type": "address",
+                "value": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+            }, {
+                "type": "string",
+                "value": "Test USDC Bond"
+            }, {
+                "type": "string",
+                "value": "USDC-TEST"
+            }, {
+                "type": "uint256",
+                "value": 1000
+            }, {
+                "type": "uint256",
+                "value": 86400
+            }, {
+                "type": "uint256",
+                "value": 86400000
+            }],
+            "isCore": false,
+            "contractLabel": "ZCBModuleUSDC"
+        }
+    ]
 }
+      

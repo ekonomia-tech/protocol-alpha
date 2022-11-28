@@ -1,14 +1,16 @@
 export interface SignatureParam {
     type: string;
-    value: string;
+    value: string | number;
 }
 
 export interface DeployParams {
-    network: string;
-    forkUrl: string; 
-    contractName: string; 
-    privateKey: string;
-    sigParams: SignatureParam[]
+    name: string;
+    description: string;
+    deploy: boolean;
+    contractName: string;
+    sigParams: SignatureParam[];
+    isCore: boolean;
+    contractLabel: string | null;
 }
 
 export interface AddressLogData {
@@ -27,4 +29,23 @@ export interface NetworkContracts {
     modules: {
         [key: string]: string
     }
+}
+
+export interface Networks {
+    [key: string]: string
+}
+
+export interface CommandParams {
+    contractName: string;
+    forkUrl: string;
+    privateKey: string;
+    sig: string;
+}
+
+export interface AddressParams {
+    contractName: string;
+    truncSig: string;
+    network: string;
+    isCore: boolean;
+    contractLabel: string | null;
 }

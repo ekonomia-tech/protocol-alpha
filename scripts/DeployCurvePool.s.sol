@@ -21,6 +21,7 @@ contract DeployCurvePool is Script, Addresses {
 
         address phoAddress = getAddress(".PHO");
 
+        console.log(phoAddress);
         curveFactory.deploy_metapool(
             fraxBP, "FRAXBP/PHO", "FRAXBPPHO", phoAddress, 200, 4000000, 0
         );

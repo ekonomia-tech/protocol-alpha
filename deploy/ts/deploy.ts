@@ -1,22 +1,28 @@
 
-import {  DeployParams} from "./types";
-import * as deployData from "./deployParams.json";
-import { execute, generateForgeCommand, generateSignature, updateAddresses } from "./helpers";
-import * as networks from "./networks.json";
+import { DeployParams} from "./types";
+import { deployData } from "./deployParams.json";
+import { execute, generateForgeCommand, generateSignature, updateAddresses, getNetworkRPC } from "./helpers";
 require('dotenv').config()
 
-async function deployProtocol(network: string, forkUrl: string, privateKey: string): Promise<void> {
-    let params: DeployParams = {
-        network,
-        ...deployData.protocol,
-        privateKey,
-        forkUrl,
+async function deployContracts(network: string, privateKey: string): Promise<void> {
+    let dArray: DeployParams[] = deployData.filter((d: DeployParams) => d.deploy);
+    for(const data of dArray) {
+        let sig = await generateSignature(data.sigParams);
+        let forgeCommand = generateForgeCommand({
+            contractName: data.contractName,
+            forkUrl: getNetworkRPC(network),
+            privateKey: privateKey,
+            sig
+        });
+        await execute(forgeCommand);
+        await updateAddresses({
+            contractName: data.contractName, 
+            truncSig: sig.substring(2,10), 
+            network, 
+            isCore: data.isCore, 
+            contractLabel: data.contractLabel
+        });
+        console.log(`Finished deploying ${data.name}`)
     }
-    let sig = await generateSignature(deployData.protocol.sigParams);
-    let forgeCommand = generateForgeCommand(params, sig);
-    execute(forgeCommand);
-
-    updateAddresses(params.contractName, sig.substring(2,10), network , "core", null);
 }
-
-deployProtocol("render", networks.render, process.env.PRIVATE_KEY || "");
+deployContracts("render", process.env.PRIVATE_KEY || "");
