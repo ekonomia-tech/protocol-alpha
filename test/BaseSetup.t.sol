@@ -13,6 +13,7 @@ import "@oracle/IPHOOracle.sol";
 import "@oracle/DummyOracle.sol";
 import "@external/curve/ICurvePool.sol";
 import "@external/curve/ICurveFactory.sol";
+import "@modules/interfaces/ERC20AddOns.sol";
 
 abstract contract BaseSetup is Test {
     struct Balance {
@@ -45,6 +46,7 @@ abstract contract BaseSetup is Test {
     address public user1 = address(1);
     address public user2 = address(2);
     address public user3 = address(3);
+    address public user4 = address(34);
     address public dummyAddress = address(4);
     address public module1 = address(5);
     address public guardianAddress = address(666);
@@ -60,6 +62,7 @@ abstract contract BaseSetup is Test {
     address public constant USDC_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address public constant FRAX_ADDRESS = 0x853d955aCEf822Db058eb8505911ED77F175b99e;
     address public constant STETH_ADDRESS = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
+    address public constant WSTETH_ADDRESS = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
     address public constant MPL_ADDRESS = 0x33349B282065b0284d756F0577FB39c158F935e6;
     address public constant FRAXBP_ADDRESS = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
     address public constant FRAXBP_LP_TOKEN = 0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC;
@@ -327,22 +330,4 @@ abstract contract BaseSetup is Test {
 
         return fraxBPPhoMetapoolAddress;
     }
-}
-
-interface IUSDC {
-    function balanceOf(address account) external view returns (uint256);
-
-    function mint(address to, uint256 amount) external;
-
-    function approve(address spender, uint256 amount) external returns (bool);
-
-    function transfer(address to, uint256 amount) external;
-
-    function configureMinter(address minter, uint256 minterAllowedAmount) external;
-
-    function masterMinter() external view returns (address);
-}
-
-interface IWETH is IERC20 {
-    function deposit() external payable;
 }

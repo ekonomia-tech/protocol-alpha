@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@modules/cdpModule/ICDPPool.sol";
 import "@oracle/IPriceOracle.sol";
 import "@protocol/interfaces/IModuleManager.sol";
+import "@modules/interfaces/IModuleAMO.sol";
 
 /// @title CDPPool.sol
 /// @notice Keeps track of collateral-specific user CDP and relevant CDP variables
@@ -40,25 +41,34 @@ contract CDPPool is ICDPPool {
 
     /// protocol fee charged. In PPH (100000 = 100%)
     uint256 public minDebt;
-
     uint256 public protocolFee;
     uint256 public feesCollected;
+
+    address public TONGovernance;
 
     PoolBalances public pool;
 
     mapping(address => CDP) public cdps;
 
+    modifier onlyTONGovernance() {
+        if (msg.sender != TONGovernance) revert NotTONGovernance();
+        _;
+    }
+
     constructor(
         address _moduleManager,
         address _priceOracle,
         address _collateral,
+        address _TONGovernance,
         uint256 _minCR,
         uint256 _liquidationCR,
         uint256 _minDebt,
         uint256 _protocolFee
     ) {
-        if (_moduleManager == address(0) || _priceOracle == address(0) || _collateral == address(0))
-        {
+        if (
+            _moduleManager == address(0) || _priceOracle == address(0) || _collateral == address(0)
+                || _TONGovernance == address(0)
+        ) {
             revert ZeroAddress();
         }
 
@@ -71,6 +81,7 @@ contract CDPPool is ICDPPool {
         moduleManager = IModuleManager(_moduleManager);
         priceOracle = IPriceOracle(_priceOracle);
         collateral = IERC20Metadata(_collateral);
+        TONGovernance = _TONGovernance;
         minCR = _minCR;
         liquidationCR = _liquidationCR;
         minDebt = _minDebt;
@@ -81,22 +92,33 @@ contract CDPPool is ICDPPool {
     /// @param _collateralAmount The amount of collateral of the CDP
     /// @param _debtAmount The amount of debt to be taken
     function open(uint256 _collateralAmount, uint256 _debtAmount) external {
-        return _open(msg.sender, _collateralAmount, _debtAmount);
+        return _open(msg.sender, msg.sender, _collateralAmount, _debtAmount);
     }
 
     /// @notice External function for _open() to be called on behalf of user
+    /// @param _depositor the user that deposits the funds
     /// @param _user the user to open the CDP on behalf of
     /// @param _collateralAmount The amount of collateral of the CDP
     /// @param _debtAmount The amount of debt to be taken
-    function openFor(address _user, uint256 _collateralAmount, uint256 _debtAmount) external {
-        return _open(_user, _collateralAmount, _debtAmount);
+    function openFor(
+        address _depositor,
+        address _user,
+        uint256 _collateralAmount,
+        uint256 _debtAmount
+    ) external {
+        return _open(_depositor, _user, _collateralAmount, _debtAmount);
     }
 
     /// @notice Creates a new CDP and calculate all the relevant variables
     /// @param _collateralAmount The amount of collateral of the CDP
     /// @param _debtAmount The amount of debt to be taken
-    function _open(address _user, uint256 _collateralAmount, uint256 _debtAmount) private {
-        if (_user == address(0)) revert ZeroAddress();
+    function _open(
+        address _depositor,
+        address _user,
+        uint256 _collateralAmount,
+        uint256 _debtAmount
+    ) private {
+        if (_user == address(0) || _depositor == address(0)) revert ZeroAddress();
         if (_collateralAmount == 0 || _debtAmount == 0) revert ZeroValue();
         if (_debtAmount < minDebt) revert DebtTooLow();
         if (cdps[_user].debt > 0) revert CDPAlreadyActive();
@@ -105,7 +127,7 @@ contract CDPPool is ICDPPool {
 
         if (cr < minCR) revert CRTooLow();
 
-        collateral.transferFrom(_user, address(this), _collateralAmount);
+        collateral.transferFrom(_depositor, address(this), _collateralAmount);
 
         cdps[_user] = CDP(_debtAmount, _collateralAmount);
 
@@ -120,21 +142,25 @@ contract CDPPool is ICDPPool {
     /// @notice External function for _addCollateral()
     /// @param _collateralAmount Amount of collateral to add to CDP
     function addCollateral(uint256 _collateralAmount) external {
-        return _addCollateral(msg.sender, _collateralAmount);
+        return _addCollateral(msg.sender, msg.sender, _collateralAmount);
     }
 
     /// @notice External function for _addCollateral() to be called on behalf of user
+    /// @param _depositor the user that deposits the funds
     /// @param _user the cdp owner
     /// @param _collateralAmount Amount of collateral to add to CDP
-    function addCollateralFor(address _user, uint256 _collateralAmount) external {
-        return _addCollateral(_user, _collateralAmount);
+    function addCollateralFor(address _depositor, address _user, uint256 _collateralAmount)
+        external
+    {
+        return _addCollateral(_depositor, _user, _collateralAmount);
     }
 
     /// @notice User deposits collateral to their CDP
+    /// @param _depositor the user that deposits the funds
     /// @param _user the cdp owner
     /// @param _collateralAmount Amount of collateral to add to CDP
-    function _addCollateral(address _user, uint256 _collateralAmount) private {
-        if (_user == address(0)) revert ZeroAddress();
+    function _addCollateral(address _depositor, address _user, uint256 _collateralAmount) private {
+        if (_user == address(0) || _depositor == address(0)) revert ZeroAddress();
         if (_collateralAmount == 0) revert ZeroValue();
 
         CDP storage cdp = cdps[_user];
@@ -143,7 +169,7 @@ contract CDPPool is ICDPPool {
 
         uint256 updatedCollateral = cdp.collateral + _collateralAmount;
 
-        collateral.transferFrom(_user, address(this), _collateralAmount);
+        collateral.transferFrom(_depositor, address(this), _collateralAmount);
 
         cdp.collateral = updatedCollateral;
         pool.collateral += _collateralAmount;

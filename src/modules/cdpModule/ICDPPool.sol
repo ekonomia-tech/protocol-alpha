@@ -3,6 +3,7 @@ pragma solidity 0.8.13;
 
 interface ICDPPool {
     error ZeroAddress();
+    error SameAddress();
     error ZeroValue();
     error ValueNotInRange();
     error DebtTooLow();
@@ -12,6 +13,7 @@ interface ICDPPool {
     error FullAmountNotPresent();
     error NotInLiquidationZone();
     error MinDebtNotMet();
+    error NotTONGovernance();
 
     /// @notice Event emitted when a CDP is opened
     /// @param user The user that opens the CDP
@@ -47,7 +49,15 @@ interface ICDPPool {
     event WithdrawFees(uint256 amountWithdrawn);
 
     function open(uint256 _collateralAmount, uint256 _debtAmount) external;
+    function openFor(
+        address _depositor,
+        address _user,
+        uint256 _collateralAmount,
+        uint256 _debtAmount
+    ) external;
     function addCollateral(uint256 _collateralAmount) external;
+    function addCollateralFor(address _depositor, address _user, uint256 _collateralAmount)
+        external;
     function removeCollateral(uint256 _collateralAmount) external;
     function addDebt(uint256 _debtAmount) external;
     function removeDebt(uint256 _debtAmount) external;
