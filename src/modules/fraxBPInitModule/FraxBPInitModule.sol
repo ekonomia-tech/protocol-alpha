@@ -9,7 +9,6 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@protocol/interfaces/IPHO.sol";
 import "@protocol/interfaces/IModuleManager.sol";
 import "@external/curve/ICurvePool.sol";
-import "@external/curve/ICurveFactory.sol";
 import "@oracle/IPriceOracle.sol";
 
 /// @title FraxBP Init module
@@ -112,10 +111,9 @@ contract FraxBPInitModule is Ownable, ReentrancyGuard {
         fraxBPPool.add_liquidity(fraxBPmetaLiquidity, 0);
         uint256 fraxBPLpBalanceAfter = fraxBPLp.balanceOf(address(this));
 
-        // call depositFor() for user based on FraxBP LP received
+        // call _depositFor() for user based on FraxBP LP received
         uint256 fraxBPLpAmount = fraxBPLpBalanceAfter - fraxBPLpBalanceBefore;
-        fraxBPLp.safeTransfer(msg.sender, fraxBPLpAmount);
-        depositFor(msg.sender, fraxBPLpAmount);
+        _depositFor(msg.sender, fraxBPLpAmount);
     }
 
     /// @notice Helper function for deposits in FraxBP LP token for user
