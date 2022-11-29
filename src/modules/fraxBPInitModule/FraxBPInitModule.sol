@@ -28,9 +28,7 @@ contract FraxBPInitModule is Ownable, ReentrancyGuard {
 
     /// Events
     event Deposited(address indexed depositor, uint256 fraxBPLpAmount, uint256 phoAmount);
-    event Redeemed(
-        address indexed redeemer, uint256 redeemAmount, uint256 fraxBPLPAmount, uint256 phoAmount
-    );
+    event Redeemed(address indexed redeemer, uint256 redeemAmount);
 
     /// State vars
     IModuleManager public moduleManager;
@@ -39,6 +37,7 @@ contract FraxBPInitModule is Ownable, ReentrancyGuard {
     IERC20Metadata public fraxBPLp = IERC20Metadata(0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC);
     ICurvePool public fraxBPPool = ICurvePool(0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2);
     ICurvePool public fraxBPPHOMetapool;
+    //IERC20Metadata public fraxBPPHOLp;
     IPriceOracle public priceOracle;
     uint256 private constant USDC_SCALE = 10 ** 12;
     uint256 public constant PRICE_PRECISION = 10 ** 18;
@@ -46,7 +45,7 @@ contract FraxBPInitModule is Ownable, ReentrancyGuard {
     uint256 public redemptionStartDate; // when redemptions are available
     IPHO public pho;
 
-    mapping(address => uint256) public issuedAmount;
+    mapping(address => uint256) public metapoolBalance;
 
     modifier onlyModuleManager() {
         if (msg.sender != address(moduleManager)) revert OnlyModuleManager();
@@ -122,9 +121,11 @@ contract FraxBPInitModule is Ownable, ReentrancyGuard {
     function _depositFor(address depositor, uint256 amount) private {
         uint256 usdPerFraxBP = getUSDPerFraxBP();
         uint256 phoAmount = (usdPerFraxBP * amount) / 10 ** 18;
-        moduleManager.mintPHO(address(this), phoAmount);
 
-        issuedAmount[depositor] += phoAmount;
+        moduleManager.mintPHO(address(this), phoAmount);
+        uint256 fraxBPPHOLpBalance = _addFraxBPPHOLiquidity(amount, phoAmount);
+
+        metapoolBalance[depositor] += fraxBPPHOLpBalance;
         emit Deposited(depositor, amount, phoAmount);
     }
 
@@ -149,9 +150,14 @@ contract FraxBPInitModule is Ownable, ReentrancyGuard {
     }
 
     /// @notice Adds FraxBP LP and PHO to FraxBP/PHO pool
-    function addFraxBPPHOLiquidity() external onlyModuleManager {
-        uint256 fraxBPLPAmount = fraxBPLp.balanceOf(address(this));
-        uint256 phoAmount = pho.balanceOf(address(this));
+    function _addFraxBPPHOLiquidity(uint256 fraxBPLPAmount, uint256 phoAmount)
+        internal
+        returns (uint256)
+    {
+        //uint256 fraxBPLPAmount = fraxBPLp.balanceOf(address(this));
+        //uint256 phoAmount = pho.balanceOf(address(this));
+
+        uint256 fraxBPPHOLpBalanceBefore = fraxBPPHOMetapool.balanceOf(address(this));
 
         pho.approve(address(fraxBPPHOMetapool), phoAmount);
         fraxBPLp.approve(address(fraxBPPHOMetapool), fraxBPLPAmount);
@@ -160,7 +166,12 @@ contract FraxBPInitModule is Ownable, ReentrancyGuard {
         metaLiquidity[0] = phoAmount;
         metaLiquidity[1] = fraxBPLPAmount;
 
-        ICurvePool(fraxBPPHOMetapool).add_liquidity(metaLiquidity, 0);
+        fraxBPPHOMetapool.add_liquidity(metaLiquidity, 0);
+
+        uint256 fraxBPPHOLpBalanceAfter = fraxBPPHOMetapool.balanceOf(address(this));
+
+        uint256 fraxBPPHOLpBalanceIssued = fraxBPPHOLpBalanceAfter - fraxBPPHOLpBalanceBefore;
+        return fraxBPPHOLpBalanceIssued;
     }
 
     /// @notice user redeems and gets back FraxBP and PHO
@@ -168,32 +179,14 @@ contract FraxBPInitModule is Ownable, ReentrancyGuard {
         if (block.timestamp < redemptionStartDate) {
             revert CannotRedeemBeforeRedemptionStart();
         }
-        uint256 redeemAmount = issuedAmount[msg.sender];
+        uint256 redeemAmount = metapoolBalance[msg.sender];
         if (redeemAmount == 0) {
             revert CannotRedeemZero();
         }
-        issuedAmount[msg.sender] -= redeemAmount;
 
-        // Get balances before
-        uint256 fraxBPLPbalanceBefore = fraxBPLp.balanceOf(address(this));
-        uint256 phoBalanceBefore = pho.balanceOf(address(this));
-
-        // Remove liquidity from Frax BP / PHO Metapool
-        uint256[2] memory minAmounts = [uint256(0), uint256(0)];
-        ICurvePool(fraxBPPHOMetapool).remove_liquidity(redeemAmount, minAmounts, address(this));
-
-        // Check balances after
-        uint256 fraxBPLPbalanceAfter = fraxBPLp.balanceOf(address(this));
-        uint256 phoBalanceAfter = pho.balanceOf(address(this));
-
-        // Delta is how much to send to user
-        uint256 fraxBPLPBalanceToSend = fraxBPLPbalanceAfter - fraxBPLPbalanceBefore;
-        uint256 phoBalanceToSend = phoBalanceAfter - phoBalanceBefore;
-
-        fraxBPLp.transfer(msg.sender, fraxBPLPBalanceToSend);
-        pho.transfer(msg.sender, phoBalanceToSend);
-
-        emit Redeemed(msg.sender, redeemAmount, fraxBPLPBalanceToSend, phoBalanceToSend);
+        delete metapoolBalance[msg.sender];
+        fraxBPPHOMetapool.transfer(msg.sender, redeemAmount / 2);
+        emit Redeemed(msg.sender, redeemAmount);
     }
 
     /// @notice gets USD per FraxBP LP by checking underlying asset composition (FRAX and USDC)
