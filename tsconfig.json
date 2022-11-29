@@ -6,7 +6,8 @@
       "strict": true,
       "skipLibCheck": true,
       "resolveJsonModule": true,
-      "moduleResolution": "node"
+      "moduleResolution": "node",
+      "esModuleInterop": true
     },
     "include": ["deploy/**/*"]
 }

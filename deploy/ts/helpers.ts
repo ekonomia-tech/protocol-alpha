@@ -1,10 +1,10 @@
 import { SignatureParam, DeployParams, MasterAddresses, Networks, CommandParams, AddressParams } from "./types";
 import {exec} from "child_process";
 import * as addresses from "../../addresses_master_ts.json";
-import {  writeFileSync, statSync, readdirSync, lstatSync } from "fs";
+import {  writeFileSync, readdirSync, lstatSync } from "fs";
 import * as networks from "./networks.json";
 import { copyFile } from "fs/promises";
-import path = require("path");
+import path from "path";
 
 export function getNetworkRPC(network: string): string {
     let n: Networks = networks;

@@ -24,5 +24,6 @@ async function deployContracts(network: string, privateKey: string): Promise<voi
         });
         console.log(`Finished deploying ${data.name}`)
     }
+    await execute("npm run prettier:addresses");
 }
 deployContracts("render", process.env.PRIVATE_KEY || "");
