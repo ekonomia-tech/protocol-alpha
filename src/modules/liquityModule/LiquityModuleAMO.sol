@@ -11,8 +11,8 @@ import "../interfaces/IModuleAMO.sol";
 import "./interfaces/IStabilityPool.sol";
 import "forge-std/console2.sol";
 
-/// @title MapleModuleAMO
-/// @notice Maple Module AMO
+/// @title LiquityModuleAMO
+/// @notice Liquity Module AMO
 /// @author Ekonomia: https://github.com/Ekonomia
 contract LiquityModuleAMO is IModuleAMO, ERC20 {
     using SafeMath for uint256;
@@ -31,7 +31,8 @@ contract LiquityModuleAMO is IModuleAMO, ERC20 {
     address public module;
     uint256 private _totalDeposits;
     uint256 private _totalShares;
-    uint256 private _totalRewards;
+    uint256 private _totalRewards; // rewards in LQTY
+    uint256 private _totalEthRewards; // rewards in ETH
 
     mapping(address => uint256) public depositedAmount; // MPL deposited
     mapping(address => uint256) public stakedAmount; // MPL staked
@@ -81,11 +82,6 @@ contract LiquityModuleAMO is IModuleAMO, ERC20 {
         operator = _operator;
         module = _module;
         depositToken = _depositToken;
-        // // Approve deposit token for mplPool
-        // IERC20(depositToken).safeIncreaseAllowance(
-        //     address(mplPool),
-        //     type(uint256).max
-        // );
     }
 
     /// @notice Get total shares
@@ -199,6 +195,7 @@ contract LiquityModuleAMO is IModuleAMO, ERC20 {
         uint256 ethBalanceAfter = address(this).balance;
         _totalRewards = liquityBalanceAfter - liquityBalanceBefore;
         emit LiquityRewardsReceived(_totalRewards);
+        _totalEthRewards = ethBalanceAfter - ethBalanceBefore;
         return _totalRewards;
     }
 

@@ -12,8 +12,8 @@ contract StablecoinDepositModuleTest is BaseSetup {
     error OverEighteenDecimals();
 
     /// Events
-    event StablecoinDeposited(address indexed depositor, uint256 depositAmount);
-    event PHORedeemed(address indexed redeemer, uint256 redeemAmount);
+    event Deposited(address indexed depositor, uint256 depositAmount, uint256 phoMinted);
+    event Redeemed(address indexed redeemer, uint256 redeemAmount, uint256 stablecoinTransferred);
 
     // Track balance for stablecoins and PHO
     struct StablecoinBalance {
@@ -34,7 +34,6 @@ contract StablecoinDepositModuleTest is BaseSetup {
         usdcStablecoinDepositModule = new StablecoinDepositModule(
             address(moduleManager),
             address(usdc),
-            address(kernel),
             address(pho)
         );
 
@@ -42,7 +41,6 @@ contract StablecoinDepositModuleTest is BaseSetup {
         daiStablecoinDepositModule = new StablecoinDepositModule(
             address(moduleManager),
             address(dai),
-            address(kernel),
             address(pho)
         );
 
@@ -96,7 +94,6 @@ contract StablecoinDepositModuleTest is BaseSetup {
         usdcStablecoinDepositModule = new StablecoinDepositModule(
             address(0),
             address(usdc),
-            address(kernel),
             address(pho)
         );
 
@@ -104,16 +101,6 @@ contract StablecoinDepositModuleTest is BaseSetup {
         vm.prank(user1);
         usdcStablecoinDepositModule = new StablecoinDepositModule(
             address(moduleManager),
-            address(0),
-            address(kernel),
-            address(pho)
-        );
-
-        vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
-        vm.prank(user1);
-        usdcStablecoinDepositModule = new StablecoinDepositModule(
-            address(moduleManager),
-            address(usdc),
             address(0),
             address(pho)
         );
@@ -123,7 +110,6 @@ contract StablecoinDepositModuleTest is BaseSetup {
         usdcStablecoinDepositModule = new StablecoinDepositModule(
             address(moduleManager),
             address(usdc),
-            address(kernel),
             address(0)
         );
     }
@@ -159,9 +145,9 @@ contract StablecoinDepositModuleTest is BaseSetup {
         // Deposit
         vm.warp(block.timestamp + moduleDelay + 1);
         vm.expectEmit(true, true, true, true);
-        emit StablecoinDeposited(user1, _depositAmount);
+        emit Deposited(user1, _depositAmount, expectedIssuedAmount);
         vm.prank(user1);
-        _module.depositStablecoin(_depositAmount);
+        _module.deposit(_depositAmount);
 
         // Stablecoin and PHO balances after
         StablecoinBalance memory aft; // note that after is a reserved keyword
@@ -190,10 +176,10 @@ contract StablecoinDepositModuleTest is BaseSetup {
         uint256 depositAmount = ONE_HUNDRED_D6;
         uint256 redeemAmount = depositAmount * 10 ** 12;
         vm.prank(user1);
-        usdcStablecoinDepositModule.depositStablecoin(depositAmount);
+        usdcStablecoinDepositModule.deposit(depositAmount);
         vm.expectRevert(abi.encodeWithSelector(CannotRedeemMoreThanDeposited.selector));
         vm.prank(user1);
-        usdcStablecoinDepositModule.redeemStablecoin(2 * redeemAmount);
+        usdcStablecoinDepositModule.redeem(2 * redeemAmount);
     }
 
     // Test basic redeem with USDC
@@ -227,9 +213,9 @@ contract StablecoinDepositModuleTest is BaseSetup {
         before.totalPHOSupply = pho.totalSupply();
 
         vm.expectEmit(true, true, true, true);
-        emit PHORedeemed(user1, _redeemAmount);
+        emit Redeemed(user1, _redeemAmount, expectedStablecoinReturn);
         vm.prank(user1);
-        _module.redeemStablecoin(_redeemAmount);
+        _module.redeem(_redeemAmount);
 
         // Stablecoin and PHO balances after
         StablecoinBalance memory aft; // note that after is a reserved keyword

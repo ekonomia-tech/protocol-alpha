@@ -2,62 +2,28 @@
 
 pragma solidity ^0.8.13;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@protocol/interfaces/IPHO.sol";
-import "@protocol/interfaces/IModuleManager.sol";
+import "@modules/stablecoinDepositModule/StablecoinDepositModuleBase.sol";
 
 /// @title StablecoinDepositModule
 /// @author Ekonomia: https://github.com/ekonomia-tech
-/// @notice Accepts specific stablecoin 1:1 i.e. LUSD, DAI, etc.
-contract StablecoinDepositModule is Ownable, ReentrancyGuard {
+/// @notice Accepts specific stablecoin 1:1 i.e. USDC, DAI, etc.
+contract StablecoinDepositModule is StablecoinDepositModuleBase {
     using SafeERC20 for IERC20Metadata;
 
-    /// Errors
-    error ZeroAddressDetected();
-    error CannotRedeemMoreThanDeposited();
-    error OverEighteenDecimals();
-
     /// Events
-    event StablecoinDeposited(address indexed depositor, uint256 depositAmount);
-    event PHORedeemed(address indexed redeemer, uint256 redeemAmount);
-
-    /// State vars
-    IModuleManager public moduleManager;
-    IERC20Metadata public stablecoin;
-    uint256 public stablecoinDecimals;
-    address public kernel;
-    IPHO public pho;
-    mapping(address => uint256) public issuedAmount;
-
-    modifier onlyModuleManager() {
-        require(msg.sender == address(moduleManager), "Only ModuleManager");
-        _;
-    }
+    event Deposited(address indexed depositor, uint256 depositAmount, uint256 phoMinted);
+    event Redeemed(address indexed redeemer, uint256 redeemAmount, uint256 stablecoinTransferred);
 
     /// Constructor
-    constructor(address _moduleManager, address _stablecoin, address _kernel, address _pho) {
-        if (
-            _moduleManager == address(0) || _stablecoin == address(0) || _kernel == address(0)
-                || _pho == address(0)
-        ) {
-            revert ZeroAddressDetected();
-        }
-        moduleManager = IModuleManager(_moduleManager);
-        stablecoin = IERC20Metadata(_stablecoin);
-        stablecoinDecimals = stablecoin.decimals();
-        if (stablecoinDecimals > 18) {
-            revert OverEighteenDecimals();
-        }
-        kernel = _kernel;
-        pho = IPHO(_pho);
-    }
+    constructor(address _moduleManager, address _stablecoin, address _pho)
+        StablecoinDepositModuleBase(_moduleManager, _stablecoin, _pho)
+    {}
 
     /// @notice user deposits their stablecoin
     /// @param depositAmount deposit amount (in stablecoin decimals)
-    function depositStablecoin(uint256 depositAmount) external nonReentrant {
+    function deposit(uint256 depositAmount) external override nonReentrant {
         // scale if decimals < 18
         uint256 scaledDepositAmount = depositAmount;
         scaledDepositAmount = depositAmount * (10 ** (18 - stablecoinDecimals));
@@ -69,13 +35,12 @@ contract StablecoinDepositModule is Ownable, ReentrancyGuard {
 
         // mint PHO
         moduleManager.mintPHO(msg.sender, scaledDepositAmount);
-
-        emit StablecoinDeposited(msg.sender, depositAmount);
+        emit Deposited(msg.sender, depositAmount, scaledDepositAmount);
     }
 
     /// @notice user redeems PHO for their original stablecoin
     /// @param redeemAmount redeem amount in terms of PHO, which is 18 decimals
-    function redeemStablecoin(uint256 redeemAmount) external nonReentrant {
+    function redeem(uint256 redeemAmount) external override nonReentrant {
         if (redeemAmount > issuedAmount[msg.sender]) {
             revert CannotRedeemMoreThanDeposited();
         }
@@ -91,7 +56,6 @@ contract StablecoinDepositModule is Ownable, ReentrancyGuard {
 
         // transfer stablecoin to caller
         stablecoin.transfer(msg.sender, scaledRedeemAmount);
-
-        emit PHORedeemed(msg.sender, redeemAmount);
+        emit Redeemed(msg.sender, redeemAmount, scaledRedeemAmount);
     }
 }

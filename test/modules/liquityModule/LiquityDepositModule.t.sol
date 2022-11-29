@@ -5,15 +5,12 @@ pragma solidity ^0.8.13;
 import "../../BaseSetup.t.sol";
 import "@modules/liquityModule/LiquityDepositModule.sol";
 import "@modules/liquityModule/LiquityModuleAMO.sol";
-import "@modules/mapleDepositModule/IMplRewards.sol";
-import "@modules/mapleDepositModule/IPool.sol";
 import "@modules/interfaces/IModuleAMO.sol";
 
 contract LiquityDepositModuleTest is BaseSetup {
     /// Errors
     error ZeroAddressDetected();
-    error OverEighteenDecimals();
-    error DepositTokenMustBeLiquityPoolAsset();
+    error CannotDepositZero();
     error CannotRedeemZeroTokens();
 
     /// Events
@@ -126,67 +123,55 @@ contract LiquityDepositModuleTest is BaseSetup {
         pho.approve(address(kernel), ONE_MILLION_D18);
         vm.stopPrank();
 
-        // // Allow transferring rewards
-        // address moduleRewardPoolUSDC = liquityDepositModule.liquityModuleAMO();
-        // vm.prank(address(liquityDepositModule));
-        // IERC20(rewardToken).approve(moduleRewardPoolUSDC, ONE_MILLION_D18);
-        // address moduleRewardPoolWETH = mapleDepositModuleWETH.liquityModuleAMO();
-        // vm.prank(address(mapleDepositModuleWETH));
-        // IERC20(rewardToken).approve(moduleRewardPoolWETH, ONE_MILLION_D18);
-
-        // // Do same for liquity AMO
-        // lusd.approve(
-        //     address(liquityDepositModule.liquityModuleAMO()),
-        //     TEN_THOUSAND_D18
-        // );
-
         // Allow sending PHO (redemptions) to LiquityDeposit contracts
         pho.approve(address(liquityDepositModule), TEN_THOUSAND_D18);
 
         // Approve PHO burnFrom() via moduleManager calling kernel
         pho.approve(address(kernel), ONE_MILLION_D18);
         vm.stopPrank();
-
-        // // Allow transferring rewards
-        // vm.prank(address(liquityDepositModule));
-        // IERC20(rewardToken).approve(moduleRewardPoolUSDC, ONE_MILLION_D18);
-        // vm.prank(address(mapleDepositModuleWETH));
-        // IERC20(rewardToken).approve(moduleRewardPoolWETH, ONE_MILLION_D18);
     }
 
-    // // Cannot set any 0 addresses for constructor
-    // function testCannotMakeLiquityDepositModuleWithZeroAddress() public {
-    //     vm.startPrank(user1);
+    // Cannot set any 0 addresses for constructor
+    function testCannotMakeLiquityDepositModuleWithZeroAddress() public {
+        vm.startPrank(user1);
 
-    //     vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
-    //     liquityDepositModule = new LiquityDepositModule(
-    //         address(0),
-    //         address(lusd),
-    //         address(pho)
-    //     );
+        vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
+        liquityDepositModule = new LiquityDepositModule(
+            address(0),
+            address(lusd),
+            address(pho)
+        );
 
-    //     vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
-    //     liquityDepositModule = new LiquityDepositModule(
-    //         address(moduleManager),
-    //         address(0),
-    //         address(pho)
-    //     );
+        vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
+        liquityDepositModule = new LiquityDepositModule(
+            address(moduleManager),
+            address(0),
+            address(pho)
+        );
 
-    //     vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
-    //     liquityDepositModule = new LiquityDepositModule(
-    //         address(moduleManager),
-    //         address(lusd),
-    //         address(0)
-    //     );
+        vm.expectRevert(abi.encodeWithSelector(ZeroAddressDetected.selector));
+        liquityDepositModule = new LiquityDepositModule(
+            address(moduleManager),
+            address(lusd),
+            address(0)
+        );
 
-    //     vm.stopPrank();
-    // }
+        vm.stopPrank();
+    }
 
-    // // Test basic deposit
-    // function testDepositLiquityModule() public {
-    //     uint256 depositAmount = ONE_HUNDRED_D18;
-    //     _testDepositAnyModule(depositAmount, liquityDepositModule);
-    // }
+    // Cannot deposit 0
+    function testCannotDepositZero() public {
+        uint256 depositAmount = 0;
+        vm.expectRevert(abi.encodeWithSelector(CannotDepositZero.selector));
+        vm.prank(user1);
+        liquityDepositModule.deposit(depositAmount);
+    }
+
+    // Test basic deposit
+    function testDepositLiquityModule() public {
+        uint256 depositAmount = ONE_HUNDRED_D18;
+        _testDepositAnyModule(depositAmount, liquityDepositModule);
+    }
 
     // Helper function to test Liquity deposit from any module
     function _testDepositAnyModule(uint256 _depositAmount, LiquityDepositModule _module) public {
@@ -197,7 +182,7 @@ contract LiquityDepositModuleTest is BaseSetup {
 
         address moduleRewardPool = _module.liquityModuleAMO();
 
-        // Stablecoin and PHO balances before
+        // LUSD and PHO balances before
         LiquityBalance memory before;
         before.userStablecoinBalance = lusd.balanceOf(address(user1));
         before.moduleStablecoinBalance = lusd.balanceOf(address(_module));
@@ -206,14 +191,13 @@ contract LiquityDepositModuleTest is BaseSetup {
         before.userStakedAmount = LiquityModuleAMO(moduleRewardPool).stakedAmount(user1);
         before.totalPHOSupply = pho.totalSupply();
 
-        // Before -> _module, now -> moduleRewardPool
+        // Check stability pool
         before.liquityPoolDeposits =
             _module.stabilityPool().getCompoundedLUSDDeposit(moduleRewardPool);
-        // before.liquityPoolDepositorLQTYGain = LiquityModuleAMO(moduleRewardPool)
-        //     .mplRewards()
-        //     .balanceOf(moduleRewardPool);
+        before.liquityPoolDepositorLQTYGain =
+            _module.stabilityPool().getDepositorLQTYGain(moduleRewardPool);
 
-        // Deposit - TODO: event
+        // Deposit
         vm.expectEmit(true, true, true, true);
         emit Deposited(user1, _depositAmount, expectedIssuedAmount);
         vm.prank(user1);
@@ -228,11 +212,10 @@ contract LiquityDepositModuleTest is BaseSetup {
         aft.userStakedAmount = LiquityModuleAMO(moduleRewardPool).stakedAmount(user1);
         aft.totalPHOSupply = pho.totalSupply();
 
-        // Before -> _module, now -> moduleRewardPool
+        // Check stability pool
         aft.liquityPoolDeposits = _module.stabilityPool().getCompoundedLUSDDeposit(moduleRewardPool);
-        // aft.liquityPoolDepositorLQTYGain = LiquityModuleAMO(moduleRewardPool)
-        //     .mplRewards()
-        //     .balanceOf(moduleRewardPool);
+        aft.liquityPoolDepositorLQTYGain =
+            _module.stabilityPool().getDepositorLQTYGain(moduleRewardPool);
 
         // User balance - depositToken down and PHO up
         assertEq(aft.userStablecoinBalance + _depositAmount, before.userStablecoinBalance);
@@ -257,6 +240,13 @@ contract LiquityDepositModuleTest is BaseSetup {
         assertEq(aft.liquityPoolDepositorLQTYGain, before.liquityPoolDepositorLQTYGain);
     }
 
+    // Cannot redeem 0
+    function testCannotRedeemZero() public {
+        vm.expectRevert(abi.encodeWithSelector(CannotRedeemZeroTokens.selector));
+        vm.prank(user1);
+        liquityDepositModule.redeem();
+    }
+
     // Test Redeem
     function testRedeemLiquityModule() public {
         uint256 depositAmount = ONE_HUNDRED_D18;
@@ -279,7 +269,7 @@ contract LiquityDepositModuleTest is BaseSetup {
 
         address moduleRewardPool = _module.liquityModuleAMO();
 
-        // Stablecoin and PHO balances before
+        // LUSD and PHO balances before
         LiquityBalance memory before;
         before.userStablecoinBalance = lusd.balanceOf(address(user1));
         before.moduleStablecoinBalance = lusd.balanceOf(address(_module));
@@ -288,11 +278,13 @@ contract LiquityDepositModuleTest is BaseSetup {
         before.userStakedAmount = LiquityModuleAMO(moduleRewardPool).stakedAmount(user1);
         before.totalPHOSupply = pho.totalSupply();
 
-        // These two - modules ---> _module
+        // Check stability pool
         before.liquityPoolDeposits =
             _module.stabilityPool().getCompoundedLUSDDeposit(moduleRewardPool);
+        before.liquityPoolDepositorLQTYGain =
+            _module.stabilityPool().getDepositorLQTYGain(moduleRewardPool);
 
-        // Redeem - after cooldown period
+        // Redeem
         vm.warp(withdrawTimestamp);
         vm.expectEmit(true, true, true, true);
         emit Redeemed(user1, before.userIssuedAmount);
@@ -307,7 +299,11 @@ contract LiquityDepositModuleTest is BaseSetup {
         aft.userIssuedAmount = _module.issuedAmount(user1);
         aft.userStakedAmount = LiquityModuleAMO(moduleRewardPool).stakedAmount(user1);
         aft.totalPHOSupply = pho.totalSupply();
+
+        // Check stability pool
         aft.liquityPoolDeposits = _module.stabilityPool().getCompoundedLUSDDeposit(moduleRewardPool);
+        aft.liquityPoolDepositorLQTYGain =
+            _module.stabilityPool().getDepositorLQTYGain(moduleRewardPool);
 
         // User balance - depositToken up and PHO down
         assertEq(aft.userStablecoinBalance, before.userStablecoinBalance + _redeemAmount);
@@ -327,6 +323,9 @@ contract LiquityDepositModuleTest is BaseSetup {
 
         // Check Liquity pool balance goes down
         assertEq(aft.liquityPoolDeposits + scaledRedeemAmount, before.liquityPoolDeposits);
+
+        // Check Liquity pool LQTY gain is same as before
+        assertEq(aft.liquityPoolDepositorLQTYGain, before.liquityPoolDepositorLQTYGain);
     }
 
     // Test Reward
@@ -347,7 +346,6 @@ contract LiquityDepositModuleTest is BaseSetup {
 
         // Get reward
         vm.prank(owner);
-        //uint256 rewardsLiquity = _module.getRewardLiquity();
         uint256 rewardsLiquity = LiquityModuleAMO(moduleRewardPool).getRewardLiquity();
 
         // User gets the reward
@@ -363,7 +361,7 @@ contract LiquityDepositModuleTest is BaseSetup {
         assertTrue(finalUserRewardsBalance > 0);
     }
 
-    // /// Testing shares
+    // Testing shares
 
     // Test basic shares for deposit - USDC
     function testSharesDepositLiquityModule() public {
