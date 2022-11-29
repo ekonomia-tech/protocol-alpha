@@ -1,0 +1,35 @@
+{
+    "printWidth": 100,
+    "useTabs": false,
+    "bracketSpacing": true,
+    "overrides": [
+      {
+        "files": "*.js",
+        "options": {
+          "semi": true,
+          "trailingComma": "all",
+          "tabWidth": 2,
+          "singleQuote": false,
+          "explicitTypes": "always"
+        }
+      },
+      {
+        "files": "*.ts",
+        "options": {
+          "semi": true,
+          "trailingComma": "all",
+          "tabWidth": 2,
+          "singleQuote": false,
+          "explicitTypes": "always"
+        }
+      },
+      {
+        "files": "*.sol",
+        "options": {
+          "tabWidth": 4,
+          "singleQuote": false,
+          "explicitTypes": "always"
+        }
+      }
+    ]
+  }
