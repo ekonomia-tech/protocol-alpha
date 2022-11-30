@@ -45,7 +45,7 @@ contract MapleModuleAMO is IModuleAMO, ERC20 {
 
     // Events
     event Staked(address indexed user, uint256 amount, uint256 shares);
-    event Withdrawn(address indexed user, uint256 amount, uint256 shares);
+    event Withdrawn(address indexed user, uint256 depositAmount, uint256 shares);
     event RewardPaid(address indexed user, uint256 reward);
     event MapleRewardsReceived(uint256 totalRewards);
 
@@ -193,7 +193,7 @@ contract MapleModuleAMO is IModuleAMO, ERC20 {
 
     /// @notice Withdraw
     /// @param account Account
-    /// @param amount amount
+    /// @param amount Amount note: unused currently
     function withdrawFor(address account, uint256 amount) public onlyModule returns (bool) {
         uint256 depositAmount = depositedAmount[account];
         uint256 stakedPoolTokenAmount = stakedAmount[account];
@@ -211,7 +211,7 @@ contract MapleModuleAMO is IModuleAMO, ERC20 {
 
         // Transfer depositToken to caller
         IERC20(depositToken).transfer(account, depositAmount);
-        emit Withdrawn(account, amount, shares);
+        emit Withdrawn(account, depositAmount, shares);
         return true;
     }
 
