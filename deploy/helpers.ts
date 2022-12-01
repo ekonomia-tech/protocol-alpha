@@ -1,6 +1,6 @@
 import { SignatureParam, DeployParams, MasterAddresses, Networks, CommandParams, AddressParams } from "./types";
 import {exec} from "child_process";
-import addresses from "../../addresses_master_ts.json";
+import addresses from "../addresses_master.json";
 import {  writeFileSync, readdirSync, lstatSync } from "fs";
 import * as networks from "./networks.json";
 import { copyFile } from "fs/promises";
@@ -87,7 +87,7 @@ export async function updateAddresses(p: AddressParams): Promise<void> {
         resolve({ updated, tempAddresses })
     })).then((res) => {
         let { updated, tempAddresses } = res;
-        writeFileSync("addresses_master_ts.json", JSON.stringify(updated), { flag: "w+" });
+        writeFileSync("addresses_master.json", JSON.stringify(updated), { flag: "w+" });
         writeFileSync("deployments/addresses_last.json", JSON.stringify(tempAddresses), { flag: "w+" });
     })
 }
