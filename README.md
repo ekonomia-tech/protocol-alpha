@@ -98,6 +98,7 @@ TODO!
 The basic flow of cutting a release should occur according to the following steps:
 
 - Run contract deploy scripts to generate new `addresses.json` artifact
+- Update `package.json` version to latest [semver](https://semver.org/) version; `"version": "0.1.0"`,
 - Commit with [semver](https://semver.org/) commit message, for example; `git commit -m "Release v0.1.0"`
 - Tag release with corresponding release version from last step; `git tag v0.1.0`
 - Push tag; `git push origin --tags`
