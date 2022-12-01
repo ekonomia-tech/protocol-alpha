@@ -157,7 +157,7 @@ contract LiquityModuleAMO is IModuleAMO, ERC20 {
     /// @notice Withdraw
     /// @param account Account
     /// @param amount amount
-    function withdrawFor(address account, uint256 amount) public onlyModule {
+    function withdrawFor(address account, uint256 amount) public onlyModule returns (bool) {
         uint256 depositAmount = depositedAmount[account];
         uint256 stakedPoolTokenAmount = stakedAmount[account];
         if (amount > depositAmount) {
@@ -175,12 +175,13 @@ contract LiquityModuleAMO is IModuleAMO, ERC20 {
         // Transfer depositToken to caller
         IERC20(depositToken).transfer(account, depositAmount);
         emit Withdrawn(account, amount, shares);
+        return true;
     }
 
     /// @notice Withdraw all for
     /// @param account Account
-    function withdrawAllFor(address account) external {
-        withdrawFor(account, depositedAmount[account]);
+    function withdrawAllFor(address account) external returns (bool) {
+        return withdrawFor(account, depositedAmount[account]);
     }
 
     /// @notice gets reward from Liquity
