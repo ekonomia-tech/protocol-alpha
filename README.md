@@ -93,6 +93,19 @@ For syntax description, refer to the following link:
 ## Deploying to the persistent mainnet fork on Render
 TODO!
 
+## Releasing / NPM Publication
+
+The basic flow of cutting a release should occur according to the following steps:
+
+- Run contract deploy scripts to generate new `addresses.json` artifact
+- Commit with [semver](https://semver.org/) commit message, for example; `git commit -m "Release v0.1.0"`
+- Tag release with corresponding release version from last step; `git tag v0.1.0`
+- Push tag; `git push origin --tags`
+- Cut a new [Github Release](https://github.com/ekonomia-tech/protocol-alpha/releases/new)
+  - The title doesn't matter too much, but lead with the release version and include a basic sum up of the release; `v0.1.0 - We changed the game`
+  - You can just autogenerate release notes
+- Once published, the [publish.yml](./workflows/publish.yml) Github action should run automatically, only publishing if tests pass and the build completed successfully.
+
 ## Repo Configuration
 ### VSCode
 If you are using Juan Blanco's [solidity](https://marketplace.visualstudio.com/items?itemName=JuanBlanco.solidity) extension on VSCode, you can use this settings:
