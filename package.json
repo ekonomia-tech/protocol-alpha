@@ -1,17 +1,25 @@
 {
-  "name": "protocol-alpha",
-  "version": "0.0.1",
+  "name": "@ekonomia-tech/protocol-alpha",
+  "version": "0.0.1-alpha",
   "description": "Alpha version of the Photon Finance Decentralized Stablecoin protocol. Photon is a modular, risk and profit separated decentralized stablecoin.",
-  "main": "index.js",
+  "types": "build/index.d.ts",
+  "main": "build/index.js",
   "directories": {
     "lib": "lib",
     "test": "test"
   },
+  "files": [
+    "build/**/*",
+    "README.md",
+    "LICENSE",
+    "addresses.json"
+  ],
   "scripts": {
+    "build": "rm -rf build && forge build && npm run typechain && tsc -d build/types/*.ts --outdir build --esModuleInterop",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "typechain": "typechain --target ethers-v5 --out-dir typechain_types out/*[^.s][^.t].sol/*.json",
-    "prepublish": "forge build && npm run typechain",
-    "prettier:addresses": "prettier --write 'addresses*.json'"
+    "typechain": "typechain --target ethers-v5 --out-dir build/types build/abis/*[^.s][^.t].sol/*.json",
+    "prettier:addresses": "prettier --write 'addresses*.json'",
+    "prepublishOnly": "npm run build"
   },
   "repository": {
     "type": "git",
@@ -23,11 +31,13 @@
     "url": "https://github.com/ekonomia-tech/protocol-alpha/issues"
   },
   "homepage": "https://github.com/ekonomia-tech/protocol-alpha#readme",
+  "dependencies": {
+    "ethers": "^5.6.0"
+  },
   "devDependencies": {
     "@typechain/ethers-v5": "^10.1.1",
     "@types/node": "^18.11.9",
     "dotenv": "^16.0.3",
-    "ethers": "^5.7.2",
     "prettier": "^2.8.0",
     "ts-node": "^10.9.1",
     "typechain": "^8.1.1",

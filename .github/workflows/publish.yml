@@ -1,10 +1,8 @@
-name: Foundry CI
+name: Publish NPM Package
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  release:
+    types: [created]
 
 jobs:
   build:
@@ -29,19 +27,16 @@ jobs:
           RPC_URL: ${{ secrets.RPC_URL }}
         run: forge test -vvv
 
-  fmt:
+  publish:
+    needs: build
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v3
         with:
-          version: nightly
-
-      - name: Run forge install
-        run: forge install
-
-      - name: Check if forge fmt was run
-        run: forge fmt --check
+          node-version: 16
+          registry-url: https://registry.npmjs.org/
+      - run: npm install
+      - run: npm publish --access=public
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.npm_token}}
