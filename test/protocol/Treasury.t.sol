@@ -5,28 +5,26 @@ pragma solidity ^0.8.13;
 import "../BaseSetup.t.sol";
 
 contract TreasuryTest is BaseSetup {
-    error ZeroAddress();
-    error ZeroValue();
     error Unauthorized();
 
-    event Withdrawn(address indexed to, address indexed asset, uint256 amount);
+    event WithdrawTo(address indexed user, uint256 amount);
 
     function setUp() public {
         _getUSDC(address(treasury), ONE_MILLION_D6);
         vm.deal(address(treasury), ONE_HUNDRED_D18);
     }
 
-    /// withdrawTokens()
+    /// withdrawTo()
 
-    function testWithdrawTokens(uint256 _amount) public {
+    function testWithdrawTo(uint256 _amount) public {
         _amount = bound(_amount, 1, usdc.balanceOf(address(treasury)));
 
         uint256 treasuryBalanceBefore = usdc.balanceOf(address(treasury));
 
         vm.expectEmit(true, true, false, true);
-        emit Withdrawn(user1, USDC_ADDRESS, _amount);
+        emit WithdrawTo(user1, _amount);
         vm.prank(TONGovernance);
-        treasury.withdrawTokens(user1, USDC_ADDRESS, _amount);
+        treasury.withdrawTo(IERC20(USDC_ADDRESS), _amount, user1);
 
         uint256 treasuryBalanceAfter = usdc.balanceOf(address(treasury));
 
@@ -36,23 +34,7 @@ contract TreasuryTest is BaseSetup {
     function testCannotWithdrawTokensUnauthorized() public {
         vm.expectRevert(abi.encodeWithSelector(Unauthorized.selector));
         vm.prank(user1);
-        treasury.withdrawTokens(user1, USDC_ADDRESS, ONE_D6);
-    }
-
-    function testCannotWithdrawTokensZeroAddress() public {
-        vm.expectRevert(abi.encodeWithSelector(ZeroAddress.selector));
-        vm.prank(TONGovernance);
-        treasury.withdrawTokens(address(0), USDC_ADDRESS, ONE_D6);
-
-        vm.expectRevert(abi.encodeWithSelector(ZeroAddress.selector));
-        vm.prank(TONGovernance);
-        treasury.withdrawTokens(user1, address(0), ONE_D6);
-    }
-
-    function testCannotWithdrawTokensZeroValue() public {
-        vm.expectRevert(abi.encodeWithSelector(ZeroValue.selector));
-        vm.prank(TONGovernance);
-        treasury.withdrawTokens(user1, USDC_ADDRESS, 0);
+        treasury.withdrawTo(IERC20(USDC_ADDRESS), ONE_D6, user1);
     }
 
     /// execute()
@@ -70,17 +52,5 @@ contract TreasuryTest is BaseSetup {
 
         assertApproxEqAbs(treasuryStEthBalanceAfter, treasuryStEthBalanceBefore + ONE_D18, 1 wei);
         assertEq(treasuryBalanceAfter, treasuryBalanceBefore - ONE_D18);
-    }
-
-    function testCannotExecuteZeroAddress() public {
-        vm.expectRevert(abi.encodeWithSelector(ZeroAddress.selector));
-        vm.prank(TONGovernance);
-        treasury.execute(address(0), ONE_D18, abi.encodeWithSignature("submit(address)", ONE_D18));
-    }
-
-    function testCannotExecuteZeroValue() public {
-        vm.expectRevert(abi.encodeWithSelector(ZeroValue.selector));
-        vm.prank(TONGovernance);
-        treasury.execute(STETH_ADDRESS, 0, abi.encodeWithSignature("submit(address)", 0));
     }
 }
