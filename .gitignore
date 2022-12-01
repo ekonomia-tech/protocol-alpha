@@ -2,6 +2,7 @@
 .DS_Store
 .env
 node_modules
+typechain_types/
 
 # Forge
 out/
@@ -12,3 +13,4 @@ broadcast/
 # Code Editors
 .vscode
 deployments/**/
+
