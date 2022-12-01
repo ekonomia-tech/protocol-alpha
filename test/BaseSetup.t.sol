@@ -15,6 +15,11 @@ import "@oracle/DummyOracle.sol";
 import "@external/curve/ICurvePool.sol";
 import "@external/curve/ICurveFactory.sol";
 import "@modules/interfaces/ERC20AddOns.sol";
+import "@governance/PHOGovernorBravoDelegate.sol";
+import "@governance/PHOGovernorBravoDelegator.sol";
+import "@governance/Timelock.sol";
+import {TONGovernorBravoDelegate} from "@governance/TONGovernorBravoDelegate.sol";
+import {TONGovernorBravoDelegator} from "@governance/TONGovernorBravoDelegator.sol";
 
 abstract contract BaseSetup is Test {
     struct Balance {
@@ -41,6 +46,12 @@ abstract contract BaseSetup is Test {
     ICurvePool fraxBP;
     ICurveFactory curveFactory;
     ICurvePool fraxBPPhoMetapool;
+    Timelock public timelock;
+    PHOGovernorBravoDelegate public phoGovernanceDelegate;
+    PHOGovernorBravoDelegator public phoGovernanceDelegator;
+    TONGovernorBravoDelegate public tonGovernanceDelegate;
+    TONGovernorBravoDelegator public tonGovernanceDelegator;
+
     address public TONGovernance = address(105);
     address public PHOGovernance = address(106);
 
@@ -116,6 +127,9 @@ abstract contract BaseSetup is Test {
 
     uint256 public constant POOL_CEILING = (2 ** 256) - 1;
 
+    uint256 public constant VOTING_DELAY = 14400;
+    uint256 public constant VOTING_PERIOD = 21600;
+
     constructor() {
         string memory MAINNET_RPC = vm.envString("MAINNET_RPC");
         if (bytes(MAINNET_RPC).length == 0) {
@@ -128,12 +142,40 @@ abstract contract BaseSetup is Test {
         priceOracle = new DummyOracle();
         pho = new PHO("PHO", "PHO");
         ton = new TON("TON", "TON");
+        vm.stopPrank();
+
+        timelock = new Timelock(owner, 3 days);
+
+        phoGovernanceDelegate = new PHOGovernorBravoDelegate();
+
+        phoGovernanceDelegator = new PHOGovernorBravoDelegator(
+            address(timelock),
+            address(pho),
+            owner,
+            address(phoGovernanceDelegate),
+            VOTING_PERIOD,
+            VOTING_DELAY,
+            ONE_HUNDRED_D18
+        );
+
+        vm.prank(address(timelock));
+        timelock.setPendingAdmin(address(phoGovernanceDelegator));
+        vm.prank(address(phoGovernanceDelegator));
+        timelock.acceptAdmin();
+
+        PHOGovernance = address(phoGovernanceDelegator);
+
+        vm.startPrank(owner);
+        address(phoGovernanceDelegator).call(
+            abi.encodeWithSignature("_initiate(address)", address(0))
+        );
 
         kernel = new Kernel(address(pho), TONGovernance);
         treasury = new Treasury(TONGovernance);
 
         moduleManager = new ModuleManager(
             address(kernel),
+            address(timelock),
             PHOGovernance,
             TONGovernance,
             guardianAddress
