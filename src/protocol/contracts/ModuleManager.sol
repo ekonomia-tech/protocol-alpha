@@ -12,6 +12,7 @@ import "@protocol/interfaces/IKernel.sol";
 
 contract ModuleManager is IModuleManager {
     IKernel public kernel;
+    address public timelock;
     address public PHOGovernance;
     address public TONGovernance;
     address public pauseGuardian;
@@ -41,19 +42,26 @@ contract ModuleManager is IModuleManager {
         _;
     }
 
+    modifier onlyTimelock() {
+        if (msg.sender != timelock) revert NotTimelock();
+        _;
+    }
+
     constructor(
         address _kernel,
+        address _timelock,
         address _PHOGovernance,
         address _TONGovernance,
         address _pauseGuardian
     ) {
         if (
-            _kernel == address(0) || _PHOGovernance == address(0) || _TONGovernance == address(0)
-                || _pauseGuardian == address(0)
+            _kernel == address(0) || _timelock == address(0) || _PHOGovernance == address(0)
+                || _TONGovernance == address(0) || _pauseGuardian == address(0)
         ) {
             revert ZeroAddress();
         }
         kernel = IKernel(_kernel);
+        timelock = _timelock;
         PHOGovernance = _PHOGovernance;
         TONGovernance = _TONGovernance;
         pauseGuardian = _pauseGuardian;
@@ -89,7 +97,7 @@ contract ModuleManager is IModuleManager {
 
     /// @notice adds new module to registry
     /// @param _newModule address of module to add
-    function addModule(address _newModule) external onlyPHOGovernance {
+    function addModule(address _newModule) external onlyTimelock {
         if (_newModule == address(0)) revert ZeroAddress();
         Module storage module = modules[_newModule];
         if (module.status != Status.Unregistered) revert ModuleRegistered();
@@ -100,7 +108,7 @@ contract ModuleManager is IModuleManager {
 
     /// @notice deprecates new module from registry
     /// @param _existingModule address of module to remove
-    function deprecateModule(address _existingModule) external onlyPHOGovernance {
+    function deprecateModule(address _existingModule) external onlyTimelock {
         if (_existingModule == address(0)) revert ZeroAddress();
         Module storage module = modules[_existingModule];
         if (module.status == Status.Unregistered) revert UnregisteredModule();

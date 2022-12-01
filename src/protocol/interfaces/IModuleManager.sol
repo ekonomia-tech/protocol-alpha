@@ -10,6 +10,7 @@ interface IModuleManager {
     error ModuleCeilingExceeded();
     error KernelCeilingExceeded();
     error ModuleBurnExceeded();
+    error NotTimelock();
     error NotPHOGovernance(address caller);
     error NotTONGovernance(address caller);
     error ModuleUnavailable(address module, Status status);
