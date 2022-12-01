@@ -1,5 +1,5 @@
 {
-  "name": "@ekonomia-tech/protocol-alpha",
+  "name": "@ekonomia/protocol-alpha",
   "version": "0.0.1-alpha",
   "description": "Alpha version of the Photon Finance Decentralized Stablecoin protocol. Photon is a modular, risk and profit separated decentralized stablecoin.",
   "types": "build/index.d.ts",
@@ -18,7 +18,7 @@
     "build": "rm -rf build && forge build && npm run typechain && tsc -d build/types/*.ts --outdir build --esModuleInterop",
     "test": "echo \"Error: no test specified\" && exit 1",
     "typechain": "typechain --target ethers-v5 --out-dir build/types build/abis/*[^.s][^.t].sol/*.json",
-    "prettier:addresses": "prettier --write 'addresses*.json'",
+    "prettier:addresses": "prettier --write 'addresses.json'",
     "prepublishOnly": "npm run build"
   },
   "repository": {
