@@ -5,7 +5,6 @@ import "../BaseSetup.t.sol";
 import "@oracle/wstETHOracle.sol";
 
 contract wstETHOracleTest is BaseSetup {
-
     wstETHOracle public oracle;
 
     function setUp() public {
@@ -18,7 +17,7 @@ contract wstETHOracleTest is BaseSetup {
     function testGetPrice() public {
         uint256 wstETHPrice = oracle.getPrice(WSTETH_ADDRESS);
         uint256 stETHPrice = priceFeed.getPrice(STETH_ADDRESS);
-        uint stETHperToken = wsteth.tokensPerStEth();
+        uint256 stETHperToken = wsteth.tokensPerStEth();
         assertApproxEqAbs(wstETHPrice * stETHperToken / 10 ** 18, stETHPrice, 100000000000);
     }
 }

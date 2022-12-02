@@ -5,7 +5,6 @@ import "@oracle/IPriceOracle.sol";
 import "@modules/interfaces/ERC20AddOns.sol";
 
 contract wstETHOracle is IPriceOracle {
-
     error ZeroAddress();
     error BadBaseToken();
 
@@ -16,7 +15,7 @@ contract wstETHOracle is IPriceOracle {
     uint256 private constant PRICE_PRECISION = 10 ** 18;
 
     constructor(address _priceOracle) {
-        if(_priceOracle == address(0)) revert ZeroAddress();
+        if (_priceOracle == address(0)) revert ZeroAddress();
         priceOracle = IPriceOracle(_priceOracle);
     }
 
@@ -27,7 +26,6 @@ contract wstETHOracle is IPriceOracle {
         uint256 stETHPrice = _getStETHPrice();
         uint256 stEthPerToken = wstETH.stEthPerToken();
         return stETHPrice * stEthPerToken / PRICE_PRECISION;
-
     }
 
     /// @notice get the ETH price in USD
@@ -35,5 +33,4 @@ contract wstETHOracle is IPriceOracle {
     function _getStETHPrice() private view returns (uint256) {
         return priceOracle.getPrice(STETH_ADDRESS);
     }
-
 }
