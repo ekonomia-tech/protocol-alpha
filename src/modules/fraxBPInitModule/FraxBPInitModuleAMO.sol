@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/IModuleAMO.sol";
-import "./interfaces/ICurveGauge.sol";
+import "./interfaces/IGauge.sol";
 import "forge-std/console2.sol";
 
 /// @title FraxBPInitModuleAMO
@@ -40,7 +40,7 @@ contract FraxBPInitModuleAMO is IModuleAMO, ERC20 {
     // Needed for interactions w/ external contracts
     address public depositToken;
     IERC20 public crv = IERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
-    ICurveGauge public curveGauge; // TODO: gauge address
+    IGauge public curveGauge; // TODO: gauge address
 
     // Events
     event RewardAdded(uint256 reward);
@@ -81,7 +81,7 @@ contract FraxBPInitModuleAMO is IModuleAMO, ERC20 {
         operator = _operator;
         module = _module;
         depositToken = _depositToken;
-        curveGauge = ICurveGauge(_curveGauge);
+        curveGauge = IGauge(_curveGauge);
     }
 
     /// @notice Get total shares
@@ -144,7 +144,7 @@ contract FraxBPInitModuleAMO is IModuleAMO, ERC20 {
         IERC20(depositToken).safeTransferFrom(module, address(this), amount);
 
         // Deposit to gauge
-        //curveGauge.deposit(amount);
+        curveGauge.deposit(amount);
 
         depositedAmount[account] += amount;
         stakedAmount[account] += amount;
@@ -168,7 +168,7 @@ contract FraxBPInitModuleAMO is IModuleAMO, ERC20 {
         stakedAmount[account] -= stakedPoolTokenAmount;
 
         // Withdraw from gauge
-        //curveGauge.withdraw(amount);
+        curveGauge.withdraw(amount);
 
         uint256 shares = _trackWithdrawShares(account);
         _totalDeposits -= depositAmount;
@@ -194,7 +194,7 @@ contract FraxBPInitModuleAMO is IModuleAMO, ERC20 {
     function getRewardFraxBPInit() external onlyOperator returns (uint256) {
         uint256 crvBalanceBefore = crv.balanceOf(address(this));
         // Get rewards
-        curveGauge.claim_rewards();
+        //curveGauge.claim_rewards();
         uint256 crvBalanceAfter = crv.balanceOf(address(this));
         _totalRewards = crvBalanceAfter - crvBalanceBefore;
         emit FraxBPInitRewardsReceived(_totalRewards);

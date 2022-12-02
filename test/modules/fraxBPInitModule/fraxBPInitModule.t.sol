@@ -9,6 +9,11 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@modules/priceController/PriceController.sol";
 import "@modules/fraxBPInitModule/FraxBPInitModule.sol";
 import "forge-std/console2.sol";
+import "@modules/fraxBPInitModule/interfaces/IGauge.sol";
+import "@modules/fraxBPInitModule/interfaces/IGaugeController.sol";
+import "@modules/fraxBPInitModule/interfaces/IMinter.sol";
+import "@modules/fraxBPInitModule/LiquidityGauge.sol";
+import "../../utils/VyperDeployer.sol";
 
 contract FraxBPInitModuleTest is BaseSetup {
     /// Errors
@@ -26,6 +31,9 @@ contract FraxBPInitModuleTest is BaseSetup {
 
     ICurvePool public fraxBPPHOMetapool;
     FraxBPInitModule public fraxBPInitModule;
+    IGaugeController public curveGaugeController;
+    IMinter public curveMinter;
+    IGauge public curveLiquidityGauge;
 
     /// Constants
     uint256 public saleEndDate;
@@ -47,9 +55,24 @@ contract FraxBPInitModuleTest is BaseSetup {
         uint256 totalPHOSupply;
     }
 
+    VyperDeployer deployer;
+
     function setUp() public {
         fraxBPLP = IERC20(FRAXBP_LP_TOKEN);
         curveFactory = ICurveFactory(metaPoolFactoryAddress);
+        curveGaugeController = IGaugeController(0x2F50D538606Fa9EDD2B11E2446BEb18C9D5846bB);
+
+        curveMinter = IMinter(0xd061D61a4d941c39E5453435B6345Dc261C2fcE0);
+
+        console2.log("in setup start..");
+        deployer = new VyperDeployer();
+        console2.log("in setup, got vyper deployer..");
+
+        // voting escrow contract:
+        // 0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2
+
+        // example of LiquidityGaugeReward
+        // 0xA90996896660DEcC6E997655E065b23788857849
 
         // Give user FRAX and USDC
         _getFRAX(user1, TEN_THOUSAND_D18);
@@ -103,9 +126,58 @@ contract FraxBPInitModuleTest is BaseSetup {
         fraxBPLP.approve(address(fraxBPInitModule), ONE_MILLION_D18);
         vm.stopPrank();
 
-        // Do same for maple AMO
+        // Do same for AMO
         vm.prank(user1);
         fraxBPPHOMetapool.approve(address(fraxBPInitModule.fraxBPInitModuleAMO()), TEN_THOUSAND_D18);
+
+        console2.log("this is curveGaugeController address: ", address(curveGaugeController));
+
+        console2.log("SETTING UP GAUGE.......");
+
+        // curveLiquidityGauge = IGauge(
+        //     new LiquidityGauge(
+        //         address(fraxBPPHOMetapool),
+        //         address(curveMinter),
+        //         address(owner)
+        //     )
+        // );
+
+        // Reward contract: SNX rewards
+        // 0xDCB6A51eA3CA5d3Fd898Fd6564757c7aAeC3ca92
+        // Rewarded token: SNX
+        // 0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F
+
+        // Still reverts in venv with vyper
+        curveLiquidityGauge = IGauge(
+            deployer.deployContract(
+                "LiquidityGaugeReward",
+                abi.encode(
+                    address(fraxBPPHOMetapool),
+                    address(curveMinter),
+                    0xDCB6A51eA3CA5d3Fd898Fd6564757c7aAeC3ca92,
+                    0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F,
+                    address(owner)
+                )
+            )
+        );
+
+        // curveLiquidityGauge = IGauge(
+        //     0xA90996896660DEcC6E997655E065b23788857849
+        // );
+
+        console2.log("DEPLOYED GAUGE --------------> address is: ", address(curveLiquidityGauge));
+
+        console2.log("ADDING GAUGE...");
+
+        // Need msg.sender to be gauge admin
+        vm.prank(0x40907540d8a6C65c637785e8f8B742ae6b0b9968);
+        curveGaugeController.add_gauge(address(curveLiquidityGauge), 0, 100);
+
+        console2.log("ADDED GAUGE...");
+
+        uint256 weight = curveGaugeController.get_gauge_weight(address(curveLiquidityGauge));
+
+        console2.log("THIS IS GAUGE WEIGHT: ", weight);
     }
 
     // Cannot set addresses to 0
