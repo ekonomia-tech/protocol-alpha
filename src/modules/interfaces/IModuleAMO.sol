@@ -20,4 +20,7 @@ interface IModuleAMO {
 
     // Tracks earned amount per user
     function earned(address account) external view returns (uint256);
+
+    // amount the user has staked in the AMO
+    function stakedAmount(address account) external view returns (uint256);
 }
