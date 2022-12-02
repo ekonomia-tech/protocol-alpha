@@ -35,6 +35,8 @@ abstract contract BaseSetup is Test {
     IERC20 frax;
     IERC20 mpl;
     IWETH weth;
+    ISTETH steth;
+    IWSTETH wsteth;
     IERC20 fraxBPLP;
     ICurvePool fraxBP;
     ICurveFactory curveFactory;
@@ -77,6 +79,7 @@ abstract contract BaseSetup is Test {
     address public constant PRICEFEED_ETHUSD = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address public constant PRICEFEED_USDCUSD = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
     address public constant PRICEFEED_FRAXUSD = 0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD;
+    address public constant PRICEFEED_STETH = 0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8;
 
     uint256 public constant USDC_DECIMALS = 6;
     uint256 public constant DAI_DECIMALS = 18;
@@ -149,9 +152,10 @@ abstract contract BaseSetup is Test {
         usdc = IUSDC(USDC_ADDRESS);
         dai = IERC20(DAI_ADDRESS);
         frax = IERC20(FRAX_ADDRESS);
-
         mpl = IERC20(MPL_ADDRESS);
         weth = IWETH(WETH_ADDRESS);
+        steth = ISTETH(STETH_ADDRESS);
+        wsteth = IWSTETH(WSTETH_ADDRESS);
 
         priceFeed = new ChainlinkPriceFeed(PRECISION_DIFFERENCE);
 
