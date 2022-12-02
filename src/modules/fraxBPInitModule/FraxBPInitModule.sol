@@ -63,11 +63,12 @@ contract FraxBPInitModule is Ownable, ReentrancyGuard {
         address _pho,
         address _priceOracle,
         uint256 _saleEndDate,
-        uint256 _redemptionStartDate
+        uint256 _redemptionStartDate,
+        address _gauge
     ) {
         if (
             _moduleManager == address(0) || _fraxBPPHOMetapool == address(0) || _pho == address(0)
-                || _priceOracle == address(0)
+                || _priceOracle == address(0) || _gauge == address(0)
         ) {
             revert ZeroAddressDetected();
         }
@@ -92,7 +93,7 @@ contract FraxBPInitModule is Ownable, ReentrancyGuard {
             msg.sender,
             address(this),
             address(fraxBPPHOMetapool),
-            address(fraxBPPHOMetapool)
+            _gauge
         );
 
         fraxBPInitModuleAMO = address(fraxBPModuleAMO);

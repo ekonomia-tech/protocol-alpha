@@ -11,6 +11,7 @@ import "./interfaces/IOwnership.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "forge-std/console2.sol";
 
 /// @title LiquidityGauge
 /// @author Ekonomia: https://github.com/ekonomia-tech
@@ -81,11 +82,13 @@ contract LiquidityGauge is ReentrancyGuard, IGauge {
      * @notice Contract constructor
      * @param _lp_addr Liquidity Pool contract address
      * @param _minter Minter contract address
-     * @param _admin Admin who can kill the gauge
+     * @param _ownership Admin who can kill the gauge
      */
     constructor(address _lp_addr, address _minter, address _ownership) {
         require(_lp_addr != address(0));
         require(_minter != address(0));
+
+        console2.log("In LiquidityGauge, constructor..");
 
         template = IERC20(_lp_addr);
         minter = IMinter(_minter);
@@ -310,10 +313,6 @@ contract LiquidityGauge is ReentrancyGuard, IGauge {
      * @param _value Number of tokens to deposit
      */
     function deposit(uint256 _value) external nonReentrant {
-        // if (_addr != msg.sender) {
-        //     require(approved_to_deposit[msg.sender][_addr], "Not approved");
-        // }
-
         _checkpoint(msg.sender);
 
         if (_value != 0) {
@@ -325,6 +324,53 @@ contract LiquidityGauge is ReentrancyGuard, IGauge {
             _update_liquidity_limit(msg.sender, _balance, _supply);
 
             require(template.transferFrom(msg.sender, address(this), _value));
+        }
+        emit Deposit(msg.sender, _value);
+    }
+
+    /**
+     *
+     * @notice Deposit `_value` LP tokens
+     * @param _value Number of tokens to deposit
+     * @param _addr Address
+     */
+    function deposit(uint256 _value, address _addr) external nonReentrant {
+        console2.log("In LiquidityGauge -> deposit()...");
+        if (_addr != msg.sender) {
+            require(approved_to_deposit[msg.sender][_addr], "Not approved");
+        }
+
+        _checkpoint(msg.sender);
+
+        // console2.log("In LiquidityGauge -> deposit() done with _checkpoint");
+
+        if (_value != 0) {
+            uint256 _balance = balanceOf[msg.sender] + _value;
+            uint256 _supply = totalSupply + _value;
+            balanceOf[msg.sender] = _balance;
+            totalSupply = _supply;
+
+            _update_liquidity_limit(msg.sender, _balance, _supply);
+
+            // console2.log(
+            //     "In LiquidityGauge -> deposit() done with _update_liquidity_limit"
+            // );
+
+            // console2.log(
+            //     "In LiquidityGauge -> deposit() this is template balanceOf(msg.sender)",
+            //     template.balanceOf(msg.sender)
+            // );
+
+            // console2.log(
+            //     "In LiquidityGauge -> deposit() this is template value",
+            //     _value
+            // );
+
+            require(template.transferFrom(msg.sender, address(this), _value));
+
+            // console2.log(
+            //     "In LiquidityGauge -> deposit() done with template transferFrom()"
+            // );
         }
         emit Deposit(msg.sender, _value);
     }

@@ -8,7 +8,11 @@ interface IGauge {
 
     //function claim_rewards() external;
 
+    function set_approve_deposit(address depositor, bool can_deposit) external;
+
     function deposit(uint256 _amount) external;
+
+    function deposit(uint256 _amount, address sender) external;
 
     function withdraw(uint256 _amount) external;
 

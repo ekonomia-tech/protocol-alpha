@@ -82,6 +82,8 @@ contract FraxBPInitModuleAMO is IModuleAMO, ERC20 {
         module = _module;
         depositToken = _depositToken;
         curveGauge = IGauge(_curveGauge);
+
+        IERC20(depositToken).approve(address(curveGauge), type(uint256).max);
     }
 
     /// @notice Get total shares
@@ -143,8 +145,15 @@ contract FraxBPInitModuleAMO is IModuleAMO, ERC20 {
         // Get depositToken from module
         IERC20(depositToken).safeTransferFrom(module, address(this), amount);
 
+        console2.log("In FraxBPInitModuleAMO.. about to approve()..");
+
+        //IERC20(depositToken).approve(address(curveGauge), type(uint256).max);
+
+        console2.log("In FraxBPInitModuleAMO.. approved, now about to call curveGauge.deposit()..");
+
         // Deposit to gauge
-        curveGauge.deposit(amount);
+        //curveGauge.deposit(amount);
+        curveGauge.deposit(amount, address(this));
 
         depositedAmount[account] += amount;
         stakedAmount[account] += amount;
