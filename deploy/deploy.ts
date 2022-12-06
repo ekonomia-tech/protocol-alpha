@@ -2,9 +2,9 @@
 import { DeployParams} from "./types";
 import { deployData } from "./deployParams.json";
 import { execute, generateForgeCommand, generateSignature, updateAddresses, getNetworkRPC } from "./helpers";
-require('dotenv').config()
+// require('dotenv').config()
 
-async function deployContracts(network: string, privateKey: string): Promise<void> {
+export async function deployContracts(network: string, privateKey: string): Promise<void> {
     let dArray: DeployParams[] = deployData.filter((d: DeployParams) => d.deploy);
     for(const data of dArray) {
         let sig = await generateSignature(data.sigParams);
@@ -26,4 +26,3 @@ async function deployContracts(network: string, privateKey: string): Promise<voi
     }
     await execute("npm run prettier:addresses");
 }
-deployContracts("render", process.env.PRIVATE_KEY || "");
