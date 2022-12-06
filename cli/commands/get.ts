@@ -1,24 +1,23 @@
 import yargs, { Argv } from "yargs";
 
 import { logger } from "../logging";
-import { getContract } from "../contracts";
 import { loadEnv, CLIArgs, CLIEnvironment } from "../env";
 import { ContractFunction } from "ethers";
 
 import { ProtocolFunction } from "./index";
 
-// TODO - add in module-specific getters, but maybe in another object
+// TODO
+// add in module-specific getters, but maybe in another object. it would have to accept parameters
 export const getters = {
   "pho-supply": { contract: "PHO", name: "totalSupply" },
   "pho-owner": { contract: "PHO", name: "owner" },
   "pho-kernel": { contract: "PHO", name: "kernel" },
   "ton-supply": { contract: "TON", name: "totalSupply" },
   "kernel-ton-governance": { contract: "Kernel", name: "pho" },
-  // "mm-pho-governance": { contract: "ModuleManager", name: "PHOGovernance" },
-  // "mm-ton-governance": { contract: "ModuleManager", name: "TONGovernance" },
+  "mm-pho-governance": { contract: "ModuleManager", name: "PHOGovernance" },
+  "mm-ton-governance": { contract: "ModuleManager", name: "TONGovernance" },
   "mm-pause-guardian": { contract: "ModuleManager", name: "pauseGuardian" },
   "mm-module-delay": { contract: "ModuleManager", name: "moduleDelay" },
-  // "mm-module-module": { contract: "ModuleManager", name: "modules" },
 };
 
 const buildHelp = () => {

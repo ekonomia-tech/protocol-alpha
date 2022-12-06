@@ -2,11 +2,7 @@
 import * as dotenv from "dotenv";
 import yargs from "yargs";
 
-// import { deployCommand } from './commands/deploy'
-// import { migrateCommand } from './commands/migrate'
-// import { contractsCommand } from './commands/contracts'
 import { protocolCommand } from "./commands";
-
 import { cliOpts } from "./defaults";
 
 dotenv.config();

@@ -7,7 +7,6 @@ import {
   AddressParams,
 } from "./types";
 import { exec } from "child_process";
-// import addresses from "../addresses_master.json";
 import { writeFileSync, readdirSync, lstatSync } from "fs";
 import * as networks from "./networks.json";
 import { copyFile } from "fs/promises";
