@@ -1,20 +1,14 @@
 import Table from "cli-table3";
 
 import { loadEnv, CLIArgs, CLIEnvironment } from "../env";
-import { PhotonContracts } from "../contracts";
 import { logger } from "../logging";
 import { ContractFunction } from "ethers";
+import { getters } from "./get";
 import addresses from "../../addresses.json";
 
-import { getters } from "./get";
-
 const coreContracts = ["PHO", "TON", "Kernel", "ModuleManager", "ChainlinkPriceFeed", "CurvePool"];
-
 const forkedMainnet = addresses.render.core; // TODO make generalized
-
 export const listProtocolParams = async (cli: CLIEnvironment): Promise<void> => {
-  logger.info(`>>> Protocol Configuration <<<\n`);
-
   for (const name of coreContracts) {
     const table = new Table({
       head: [name, "Result"],
@@ -46,28 +40,6 @@ export const listProtocolParams = async (cli: CLIEnvironment): Promise<void> => 
     await Promise.all(req);
     logger.info(table.toString());
   }
-
-  // Verify controllers
-  // logger.info(`\n>>> Contracts Controller <<<\n`)
-
-  // const controller = cli.contracts['Controller']
-  // for (const contractName of contractNames) {
-  //   if (contractName === 'Controller' || !(contractName in cli.contracts)) continue
-
-  //   const contract = cli.contracts[contractName]
-  //   const contractFn = contract.functions['controller']
-
-  //   if (contractFn) {
-  //     const addr = await contractFn().then((values) => values[0])
-  //     if (addr === controller.address) {
-  //       logger.info(contractName)
-  //     } else {
-  //       logger.error(`${contractName} : ${addr} should be ${controller.address}`)
-  //     }
-  //   } else {
-  //     logger.info(contractName)
-  //   }
-  // }
 };
 
 export const listCommand = {
