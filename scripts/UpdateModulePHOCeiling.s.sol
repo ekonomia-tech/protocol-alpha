@@ -12,8 +12,7 @@ contract UpdateModulePHOCeiling is Script, Addresses {
     IModuleManager public moduleManager;
 
     function run(string memory network, address moduleAddress, uint256 newPHOCeiling) external {
-        uint256 deployerKey = vm.envUint("PRIVATE_KEY");
-        vm.startBroadcast(deployerKey);
+        vm.startBroadcast();
 
         address moduleManagerAddress = getAddress(network, ".ModuleManager");
         moduleManager = IModuleManager(moduleManagerAddress);

@@ -1,20 +1,20 @@
 {
   "render": {
     "core": {
-      "PHO": "0x8be34D7830d446747B95Aa3ace0eaA4FF19b2007",
-      "TON": "0x45D97250E4F261c4116b2ebDBA1b963e55B068d3",
-      "Kernel": "0xB49BafEc7095d2d337A9e7DaaAE2DAA0F73d5b5A",
-      "ModuleManager": "0xB56Ab229bD4d9459e61BC7Bb34E394Ed6c1a8e39",
-      "ChainlinkPriceFeed": "0x36A7f9ca3EBD83E00c1bca3A1db378bcF039Bf85",
-      "CurvePool": "0xe9123CBC5d1EA65301D417193c40A72Ac8D53501"
+      "PHO": "0x4735b6AEe529640b265D50d1409c4503e4Ef2c23",
+      "TON": "0x2E9414BD1af7A27b6E369216265B733bb3afBc76",
+      "Kernel": "0x4fF1E057f891060Ff6837567C65AA8364D11EaBd",
+      "ModuleManager": "0x93691c0Cb6F6bb785Ec2405E98aC7B4A2BcF752A",
+      "ChainlinkPriceFeed": "0x1a363a3e66b3fcF7Ae8d10222620a070D751e38b",
+      "CurvePool": "0x3685646651FCcC80e7CCE7Ee24c5f47Ed9b434ac"
     },
     "modules": {
-      "PriceController": "0xFae8bf5E0bCBdcc44f3E13966C8c3F16917463bE",
-      "StablecoinDepositModuleUSDC": "0x2A7EC1a948C356c3D5cf0b275B0FAa4Df10701D5",
-      "StablecoinDepositModuleFRAX": "0x70F804060040bAb7E443b0F4334d356B7a6D4bAc",
-      "StablecoinDepositModuleLUSD": "0x009eb8A8a1B7C4d48C721E47894346477d2f6647",
-      "MapleDepositModuleUSDC": "0x7511fAE41153Fad8A569d7Ebdcc76c120D3d5AAb",
-      "ZCBModuleUSDC": "0x7c098E457DA8108527bdba11da981100d5293A92"
+      "PriceController": "0x2785951ECFF992eB6A50bb22Ea62db156016887b",
+      "StablecoinDepositModuleUSDC": "0xEf2d70E4a7297B31A1245253904a4cA975CA7e12",
+      "StablecoinDepositModuleFRAX": "0x6c9084633AA7DB67f93DcC71ed0F34d956643Dd0",
+      "StablecoinDepositModuleLUSD": "0xca64cA47364ac2B3CAa3522169712FA830865809",
+      "MapleDepositModuleUSDC": "0x622940CE413F799b63566c3ebc185eC2Bc1951D8",
+      "ZCBModuleUSDC": "0x6Fd91CA8653bBC35164E753e1Fcd6794c0C43fDE"
     }
   }
 }

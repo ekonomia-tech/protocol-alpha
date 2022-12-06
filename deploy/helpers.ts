@@ -1,20 +1,27 @@
 import {
   SignatureParam,
-  DeployParams,
+
   MasterAddresses,
   Networks,
   CommandParams,
   AddressParams,
 } from "./types";
 import { exec } from "child_process";
-import { writeFileSync, readdirSync, lstatSync } from "fs";
+import { writeFileSync, readdirSync, lstatSync, existsSync, mkdirSync } from "fs";
 import * as networks from "./networks.json";
 import { copyFile } from "fs/promises";
 import path from "path";
+import addresses from "../addresses.json";
+require('dotenv').config()
 
 export function getNetworkRPC(network: string): string {
   let n: Networks = networks;
-  return n[network];
+  let envString = n[network];
+  let res = process.env[envString];
+  if (!res) {
+    throw `Network [${network}] does not have an RPC_URL in the .env file`;
+  }
+  return res;
 }
 
 export async function generateSignature(params: SignatureParam[]): Promise<string> {
@@ -58,7 +65,7 @@ export function generateForgeCommand(p: CommandParams): string {
 
 export async function updateAddresses(p: AddressParams): Promise<void> {
   await copyFile("deployments/addresses_last.example.json", "deployments/addresses_last.json", 0);
-  let tempAddresses: { [key: string]: string } = require("../../deployments/addresses_last.json");
+  let tempAddresses: { [key: string]: string } = require("../deployments/addresses_last.json");
   let updated: MasterAddresses = addresses;
   return new Promise<{
     updated: MasterAddresses;
@@ -66,7 +73,7 @@ export async function updateAddresses(p: AddressParams): Promise<void> {
   }>((resolve) => {
     let latestLog: string | undefined = getMostRecentFile(`broadcast/${p.contractName}.s.sol/1/`);
     if (!latestLog) return;
-    let json = require(`../../broadcast/${p.contractName}.s.sol/1/${latestLog}`);
+    let json = require(`../broadcast/${p.contractName}.s.sol/1/${latestLog}`);
     json.transactions.forEach((trx: any) => {
       if (p.contractName == "DeployCurvePool") {
         let { transactionType, address } = trx.additionalContracts[0];
@@ -91,6 +98,10 @@ export async function updateAddresses(p: AddressParams): Promise<void> {
     let { updated, tempAddresses } = res;
     writeFileSync("addresses.json", JSON.stringify(updated), { flag: "w+" });
     writeFileSync("deployments/addresses_last.json", JSON.stringify(tempAddresses), { flag: "w+" });
+    if (!existsSync(`deployments/${p.network}`)) {
+      mkdirSync(`deployments/${p.network}`);
+    }
+    writeFileSync(`deployments/${p.network}/addresses_latest.json`, JSON.stringify(tempAddresses), { flag: "w+" });
   });
 }
 
