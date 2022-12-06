@@ -20,6 +20,7 @@ contract Treasury is ITreasury {
         }
         _;
     }
+
     constructor(address _operator) public {
         operator = _operator;
     }
