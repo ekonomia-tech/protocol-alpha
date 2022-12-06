@@ -34,20 +34,20 @@ export const getContracts = (
   signerOrProvider?: Signer | providers.Provider,
 ): PhotonContracts => {
   const pho: PHO = new Contract(addresses.PHO, loadABI("PHO"), signerOrProvider) as PHO;
-  const ton: TON = new Contract(addresses.PHO, loadABI("TON"), signerOrProvider) as TON;
-  const kernel: Kernel = new Contract(addresses.PHO, loadABI("Kernel"), signerOrProvider) as Kernel;
+  const ton: TON = new Contract(addresses.TON, loadABI("TON"), signerOrProvider) as TON;
+  const kernel: Kernel = new Contract(addresses.Kernel, loadABI("Kernel"), signerOrProvider) as Kernel;
   const moduleManager: ModuleManager = new Contract(
-    addresses.PHO,
+    addresses.ModuleManager,
     loadABI("ModuleManager"),
     signerOrProvider,
   ) as ModuleManager;
   const chainlinkPriceFeed: ChainlinkPriceFeed = new Contract(
-    addresses.PHO,
+    addresses.ChainlinkPriceFeed,
     loadABI("ChainlinkPriceFeed"),
     signerOrProvider,
   ) as ChainlinkPriceFeed;
   const curvePool: ICurvePool = new Contract(
-    addresses.PHO,
+    addresses.CurvePool,
     loadABI("CurvePool"),
     signerOrProvider,
   ) as ICurvePool;

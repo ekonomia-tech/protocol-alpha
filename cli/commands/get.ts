@@ -42,7 +42,6 @@ export const getProtocolParam = async (cli: CLIEnvironment, cliArgs: CLIArgs): P
 
   // Send tx
   const contractFn: ContractFunction = cli.contracts[fn.contract].functions[fn.name];
-
   const [value] = await contractFn(...params);
   logger.info(`${fn.name} = ${value}`);
 };
