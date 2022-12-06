@@ -93,6 +93,9 @@ For syntax description, refer to the following link:
 ## Deploying to the persistent mainnet fork on Render
 TODO!
 
+## Using the CLI
+TODO!!!!
+
 ## Releasing / NPM Publication
 
 The basic flow of cutting a release should occur according to the following steps:
