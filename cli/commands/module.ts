@@ -1,12 +1,10 @@
 import yargs, { Argv } from "yargs";
 import { logger } from "../logging";
-import { CLIArgs, CLIEnvironment, loadEnv } from "../env";
-import { execute, generateForgeCommand, generateSignature, getNetworkRPC } from "../../deploy/helpers";
-import { deployContracts } from "../../deploy/deploy";
-import { getModuleData, getModuleName, verifyModule, verifyNetwork } from "../helpers";
-import { CommandParams } from "../../deploy/types";
-import { BigNumber, ethers } from "ethers";
-require('dotenv').config()
+import { loadEnv } from "../env";
+import { execute, generateForgeCommand, generateSignature } from "./deploy"
+import { verifyModule, verifyNetwork } from "../helpers";
+import { CLIArgs, CLIEnvironment, CommandParams } from "../types";
+import { ethers } from "ethers";
 
 const buildHelp = () => {
   let help = "$0 protocol deploy [target]\n Photon protocol deployment";
@@ -14,11 +12,11 @@ const buildHelp = () => {
 };
 
 export const addModule = async (cli: CLIEnvironment, cliArgs: CLIArgs): Promise<void> => {
-    const { target, moduleId } = cliArgs;
-    if (!verifyNetwork(target) || !verifyModule(target, moduleId)) return;
+    const { c: networkId, moduleId } = cliArgs;
+    if ( !verifyModule(networkId, moduleId)) return;
     let sig: string = await generateSignature([{
         type: "string",
-        value: target
+        value: networkId.toString()
     }, {
         type: "address",
         value: moduleId
@@ -26,7 +24,7 @@ export const addModule = async (cli: CLIEnvironment, cliArgs: CLIArgs): Promise<
 
     let commandParams: CommandParams = {
         contractName: "UpdateAddModule",
-        forkUrl: getNetworkRPC(target),
+        forkUrl: cli.providerUrl,
         privateKey: cli.argv.privateKey,
         sig
     }
@@ -37,24 +35,24 @@ export const addModule = async (cli: CLIEnvironment, cliArgs: CLIArgs): Promise<
 };
 
 export const updateCeiling = async (cli: CLIEnvironment, cliArgs: CLIArgs): Promise<void> => {
-    let { target, moduleId, ceiling } = cliArgs;
+    let { c: networkId, moduleId, ceiling } = cliArgs;
     
-    if (!verifyNetwork(target) || !verifyModule(target, moduleId)) return;
-    let ceiling_d18 = ethers.utils.parseUnits(ceiling, 18);
+    if (!verifyModule(networkId, moduleId)) return;
+    let ceilingD18 = ethers.utils.parseUnits(ceiling, 18);
     let sig: string = await generateSignature([{
         type: "string",
-        value: target
+        value: networkId.toString()
     }, {
         type: "address",
         value: moduleId
     }, {
       type: "uint256",
-      value: ceiling_d18
+      value: ceilingD18
     }]);
 
     let commandParams: CommandParams = {
       contractName: "UpdateModulePHOCeiling",
-      forkUrl: getNetworkRPC(target),
+      forkUrl: cli.providerUrl,
       privateKey: cli.argv.privateKey,
       sig
   }
@@ -66,13 +64,13 @@ export const updateCeiling = async (cli: CLIEnvironment, cliArgs: CLIArgs): Prom
 }
 
 export const executeCeilingUpdate = async (cli: CLIEnvironment, cliArgs: CLIArgs): Promise<void> => {
-  let { target, moduleId } = cliArgs;
+  let { c: networkId, moduleId } = cliArgs;
 
-  if (!verifyNetwork(target) || !verifyModule(target, moduleId)) return;
+  if (!verifyModule(networkId, moduleId)) return;
 
   let sig: string = await generateSignature([{
       type: "string",
-      value: target
+      value: networkId.toString()
   }, {
       type: "address",
       value: moduleId
@@ -80,7 +78,7 @@ export const executeCeilingUpdate = async (cli: CLIEnvironment, cliArgs: CLIArgs
 
   let commandParams: CommandParams = {
     contractName: "UpdateExecuteCeilingUpdate",
-    forkUrl: getNetworkRPC(target),
+    forkUrl: cli.providerUrl,
     privateKey: cli.argv.privateKey,
     sig
 }
@@ -93,7 +91,7 @@ logger.info(`Successfully updated ceiling for module ${moduleId}`);
 
 
 export const addModuleCommand = {
-  command: "add [target] [moduleId]",
+  command: "add [moduleId]",
   describe: "Adds a module to module manager",
   builder: (yargs: Argv): yargs.Argv => {
     return yargs.usage(buildHelp());
@@ -104,7 +102,7 @@ export const addModuleCommand = {
 };
 
 export const updateModuleCeilingCommand = {
-  command: "update-ceiling [target] [moduleId] [ceiling]",
+  command: "update-ceiling [moduleId] [ceiling]",
   describe: "Updates PHO ceiling for a given module",
   builder: (yargs: Argv): yargs.Argv => {
     return yargs.usage(buildHelp());
@@ -115,7 +113,7 @@ export const updateModuleCeilingCommand = {
 }
 
 export const executePHOUpdateCommand = {
-  command: "execute-ceiling [target] [moduleId]",
+  command: "execute-ceiling [moduleId]",
   describe: "Executes ceiling update for a module",
   builder: (yargs: Argv): yargs.Argv => {
     return yargs.usage(buildHelp());

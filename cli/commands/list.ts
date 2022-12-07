@@ -1,14 +1,13 @@
 import Table from "cli-table3";
-
-import { loadEnv, CLIArgs, CLIEnvironment } from "../env";
+import { loadEnv } from "../env";
 import { logger } from "../logging";
 import { ContractFunction } from "ethers";
 import { getters } from "./get";
-import addresses from "../../addresses.json";
+import { CLIArgs, CLIEnvironment } from "../types";
 
 const coreContracts = ["PHO", "TON", "Kernel", "ModuleManager", "ChainlinkPriceFeed", "CurvePool"];
-const forkedMainnet = addresses.render.core; // TODO make generalized
 export const listProtocolParams = async (cli: CLIEnvironment): Promise<void> => {
+  
   for (const name of coreContracts) {
     const table = new Table({
       head: [name, "Result"],
@@ -18,9 +17,10 @@ export const listProtocolParams = async (cli: CLIEnvironment): Promise<void> => 
     if (!(name in cli.contracts)) {
       continue;
     }
-    table.push(["Address", forkedMainnet[name]]);
 
-    const req = [];
+    table.push(["Address", cli.contracts[name].address]);
+
+    const req: Promise<any>[] = [];
     for (const fn of Object.values(getters)) {
       if (fn.contract != name) continue;
       const contract = cli.contracts[fn.contract];

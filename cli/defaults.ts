@@ -1,9 +1,10 @@
 import { Options } from 'yargs'
 import { Overrides } from 'ethers'
+require('dotenv').config()
 
 export const local = {
   mnemonic: 'myth like bonus scare over problem client lizard pioneer submit female collect',
-  providerUrl: 'http://localhost:8545',
+  chainId: 42069,
   accountNumber: '0',
 }
 
@@ -14,12 +15,12 @@ export const defaultOverrides: Overrides = {
 }
 
 export const cliOpts = {
-  providerUrl: {
-    alias: 'provider-url',
-    description: 'The URL of an Ethereum provider',
-    type: 'string',
+  chainId: {
+    alias: 'chainId',
+    description: 'The chain ID',
+    type: 'number',
     group: 'Ethereum',
-    default: local.providerUrl,
+    default: local.chainId,
   },
   mnemonic: {
     alias: 'mnemonic',
@@ -36,3 +37,9 @@ export const cliOpts = {
     default: local.accountNumber,
   },
 } as { [key: string]: Options }
+
+export const rpcUrls = {
+  1: process.env.MAINNET_RPC,
+  11155111: process.env.SEPHOLIA_RPC,
+  42069: process.env.RENDER
+};
