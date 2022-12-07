@@ -1,7 +1,7 @@
 import yargs, { Argv } from "yargs";
-import { CLIArgs, CLIEnvironment, loadEnv } from "../env";
-import { execute } from "../../deploy/helpers";
-require('dotenv').config()
+import { loadEnv } from "../env";
+import { CLIArgs, CLIEnvironment } from "../types";
+import { execute } from "./deploy";
 
 const buildHelp = () => {
   let help = "$0 protocol deploy [target]\n Photon protocol deployment";
@@ -17,8 +17,8 @@ export const fastForward = async (cli: CLIEnvironment, cliArgs: CLIArgs): Promis
     if (days) {
       toJump += days * 86400
     }
-    await execute(`curl -H "Content-Type: application/json" -X POST --data '{"jsonrpc":"2.0","method":"evm_increaseTime","params":[${toJump}],"id":67}' ${cli.argv.p}`)
-    await execute(`curl -H "Content-Type: application/json" -X POST --data '{"jsonrpc":"2.0","method":"evm_mine","params":[],"id":67}' ${cli.argv.p}`)
+    await execute(`curl -H "Content-Type: application/json" -X POST --data '{"jsonrpc":"2.0","method":"evm_increaseTime","params":[${toJump}],"id":67}' ${cli.providerUrl}`)
+    await execute(`curl -H "Content-Type: application/json" -X POST --data '{"jsonrpc":"2.0","method":"evm_mine","params":[],"id":67}' ${cli.providerUrl}`)
 };
 
 export const fastForwardCommand = {

@@ -1,7 +1,6 @@
 #!/usr/bin/env ts-node
 import * as dotenv from "dotenv";
 import yargs from "yargs";
-
 import { evmCommand, moduleCommand, protocolCommand } from "./commands";
 import { cliOpts } from "./defaults";
 
@@ -18,7 +17,7 @@ yargs
   })
   .env(true)
   .option("m", cliOpts.mnemonic)
-  .option("p", cliOpts.providerUrl)
+  .option("c", cliOpts.chainId)
   .option("n", cliOpts.accountNumber)
   .command(protocolCommand)
   .command(evmCommand)

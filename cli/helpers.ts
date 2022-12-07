@@ -1,58 +1,45 @@
-import { logger } from "ethers";
-import { getNetworkRPC } from "../deploy/helpers";
-import { DeployParams } from "../deploy/types";
-import { deployData } from "../deploy/deployParams.json";
+import { logger } from "./logging";
+import { NetworkContracts } from "./types";
+import addresses from "../addresses.json";
+import { rpcUrls } from "./defaults";
 
-export const getModuleName = (network: string, moduleId: string) : string => {
+export const verifyModule = (networkId: number, moduleId: string) : boolean => {
     try {
-        let moduleName = "";
-        let latest = require(`../deployments/${network}/addresses_latest.json`);
-        Object.entries(latest).forEach(entry => {
-            const [name, address] = entry;
-            if(address == moduleId){
-                moduleName = name;
-            }
-        })
-        return moduleName;
-    } catch (err) {
-        logger.info("Module address missing or does not exist in last deployment");
-        return "";
-    }
-}
-
-export const getModuleData = (moduleName: string) : DeployParams | null => {
-    for (let i = 0; i < deployData.length; i++) {
-        if (deployData[i].contractLabel == moduleName) {
-            return deployData[i];
-        }
-    }
-    return null;
-}
-
-export const verifyModule = (network: string, moduleId: string) : boolean => {
-    try {
-        let exists = false;
         let addresses = require(`../addresses.json`);
-        let modules = addresses[network].modules;
-        Object.values(modules).forEach(address => {
-            if(address == moduleId){
-                exists = true;
+        let modules = addresses[networkId].modules;
+        let moduleAddresses = Object.values(modules);
+        for (let i = 0; i < moduleAddresses.length; i++) {
+            if(moduleAddresses[i] == moduleId){
+                return true;
             }
-        })
-        return exists;
+        }
+        logger.info(`Could not find the module in addresses.json`);
+        return false;
     } catch (err) {
-        logger.info("Module address missing or does not exist in last deployment");
+        logger.info(`Error verifying module - ${err}`);
         return false;
     }
 }
 
-export const verifyNetwork = (target: string): boolean => {
-    if (!target) {
+export const verifyNetwork = (networkId: number): boolean => {
+    if (!networkId) {
         logger.info("First parameter should be the network name");
         return false;
-    } else if (!getNetworkRPC(target)) {
-        logger.info(`Network ${target} does not have a RPC_URK record in the .env file`)
+    } else if (!getNetworkRPC(networkId)) {
+        logger.info(`Network with ID ${networkId} does not have a RPC_URK record in the .env file`)
         return false;
     }
     return true;
-  }
+}
+
+export const getNetworkRPC = (networkId: number): string => {
+    let rpcUrl = rpcUrls[networkId];
+    if (!rpcUrl) {
+        throw `Network id ${networkId} does not have a corresponding value in the .env file`
+    }
+    return rpcUrl;
+}
+
+export const getNetworkContractAddresses = (networkId: number) : NetworkContracts => {
+    return addresses[networkId];
+}

@@ -1,18 +1,26 @@
 import yargs, { Argv } from 'yargs'
-
 import { listCommand } from './list'
 import { getCommand } from './get'
 import { deployCommand } from './deploy'
 import { addModuleCommand, executePHOUpdateCommand, updateModuleCeilingCommand } from './module'
-import { fastForwardCommand } from './evm_manipulation'
-
-export interface ProtocolFunction {
-  contract: string
-  name: string
-}
+import { fastForwardCommand } from './evm'
 
 // TODO: print help with fn signature
 // TODO: add gas price
+
+export const protocolCommand = {
+  command: 'protocol',
+  describe: 'Photon protocol configuration',
+  builder: (yargs: Argv): yargs.Argv => {
+    return yargs
+      .command(getCommand)
+      .command(listCommand)
+      .command(deployCommand)
+  },
+  handler: (): void => {
+    yargs.showHelp()
+  },
+}
 
 
 export const evmCommand = {

@@ -17,4 +17,3 @@ export const toTON = toPHO; // both 18 decimals
 // Providers
 export const getProvider = (providerUrl: string, network?: number): providers.JsonRpcProvider =>
   new providers.JsonRpcProvider(providerUrl, network);
-

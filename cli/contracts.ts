@@ -1,21 +1,12 @@
-import { Contract, ContractInterface, providers, Signer } from "ethers";
+import { Contract, providers, Signer } from "ethers";
 import { loadABI } from "./abis";
-
 import { PHO } from "../build/types/PHO";
 import { TON } from "../build/types/TON";
 import { ModuleManager } from "../build/types/ModuleManager";
 import { Kernel } from "../build/types/Kernel";
 import { ChainlinkPriceFeed } from "../build/types/ChainlinkPriceFeed";
 import { ICurvePool } from "../build/types/ICurvePool";
-
-export interface PhotonContracts {
-  PHO: PHO;
-  TON: TON;
-  Kernel: Kernel;
-  ModuleManager: ModuleManager;
-  ChainlinkPriceFeed: ChainlinkPriceFeed;
-  CurvePool: ICurvePool;
-}
+import { PhotonContracts } from "./types";
 
 /// @dev get a single contract.
 /// @returns Generic Contract object
