@@ -8,11 +8,12 @@ export const hashHexString = (input: string): string => keccak256(`0x${input.rep
 
 // Numbers
 export const toBN = (value: string | number | BigNumber): BigNumber => BigNumber.from(value);
-export const toPHO = (value: string | number): BigNumber => {
-  return parseUnits(typeof value === "number" ? value.toString() : value, "18");
+export const toPHO = (value: string | number | BigNumber): BigNumber => {
+  let stringValue = value.toString();
+  return parseUnits(stringValue, "18");
 };
 export const toTON = toPHO; // both 18 decimals
 
 // Providers
 export const getProvider = (providerUrl: string, network?: number): providers.JsonRpcProvider =>
-  new providers.JsonRpcProvider(providerUrl, network);
+  new providers.JsonRpcProvider(providerUrl);

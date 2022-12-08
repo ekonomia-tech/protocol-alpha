@@ -4,8 +4,8 @@ import { logger } from "../logging";
 import { ContractFunction } from "ethers";
 import { getters } from "./get";
 import { CLIArgs, CLIEnvironment } from "../types";
+import { coreContracts } from "../defaults";
 
-const coreContracts = ["PHO", "TON", "Kernel", "ModuleManager", "ChainlinkPriceFeed", "CurvePool"];
 export const listProtocolParams = async (cli: CLIEnvironment): Promise<void> => {
   for (const name of coreContracts) {
     const table = new Table({

@@ -43,3 +43,5 @@ export const rpcUrls = {
   11155111: process.env.SEPOLIA_RPC,
   42069: process.env.FORKED_MAINNET_URL,
 };
+
+export const coreContracts = ["PHO", "TON", "Kernel", "ModuleManager", "ChainlinkPriceFeed", "CurvePool"];
