@@ -4,7 +4,7 @@ import { CLIArgs, CLIEnvironment } from "../../types";
 import { execute } from "../deploy";
 
 const buildHelp = () => {
-  let help = "$0 protocol deploy [target]\n Photon protocol deployment";
+  let help = "To fast forward -> evm fast-forward [seconds] [minutes] [hours]";
   return help;
 };
 
