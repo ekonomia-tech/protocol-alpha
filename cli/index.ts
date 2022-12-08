@@ -1,3 +1,3 @@
-import * as network from './network'
+import * as network from "./network";
 
-export { network }
+export { network };

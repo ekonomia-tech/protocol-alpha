@@ -18,7 +18,6 @@ import addresses from "../../addresses.json";
 import { deployData } from "../deployParams.json";
 require("dotenv").config();
 
-
 const buildHelp = () => {
   let help = "$0 protocol deploy [target]\n Photon protocol deployment";
   return help;
@@ -36,7 +35,7 @@ export const deploy = async (cli: CLIEnvironment, cliArgs: CLIArgs): Promise<voi
         forkUrl: cli.providerUrl,
         privateKey: privateKey,
         sig,
-        networkId
+        networkId,
       });
       await execute(forgeCommand);
       await updateAddresses({
@@ -102,7 +101,9 @@ export async function updateAddresses(p: AddressParams): Promise<void> {
     updated: MasterAddresses;
     tempAddresses: { [key: string]: string };
   }>((resolve) => {
-    let latestLog: string | undefined = getMostRecentFile(`broadcast/${p.contractName}.s.sol/${p.networkId}/`);
+    let latestLog: string | undefined = getMostRecentFile(
+      `broadcast/${p.contractName}.s.sol/${p.networkId}/`,
+    );
     if (!latestLog) return;
     let json = require(`../../broadcast/${p.contractName}.s.sol/${p.networkId}/${latestLog}`);
     json.transactions.forEach((trx: any) => {
@@ -152,12 +153,12 @@ function orderRecentFiles(dir: string): { file: string; mtime: Date }[] {
     .sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
 }
 
-function prepareAddressesJson(json: MasterAddresses ,networkId: number) : MasterAddresses {
-  if (typeof json[networkId] == 'undefined') {
+function prepareAddressesJson(json: MasterAddresses, networkId: number): MasterAddresses {
+  if (typeof json[networkId] == "undefined") {
     json[networkId] = {
       core: {},
-      modules: {}
-    }
+      modules: {},
+    };
   }
   return json;
 }

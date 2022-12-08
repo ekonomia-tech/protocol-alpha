@@ -7,7 +7,6 @@ import { CLIArgs, CLIEnvironment } from "../types";
 
 const coreContracts = ["PHO", "TON", "Kernel", "ModuleManager", "ChainlinkPriceFeed", "CurvePool"];
 export const listProtocolParams = async (cli: CLIEnvironment): Promise<void> => {
-  
   for (const name of coreContracts) {
     const table = new Table({
       head: [name, "Result"],

@@ -8,67 +8,66 @@ import { BigNumber, Wallet } from "ethers";
 import { Argv } from "yargs";
 
 export interface SignatureParam {
-    type: string;
-    value: string | number;
+  type: string;
+  value: string | number;
 }
 
 export interface DeployParams {
-    name: string;
-    description: string;
-    deploy: boolean;
-    contractName: string;
-    sigParams: SignatureParam[];
-    isCore: boolean;
-    contractLabel: string | null;
+  name: string;
+  description: string;
+  deploy: boolean;
+  contractName: string;
+  sigParams: SignatureParam[];
+  isCore: boolean;
+  contractLabel: string | null;
 }
 
 export interface AddressLogData {
-    name: string;
-    sig: string;
+  name: string;
+  sig: string;
 }
 
 export interface MasterAddresses {
-    [key: string]: NetworkContracts;
+  [key: string]: NetworkContracts;
 }
 
 export interface NetworkContracts {
-    core: {
-        [key: string]: string
-    },
-    modules: {
-        [key: string]: string
-    }
+  core: {
+    [key: string]: string;
+  };
+  modules: {
+    [key: string]: string;
+  };
 }
 
 export interface Networks {
-    [key: string]: string
+  [key: string]: string;
 }
 
 export interface CommandParams {
-    contractName: string;
-    forkUrl: string;
-    privateKey: string;
-    sig: string;
-    networkId: number
+  contractName: string;
+  forkUrl: string;
+  privateKey: string;
+  sig: string;
+  networkId: number;
 }
 
 export interface AddressParams {
-    contractName: string;
-    truncSig: string;
-    networkId: number;
-    isCore: boolean;
-    contractLabel: string | null;
+  contractName: string;
+  truncSig: string;
+  networkId: number;
+  isCore: boolean;
+  contractLabel: string | null;
 }
 
 export interface PhotonContracts {
-    PHO: PHO;
-    TON: TON;
-    Kernel: Kernel;
-    ModuleManager: ModuleManager;
-    ChainlinkPriceFeed: ChainlinkPriceFeed;
-    CurvePool: ICurvePool;
+  PHO: PHO;
+  TON: TON;
+  Kernel: Kernel;
+  ModuleManager: ModuleManager;
+  ChainlinkPriceFeed: ChainlinkPriceFeed;
+  CurvePool: ICurvePool;
 }
-
 
 export type CLIArgs = { [key: string]: any } & Argv["argv"];
 
@@ -84,6 +83,6 @@ export interface CLIEnvironment {
 }
 
 export interface ProtocolFunction {
-    contract: string
-    name: string
-  }
+  contract: string;
+  name: string;
+}

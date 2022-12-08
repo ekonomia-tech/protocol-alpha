@@ -15,8 +15,8 @@ export const getContract = (
   address: string,
   signerOrProvider?: Signer | providers.Provider,
 ): Contract => {
-  return new Contract(address, loadABI(name), signerOrProvider)
-}
+  return new Contract(address, loadABI(name), signerOrProvider);
+};
 
 /// @dev Loads all the core photon contracts
 /// TODO - make it more robust, instead of hardcoding types and maybe doing the abis differently
@@ -24,10 +24,13 @@ export const getContracts = (
   addresses: any, // TODO make more robust
   signerOrProvider?: Signer | providers.Provider,
 ): PhotonContracts => {
-  
   const pho: PHO = new Contract(addresses.PHO, loadABI("PHO"), signerOrProvider) as PHO;
   const ton: TON = new Contract(addresses.TON, loadABI("TON"), signerOrProvider) as TON;
-  const kernel: Kernel = new Contract(addresses.Kernel, loadABI("Kernel"), signerOrProvider) as Kernel;
+  const kernel: Kernel = new Contract(
+    addresses.Kernel,
+    loadABI("Kernel"),
+    signerOrProvider,
+  ) as Kernel;
   const moduleManager: ModuleManager = new Contract(
     addresses.ModuleManager,
     loadABI("ModuleManager"),
@@ -38,11 +41,9 @@ export const getContracts = (
     loadABI("ChainlinkPriceFeed"),
     signerOrProvider,
   ) as ChainlinkPriceFeed;
-  const curvePool: ICurvePool = addresses.curvePool ? new Contract(
-    addresses.CurvePool,
-    loadABI("CurvePool"),
-    signerOrProvider,
-  ) as ICurvePool : {} as ICurvePool;
+  const curvePool: ICurvePool = addresses.curvePool
+    ? (new Contract(addresses.CurvePool, loadABI("CurvePool"), signerOrProvider) as ICurvePool)
+    : ({} as ICurvePool);
   const contracts: PhotonContracts = {
     PHO: pho,
     TON: ton,
