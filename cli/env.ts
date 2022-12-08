@@ -19,42 +19,41 @@ export const displayGasOverrides = (): Overrides => {
 export const loadEnv = async (argv: CLIArgs, wallet?: Wallet): Promise<CLIEnvironment> => {
   try {
     let providerUrl = getNetworkRPC(argv.c);
-  
-  if (!wallet) {
-    wallet = Wallet.fromMnemonic(argv.mnemonic, `m/44'/60'/0'/0/${argv.accountNumber}`).connect(
-      getProvider(providerUrl, argv.c),
+
+    if (!wallet) {
+      wallet = Wallet.fromMnemonic(argv.mnemonic, `m/44'/60'/0'/0/${argv.accountNumber}`).connect(
+        getProvider(providerUrl, argv.c),
+      );
+    }
+
+    const balance = await wallet.getBalance();
+    const chainId = (await wallet.provider.getNetwork()).chainId;
+    const nonce = await wallet.getTransactionCount();
+    const walletAddress = await wallet.getAddress();
+    let { c: networkId } = argv;
+    if (!verifyNetwork(networkId)) {
+      logger.info(`Network id ${networkId} is invalid`);
+    }
+
+    const coreContracts = getNetworkContractAddresses(networkId).core;
+    const contracts = coreContracts ? getContracts(coreContracts, wallet) : ({} as PhotonContracts);
+
+    logger.info(`Preparing contracts on chain id: ${chainId}`);
+    logger.info(
+      `Connected Wallet: address=${walletAddress} nonce=${nonce} balance=${formatEther(balance)}\n`,
     );
-  }
+    logger.info(`Gas settings: ${JSON.stringify(displayGasOverrides())}`);
 
-  const balance = await wallet.getBalance();
-  const chainId = (await wallet.provider.getNetwork()).chainId;
-  const nonce = await wallet.getTransactionCount();
-  const walletAddress = await wallet.getAddress();
-  let { c: networkId } = argv;
-  if (!verifyNetwork(networkId)) {
-    logger.info(`Network id ${networkId} is invalid`)
-  }
-
-  const coreContracts = getNetworkContractAddresses(networkId).core;
-  const contracts = coreContracts ? getContracts(coreContracts, wallet) : {} as PhotonContracts;
-
-  logger.info(`Preparing contracts on chain id: ${chainId}`);
-  logger.info(
-    `Connected Wallet: address=${walletAddress} nonce=${nonce} balance=${formatEther(balance)}\n`,
-  );
-  logger.info(`Gas settings: ${JSON.stringify(displayGasOverrides())}`);
-
-  return {
-    balance,
-    chainId,
-    nonce,
-    walletAddress,
-    wallet,
-    contracts,
-    argv,
-    providerUrl
-  };
-
+    return {
+      balance,
+      chainId,
+      nonce,
+      walletAddress,
+      wallet,
+      contracts,
+      argv,
+      providerUrl,
+    };
   } catch (err) {
     logger.info(err);
     throw err;

@@ -18,7 +18,7 @@
     "build": "rm -rf build && forge build && npm run typechain && tsc -d build/types/*.ts --outdir build --esModuleInterop",
     "test": "echo \"Error: no test specified\" && exit 1",
     "typechain": "typechain --target ethers-v5 --out-dir build/types build/abis/*[^.s][^.t].sol/*.json",
-    "prettier:addresses": "prettier --write 'addresses.json'",
+    "prettier:ts": "prettier --write '**/*.{js,ts,json}'",
     "prepublishOnly": "npm run build"
   },
   "repository": {
