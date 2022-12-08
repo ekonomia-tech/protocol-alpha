@@ -35,8 +35,8 @@ export const loadEnv = async (argv: CLIArgs, wallet?: Wallet): Promise<CLIEnviro
       logger.info(`Network id ${networkId} is invalid`);
     }
 
-    const coreContracts = getNetworkContractAddresses(networkId).core;
-    const contracts = coreContracts ? getContracts(coreContracts, wallet) : ({} as PhotonContracts);
+    const { core: coreContracts, modules: modulesContracts } = getNetworkContractAddresses(networkId);
+    const contracts = coreContracts ? getContracts({ ...coreContracts, ...modulesContracts }, wallet) : ({} as PhotonContracts);
 
     logger.info(`Preparing contracts on chain id: ${chainId}`);
     logger.info(

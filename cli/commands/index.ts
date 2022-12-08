@@ -2,7 +2,7 @@ import yargs, { Argv } from "yargs";
 import { listCommand } from "./list";
 import { getCommand } from "./get";
 import { deployCommand } from "./deploy";
-import { addModuleCommand, executePHOUpdateCommand, updateModuleCeilingCommand } from "./module";
+import { addModuleCommand, executePHOUpdateCommand, listModuleDataCommand, updateModuleCeilingCommand } from "./module";
 import { fastForwardCommand } from "./evm";
 
 // TODO: print help with fn signature
@@ -37,7 +37,8 @@ export const moduleCommand = {
     return yargs
       .command(addModuleCommand)
       .command(updateModuleCeilingCommand)
-      .command(executePHOUpdateCommand);
+      .command(executePHOUpdateCommand)
+      .command(listModuleDataCommand)
   },
   handler: (): void => {
     yargs.showHelp();
