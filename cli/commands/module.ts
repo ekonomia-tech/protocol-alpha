@@ -5,7 +5,6 @@ import { execute, generateForgeCommand, generateSignature } from "./deploy";
 import { getNetworkContractAddresses, verifyModule } from "../helpers";
 import { CLIArgs, CLIEnvironment, CommandParams } from "../types";
 import { ethers } from "ethers";
-import { IModuleManager } from "../../build/types/IModuleManager"; 
 import Table from "cli-table3";
 
 
