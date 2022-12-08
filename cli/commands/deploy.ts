@@ -25,7 +25,8 @@ const buildHelp = () => {
 };
 
 export const deploy = async (cli: CLIEnvironment, cliArgs: CLIArgs): Promise<void> => {
-  const { c: networkId, privateKey } = cliArgs;
+  const { c: networkId } = cliArgs;
+  const privateKey = cli.wallet.privateKey;
   try {
     let dArray: DeployParams[] = deployData.filter((d: DeployParams) => d.deploy);
     for (const data of dArray) {
@@ -35,6 +36,7 @@ export const deploy = async (cli: CLIEnvironment, cliArgs: CLIArgs): Promise<voi
         forkUrl: cli.providerUrl,
         privateKey: privateKey,
         sig,
+        networkId
       });
       await execute(forgeCommand);
       await updateAddresses({
@@ -89,20 +91,20 @@ export async function execute(command: string): Promise<any> {
 }
 
 export function generateForgeCommand(p: CommandParams): string {
-  return `forge script scripts/${p.contractName}.s.sol:${p.contractName} --fork-url ${p.forkUrl} --private-key ${p.privateKey} --sig ${p.sig} --broadcast -vvvv`;
+  return `forge script scripts/${p.contractName}.s.sol:${p.contractName} --fork-url ${p.forkUrl} --private-key ${p.privateKey} --sig ${p.sig} --chain-id ${p.networkId} --broadcast -vvvv`;
 }
 
 export async function updateAddresses(p: AddressParams): Promise<void> {
   await copyFile("deployments/addresses_last.example.json", "deployments/addresses_last.json", 0);
   let tempAddresses: { [key: string]: string } = require("../../deployments/addresses_last.json");
-  let updated: MasterAddresses = addresses;
+  let updated: MasterAddresses = prepareAddressesJson(addresses, p.networkId);
   return new Promise<{
     updated: MasterAddresses;
     tempAddresses: { [key: string]: string };
   }>((resolve) => {
-    let latestLog: string | undefined = getMostRecentFile(`broadcast/${p.contractName}.s.sol/1/`);
+    let latestLog: string | undefined = getMostRecentFile(`broadcast/${p.contractName}.s.sol/${p.networkId}/`);
     if (!latestLog) return;
-    let json = require(`../../broadcast/${p.contractName}.s.sol/1/${latestLog}`);
+    let json = require(`../../broadcast/${p.contractName}.s.sol/${p.networkId}/${latestLog}`);
     json.transactions.forEach((trx: any) => {
       if (p.contractName == "DeployCurvePool") {
         let { transactionType, address } = trx.additionalContracts[0];
@@ -148,6 +150,16 @@ function orderRecentFiles(dir: string): { file: string; mtime: Date }[] {
     .filter((file) => lstatSync(path.join(dir, file)).isFile())
     .map((file) => ({ file, mtime: lstatSync(path.join(dir, file)).mtime }))
     .sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
+}
+
+function prepareAddressesJson(json: MasterAddresses ,networkId: number) : MasterAddresses {
+  if (typeof json[networkId] == 'undefined') {
+    json[networkId] = {
+      core: {},
+      modules: {}
+    }
+  }
+  return json;
 }
 
 export const deployCommand = {

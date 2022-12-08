@@ -4,7 +4,7 @@ import { getProvider } from "./network";
 import { getContracts } from "./contracts";
 import { defaultOverrides } from "./defaults";
 import { getNetworkContractAddresses, getNetworkRPC, verifyNetwork } from "./helpers";
-import { CLIArgs, CLIEnvironment } from "./types";
+import { CLIArgs, CLIEnvironment, PhotonContracts } from "./types";
 
 const { formatEther } = utils;
 
@@ -22,7 +22,7 @@ export const loadEnv = async (argv: CLIArgs, wallet?: Wallet): Promise<CLIEnviro
   
   if (!wallet) {
     wallet = Wallet.fromMnemonic(argv.mnemonic, `m/44'/60'/0'/0/${argv.accountNumber}`).connect(
-      getProvider(providerUrl),
+      getProvider(providerUrl, argv.c),
     );
   }
 
@@ -34,8 +34,9 @@ export const loadEnv = async (argv: CLIArgs, wallet?: Wallet): Promise<CLIEnviro
   if (!verifyNetwork(networkId)) {
     logger.info(`Network id ${networkId} is invalid`)
   }
+
   const coreContracts = getNetworkContractAddresses(networkId).core;
-  const contracts = getContracts(coreContracts, wallet);
+  const contracts = coreContracts ? getContracts(coreContracts, wallet) : {} as PhotonContracts;
 
   logger.info(`Preparing contracts on chain id: ${chainId}`);
   logger.info(
