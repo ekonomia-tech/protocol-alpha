@@ -2,7 +2,6 @@ import { exec } from "child_process";
 import { copyFile } from "fs/promises";
 import { writeFileSync, readdirSync, lstatSync, existsSync, mkdirSync } from "fs";
 import path from "path";
-import yargs, { Argv } from "yargs";
 import { logger } from "../logging";
 import { loadEnv } from "../env";
 import {

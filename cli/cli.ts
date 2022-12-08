@@ -2,6 +2,7 @@
 import * as dotenv from "dotenv";
 import yargs from "yargs";
 import { evmCommand, coreCommand } from "./commands";
+import { adminCommand } from "./commands/admin";
 import { cliOpts } from "./defaults";
 
 dotenv.config();
@@ -21,5 +22,6 @@ yargs
   .option("n", cliOpts.accountNumber)
   .command(coreCommand)
   .command(evmCommand)
+  .command(adminCommand)
   .demandCommand(1, "Choose a command from the above list")
   .help().argv;
