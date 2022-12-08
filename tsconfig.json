@@ -8,5 +8,5 @@
     "resolveJsonModule": true,
     "esModuleInterop": true
   },
-  "include": ["deploy/**/*", "cli/**/*"]
+  "include": ["cli/**/*"]
 }
