@@ -8,7 +8,7 @@ export const hashHexString = (input: string): string => keccak256(`0x${input.rep
 
 // Numbers
 export const toBN = (value: string | number | BigNumber): BigNumber => BigNumber.from(value);
-export const toPHO = (value: string | number | BigNumber): BigNumber => {
+export const toPHO = (value: string | number): BigNumber => {
   let stringValue = value.toString();
   return parseUnits(stringValue, "18");
 };
