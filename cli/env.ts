@@ -22,7 +22,7 @@ export const loadEnv = async (argv: CLIArgs, wallet?: Wallet): Promise<CLIEnviro
 
     if (!wallet) {
       wallet = Wallet.fromMnemonic(argv.mnemonic, `m/44'/60'/0'/0/${argv.accountNumber}`).connect(
-        getProvider(providerUrl, argv.c),
+        getProvider(providerUrl),
       );
     }
 
