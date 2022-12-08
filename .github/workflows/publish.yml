@@ -24,7 +24,7 @@ jobs:
 
       - name: Run tests
         env:
-          RPC_URL: ${{ secrets.RPC_URL }}
+          MAINNET_RPC: ${{ secrets.MAINNET_RPC }}
         run: forge test -vvv
 
   publish:

@@ -16,4 +16,4 @@ Notes:
 - Write notes here
 <!--- example - Design decisions made in PR>
 <!--- example - Remember running `forge fmt` before committing the PR>
-<!--- example - Reference for how to run relevant tests i.e. forge test --match-contract X --fork-url $RPC_URL -vvv>
+<!--- example - Reference for how to run relevant tests i.e. forge test --match-contract X --fork-url $MAINNET_RPC -vvv>

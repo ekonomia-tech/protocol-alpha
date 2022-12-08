@@ -15,9 +15,9 @@ To start the project, clone the repo to your local machine using the following C
 3. Build the project and make sure everything compiles: `forge build`
 
 ## Testing Against Local Mainnet Fork
-To run unit tests against a non-persistent local mainnet fork, first make sure you have a `.env` file set up at the root (follow `.env.example` format) and populate the `RPC_URL` variable like so:
+To run unit tests against a non-persistent local mainnet fork, first make sure you have a `.env` file set up at the root (follow `.env.example` format) and populate the `MAINNET_RPC` variable like so:
 
-`RPC_URL=<insert ETH RPC URL here>`
+`MAINNET_RPC=<insert ETH RPC URL here>`
 
 Make sure you are using latest version of foundry, so that it auto-sources `.env`, otherwise run (while in the root directory): `source .env`
 
@@ -30,14 +30,14 @@ You can also test individual contracts with the following:
 ## Deploying contracts on Local Mainnet Fork
 To deploy the code onto a persistent mainnet fork, first make sure you have a `.env` file set up at the root (follow `.env.example` format):
 
-- ```RPC_URL=<insert ETH RPC URL here>```
+- ```MAINNET_RPC=<insert ETH RPC URL here>```
 - ```FORK_URL=<insert your localhost fork url - usually http://localhost:8545>```
 - ```PRIVATE_KEY=<should be the first private key supplied by anvil>```
 
 # Deploying the base protocol contracts
 
 1. run `source .env` in the base folder
-2. open a new terminal and run `anvil --fork-url $RPC_URL`
+2. open a new terminal and run `anvil --fork-url $MAINNET_RPC`
 3. copy the first private key from the given private keys into `.env`
 4. run `source .env` to update the `PRIVATE_KEY`
 5. open a new terminal and on the base folder run 
