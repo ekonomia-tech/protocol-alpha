@@ -1,7 +1,7 @@
 import yargs, { Argv } from "yargs";
-import { loadEnv } from "../env";
-import { CLIArgs, CLIEnvironment } from "../types";
-import { execute } from "./deploy";
+import { loadEnv } from "../../env";
+import { CLIArgs, CLIEnvironment } from "../../types";
+import { execute } from "../deploy";
 
 const buildHelp = () => {
   let help = "$0 protocol deploy [target]\n Photon protocol deployment";
