@@ -1,10 +1,11 @@
 import Table from "cli-table3";
 import { loadEnv } from "../../../env";
 import { logger } from "../../../logging";
-import { ContractFunction } from "ethers";
+import { ContractFunction, ethers } from "ethers";
 import { getters } from "./get";
 import { CLIArgs, CLIEnvironment } from "../../../types";
 import { coreContracts } from "../../../defaults";
+import { getNetworkContractAddresses } from "../../../helpers";
 
 export const listProtocolParams = async (cli: CLIEnvironment): Promise<void> => {
   for (const name of coreContracts) {
@@ -39,6 +40,31 @@ export const listProtocolParams = async (cli: CLIEnvironment): Promise<void> => 
     await Promise.all(req);
     logger.info(table.toString());
   }
+
+  const { ModuleManager } = cli.contracts;
+    const { c: networkId } = cli.argv;
+    const { modules } = getNetworkContractAddresses(networkId);
+
+    for (const [ name, address ] of Object.entries(modules)) {
+      const moduleData = await ModuleManager.modules(address);
+      if (moduleData.status == 0) return;
+      const table = new Table({
+        head: [name, "Result"],
+        colWidths: [30, 50],
+      });
+      
+      table.push(["Address", address]);
+      Object.entries(moduleData).slice(-6).forEach(([ name, value ]) => {
+        let stringValue = value.toString();
+        if (["phoCeiling", "phoMinted", "upcomingCeiling"].includes(name)) {
+          stringValue = ethers.utils.formatEther(value);
+        }
+          table.push([name, stringValue]);
+      });
+
+      logger.info(table.toString());
+     
+    }
 };
 
 export const listCommand = {

@@ -6,7 +6,7 @@ import { verifyModule } from "../../../helpers";
 import { CLIArgs, CLIEnvironment, CommandParams } from "../../../types";
 
 const buildHelp = () => {
-  let help = "To add a module -> modules add [moduleId]";
+  let help = "To add a module -> core add [moduleId]";
   return help;
 };
 

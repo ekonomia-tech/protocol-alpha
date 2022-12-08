@@ -4,19 +4,20 @@ import { loadEnv } from "../../../env";
 import { execute, generateForgeCommand, generateSignature } from "../../deploy";
 import { verifyModule } from "../../../helpers";
 import { CLIArgs, CLIEnvironment, CommandParams } from "../../../types";
-import { ethers } from "ethers";
-
 
 const buildHelp = () => {
-  let help = "To update module ceiling -> modules update-ceiling [moduleId] [ceiling]";
-  return help;
-};
-
-export const updateCeiling = async (cli: CLIEnvironment, cliArgs: CLIArgs): Promise<void> => {
-  let { c: networkId, moduleId, ceiling } = cliArgs;
+    let help = "To execute module ceiling -> core execute-ceiling [moduleId]";
+    return help;
+  };
+  
+export const executeCeilingUpdate = async (
+  cli: CLIEnvironment,
+  cliArgs: CLIArgs,
+): Promise<void> => {
+  let { c: networkId, moduleId } = cliArgs;
 
   if (!verifyModule(networkId, moduleId)) return;
-  let ceilingD18 = ethers.utils.parseUnits(ceiling, 18);
+
   let sig: string = await generateSignature([
     {
       type: "string",
@@ -26,14 +27,10 @@ export const updateCeiling = async (cli: CLIEnvironment, cliArgs: CLIArgs): Prom
       type: "address",
       value: moduleId,
     },
-    {
-      type: "uint256",
-      value: ceilingD18,
-    },
   ]);
 
   let commandParams: CommandParams = {
-    contractName: "UpdateModulePHOCeiling",
+    contractName: "UpdateExecuteCeilingUpdate",
     forkUrl: cli.providerUrl,
     privateKey: cli.wallet.privateKey,
     sig,
@@ -42,16 +39,16 @@ export const updateCeiling = async (cli: CLIEnvironment, cliArgs: CLIArgs): Prom
   let forgeCommand = generateForgeCommand(commandParams);
   await execute(forgeCommand);
 
-  logger.info(`Successfully updated PHO ceiling for module ${moduleId}`);
+  logger.info(`Successfully updated ceiling for module ${moduleId}`);
 };
 
-export const updateModuleCeilingCommand = {
-  command: "update-ceiling [moduleId] [ceiling]",
-  describe: "Updates PHO ceiling for a given module",
+export const executePHOUpdateCommand = {
+  command: "execute-ceiling [moduleId]",
+  describe: "Executes ceiling update for a module",
   builder: (yargs: Argv): yargs.Argv => {
     return yargs.usage(buildHelp());
   },
   handler: async (argv: CLIArgs): Promise<void> => {
-    return updateCeiling(await loadEnv(argv), argv);
+    return executeCeilingUpdate(await loadEnv(argv), argv);
   },
 };

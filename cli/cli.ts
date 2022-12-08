@@ -1,7 +1,7 @@
 #!/usr/bin/env ts-node
 import * as dotenv from "dotenv";
 import yargs from "yargs";
-import { evmCommand, modulesCommand, coreCommand } from "./commands";
+import { evmCommand, coreCommand } from "./commands";
 import { cliOpts } from "./defaults";
 
 dotenv.config();
@@ -21,6 +21,5 @@ yargs
   .option("n", cliOpts.accountNumber)
   .command(coreCommand)
   .command(evmCommand)
-  .command(modulesCommand)
   .demandCommand(1, "Choose a command from the above list")
   .help().argv;
