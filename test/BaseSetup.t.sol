@@ -112,11 +112,11 @@ abstract contract BaseSetup is Test {
     uint256 public constant POOL_CEILING = (2 ** 256) - 1;
 
     constructor() {
-        string memory RPC_URL = vm.envString("RPC_URL");
-        if (bytes(RPC_URL).length == 0) {
-            revert("Please provide RPC_URL in your .env file");
+        string memory MAINNET_RPC = vm.envString("MAINNET_RPC");
+        if (bytes(MAINNET_RPC).length == 0) {
+            revert("Please provide MAINNET_RPC in your .env file");
         }
-        uint256 fork = vm.createFork(RPC_URL);
+        uint256 fork = vm.createFork(MAINNET_RPC);
         vm.selectFork(fork);
 
         vm.startPrank(owner);
