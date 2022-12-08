@@ -25,8 +25,9 @@ export const addModule = async (cli: CLIEnvironment, cliArgs: CLIArgs): Promise<
     let commandParams: CommandParams = {
         contractName: "UpdateAddModule",
         forkUrl: cli.providerUrl,
-        privateKey: cli.argv.privateKey,
-        sig
+        privateKey: cli.wallet.privateKey,
+        sig,
+        networkId
     }
     let forgeCommand = generateForgeCommand(commandParams);
     await execute(forgeCommand);
@@ -53,8 +54,9 @@ export const updateCeiling = async (cli: CLIEnvironment, cliArgs: CLIArgs): Prom
     let commandParams: CommandParams = {
       contractName: "UpdateModulePHOCeiling",
       forkUrl: cli.providerUrl,
-      privateKey: cli.argv.privateKey,
-      sig
+      privateKey: cli.wallet.privateKey,
+      sig,
+      networkId
   }
   let forgeCommand = generateForgeCommand(commandParams);
   await execute(forgeCommand);
@@ -79,8 +81,9 @@ export const executeCeilingUpdate = async (cli: CLIEnvironment, cliArgs: CLIArgs
   let commandParams: CommandParams = {
     contractName: "UpdateExecuteCeilingUpdate",
     forkUrl: cli.providerUrl,
-    privateKey: cli.argv.privateKey,
-    sig
+    privateKey: cli.wallet.privateKey,
+    sig,
+    networkId
 }
 let forgeCommand = generateForgeCommand(commandParams);
 await execute(forgeCommand);

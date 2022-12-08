@@ -40,6 +40,6 @@ export const cliOpts = {
 
 export const rpcUrls = {
   1: process.env.MAINNET_RPC,
-  11155111: process.env.SEPHOLIA_RPC,
+  11155111: process.env.SEPOLIA_RPC,
   42069: process.env.RENDER
 };

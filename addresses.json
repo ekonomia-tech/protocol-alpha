@@ -16,5 +16,15 @@
       "MapleDepositModuleUSDC": "0x81cf8cb775012337e40109851FFA1f32B270609e",
       "ZCBModuleUSDC": "0x3746B9d1B9237a1CF28DeF29063B5F9cCc175896"
     }
+  },
+  "11155111": {
+    "core": {
+      "PHO": "0x0FdcA004c87077781e3966778a879C467C3C226A",
+      "TON": "0x454Ef7034045c64fAd698a4768052A49431b6c73",
+      "Kernel": "0x26E40330Fd8e836264b4F86d5e4e7C170a8A5c2e",
+      "ModuleManager": "0x1C1c5aCAC884E1c067202fdDF9e372fBF5d69382",
+      "ChainlinkPriceFeed": "0x2c6AC09E05aee99057ad0670D4E746308AD0a526"
+    },
+    "modules": {}
   }
 }

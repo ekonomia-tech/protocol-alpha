@@ -49,6 +49,7 @@ export interface CommandParams {
     forkUrl: string;
     privateKey: string;
     sig: string;
+    networkId: number
 }
 
 export interface AddressParams {
