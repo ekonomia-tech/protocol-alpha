@@ -18,11 +18,6 @@ import addresses from "../../addresses.json";
 import { deployData } from "../deployParams.json";
 require("dotenv").config();
 
-const buildHelp = () => {
-  let help = "$0 protocol deploy [target]\n Photon protocol deployment";
-  return help;
-};
-
 export const deploy = async (cli: CLIEnvironment, cliArgs: CLIArgs): Promise<void> => {
   const { c: networkId } = cliArgs;
   const privateKey = cli.wallet.privateKey;
@@ -166,9 +161,6 @@ function prepareAddressesJson(json: MasterAddresses, networkId: number): MasterA
 export const deployCommand = {
   command: "deploy",
   describe: "deploy contracts from deployParams.json",
-  builder: (yargs: Argv): yargs.Argv => {
-    return yargs.usage(buildHelp());
-  },
   handler: async (argv: CLIArgs): Promise<void> => {
     return deploy(await loadEnv(argv), argv);
   },

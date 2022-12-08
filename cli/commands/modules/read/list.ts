@@ -6,10 +6,6 @@ import { CLIArgs, CLIEnvironment } from "../../../types";
 import { ethers } from "ethers";
 import Table from "cli-table3";
 
-const buildHelp = () => {
-    let help = "$0 protocol deploy [target]\n Photon protocol deployment";
-    return help;
-  };
 
 const listModuleData = async (cli: CLIEnvironment, cliArgs: CLIArgs): Promise<void> => {
     const { ModuleManager } = cli.contracts;
@@ -41,9 +37,6 @@ const listModuleData = async (cli: CLIEnvironment, cliArgs: CLIArgs): Promise<vo
 export const listModuleDataCommand = {
     command: "list",
     describe: "lists modules data",
-    builder: (yargs: Argv): yargs.Argv => {
-      return yargs.usage(buildHelp());
-    },
     handler: async (argv: CLIArgs): Promise<void> => {
       return listModuleData(await loadEnv(argv), argv);
     },

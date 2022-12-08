@@ -6,7 +6,7 @@ import { verifyModule } from "../../../helpers";
 import { CLIArgs, CLIEnvironment, CommandParams } from "../../../types";
 
 const buildHelp = () => {
-    let help = "$0 protocol deploy [target]\n Photon protocol deployment";
+    let help = "To execute module ceiling -> modules execute-ceiling [moduleId]";
     return help;
   };
   

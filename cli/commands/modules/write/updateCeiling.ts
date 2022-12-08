@@ -8,7 +8,7 @@ import { ethers } from "ethers";
 
 
 const buildHelp = () => {
-  let help = "$0 protocol deploy [target]\n Photon protocol deployment";
+  let help = "To update module ceiling -> modules update-ceiling [moduleId] [ceiling]";
   return help;
 };
 
