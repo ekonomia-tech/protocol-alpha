@@ -1,8 +1,8 @@
 import yargs, { Argv } from "yargs";
-import { logger } from "../logging";
-import { loadEnv } from "../env";
+import { logger } from "../../../logging";
+import { loadEnv } from "../../../env";
 import { ContractFunction } from "ethers";
-import { CLIArgs, CLIEnvironment, ProtocolFunction } from "../types";
+import { CLIArgs, CLIEnvironment, ProtocolFunction } from "../../../types";
 
 // TODO
 // add in module-specific getters, but maybe in another object. it would have to accept parameters

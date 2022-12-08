@@ -1,10 +1,10 @@
 import Table from "cli-table3";
-import { loadEnv } from "../env";
-import { logger } from "../logging";
+import { loadEnv } from "../../../env";
+import { logger } from "../../../logging";
 import { ContractFunction } from "ethers";
 import { getters } from "./get";
-import { CLIArgs, CLIEnvironment } from "../types";
-import { coreContracts } from "../defaults";
+import { CLIArgs, CLIEnvironment } from "../../../types";
+import { coreContracts } from "../../../defaults";
 
 export const listProtocolParams = async (cli: CLIEnvironment): Promise<void> => {
   for (const name of coreContracts) {
