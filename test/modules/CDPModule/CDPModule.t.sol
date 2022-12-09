@@ -111,9 +111,12 @@ contract CDPPoolTest is BaseSetup {
 
     /// open()
 
-    function testOpen() public {
-        uint256 collateralAmount = 2 * ONE_D18;
-        uint256 debtAmount = ONE_THOUSAND_D18;
+    function testOpen(uint256 collateralAmount, uint256 debtAmount) public {
+        /// bound the debt between $1000 and $1m
+        debtAmount = bound(debtAmount, ONE_THOUSAND_D18, ONE_MILLION_D18);
+        /// calculate the bound floor by calculating the minimum collateral needed to open a healthy position with a dynamic debt value
+        uint256 minCollAmount = wethPool.debtToCollateral(debtAmount) * (MIN_CR + 1) / MAX_PPH;
+        collateralAmount = bound(collateralAmount, minCollAmount, TEN_THOUSAND_D18);
 
         uint256 userWethBalanceBefore = weth.balanceOf(user1);
         (uint256 debtBalanceBefore, uint256 collateralBalanceBefore) = wethPool.pool();
@@ -162,9 +165,12 @@ contract CDPPoolTest is BaseSetup {
 
     /// testOpenFor()
 
-    function testOpenFor() public {
-        uint256 collateralAmount = 2 * ONE_D18;
-        uint256 debtAmount = ONE_THOUSAND_D18;
+    function testOpenFor(uint256 collateralAmount, uint256 debtAmount) public {
+        /// bound the debt between $1000 and $1m
+        debtAmount = bound(debtAmount, ONE_THOUSAND_D18, ONE_MILLION_D18);
+        /// calculate the bound floor by calculating the minimum collateral needed to open a healthy position with a dynamic debt value
+        uint256 minCollAmount = wethPool.debtToCollateral(debtAmount) * (MIN_CR + 5000) / MAX_PPH;
+        collateralAmount = bound(collateralAmount, minCollAmount, TEN_THOUSAND_D18);
 
         uint256 userWethBalanceBefore = weth.balanceOf(user1);
         (uint256 debtBalanceBefore, uint256 collateralBalanceBefore) = wethPool.pool();
@@ -209,8 +215,9 @@ contract CDPPoolTest is BaseSetup {
 
     /// addCollateral()
 
-    function testAddCollateral() public {
-        uint256 collAddition = ONE_D18;
+    function testAddCollateral(uint256 collAddition) public {
+        /// cap the collateral addition between 1 wei and 5000 ETH
+        uint256 collAddition = bound(collAddition, 1, 5000 * ONE_D18);
         _openHealthyPosition(user1, ONE_THOUSAND_D18, 200);
 
         Balances memory _before = _getBalances(user1);
@@ -249,8 +256,9 @@ contract CDPPoolTest is BaseSetup {
 
     /// addCollateralFor
 
-    function testAddCollateralFor() public {
-        uint256 collAddition = ONE_D18;
+    function testAddCollateralFor(uint256 collAddition) public {
+        /// cap the collateral addition between 1 wei and 5000 ETH
+        uint256 collAddition = bound(collAddition, 1, 5000 * ONE_D18);
         _openHealthyPosition(user1, ONE_THOUSAND_D18, 200);
 
         Balances memory _before = _getBalances(user1);
@@ -282,9 +290,13 @@ contract CDPPoolTest is BaseSetup {
 
     /// removeCollateral()
 
-    function testRemoveCollateralFor() public {
-        uint256 collReduction = ONE_D18;
+    function testRemoveCollateral(uint256 collReduction) public {
         _openHealthyPosition(user1, ONE_THOUSAND_D18, 400);
+        (uint256 debt, uint256 coll) = wethPool.cdps(user1);
+        /// Calculate the minimum collateral needed to maintain a healthy position
+        uint256 minColl = wethPool.debtToCollateral(debt) * MIN_CR / MAX_PPH;
+        /// cap the reduction boundaries between 1 wei and the difference between the current collateral and the minimum collateral
+        collReduction = bound(collReduction, 1, coll - minColl);
 
         Balances memory _before = _getBalances(user1);
 
@@ -341,9 +353,13 @@ contract CDPPoolTest is BaseSetup {
 
     /// removeCollateralFor()
 
-    function testRemoveCollateral() public {
-        uint256 collReduction = ONE_D18;
+    function testRemoveCollateralFor(uint256 collReduction) public {
         _openHealthyPosition(user1, ONE_THOUSAND_D18, 400);
+        (uint256 debt, uint256 coll) = wethPool.cdps(user1);
+        /// Calculate the minimum collateral needed to maintain a healthy position
+        uint256 minColl = wethPool.debtToCollateral(debt) * MIN_CR / MAX_PPH;
+        /// cap the reduction boundaries between 1 wei and the difference between the current collateral and the minimum collateral
+        collReduction = bound(collReduction, 1, coll - minColl);
 
         Balances memory _before = _getBalances(user1);
 
@@ -369,9 +385,12 @@ contract CDPPoolTest is BaseSetup {
 
     /// addDebt()
 
-    function testAddDebt() public {
-        uint256 debtAddition = ONE_THOUSAND_D18;
+    function testAddDebt(uint256 debtAddition) public {
         _openHealthyPosition(user1, ONE_THOUSAND_D18, 400);
+        (uint256 debt, uint256 coll) = wethPool.cdps(user1);
+        /// calculate the minimum debt needed to support the current collateral, and subtract the current debt from it to get the maximum debt addition
+        uint256 maxDebtAddition = (wethPool.collateralToUSD(coll) * MAX_PPH / MIN_CR) - debt;
+        uint256 debtAddition = bound(debtAddition, 1, maxDebtAddition);
 
         Balances memory _before = _getBalances(user1);
 
@@ -420,9 +439,10 @@ contract CDPPoolTest is BaseSetup {
 
     /// removeDebt()
 
-    function testRemoveDebt() public {
-        uint256 debtReduction = ONE_THOUSAND_D18;
+    function testRemoveDebt(uint256 debtReduction) public {
         _openHealthyPosition(user1, 3 * ONE_THOUSAND_D18, 175);
+        /// since debt is 3k and minimum debt to maintain an open position is 1k, reduction bounds are between $1 and $2000
+        debtReduction = bound(debtReduction, 1, 2 * ONE_THOUSAND_D18);
 
         Balances memory _before = _getBalances(user1);
         uint256 protocolFee = wethPool.debtToCollateral(debtReduction * PROTOCOL_FEE / MAX_PPH);
@@ -504,15 +524,26 @@ contract CDPPoolTest is BaseSetup {
 
     /// liquidate()
 
-    function testLiquidate() public {
-        uint256 debtAmount = ONE_THOUSAND_D18;
-        priceOracle.setWethUSDPrice(1500 * 10 ** 18);
-        _openHealthyPosition(user1, debtAmount, 175);
+    function testLiquidate(uint256 debtAmount, uint256 collRatio, uint256 startingWethPrice)
+        public
+    {
+        uint256 debtAmount = bound(debtAmount, ONE_THOUSAND_D18, ONE_MILLION_D18);
+        uint256 collRatio = bound(collRatio, 175, 225);
+        /// calculate the starting WETH price between YTD low to high
+        uint256 startingWethPrice = bound(startingWethPrice, 921 * 10 ** 18, 3869 * 10 ** 18);
+        /// calculate the percentage change needed in Weth price in order to get from the current CR to liquidationCR - 1%
+        uint256 percentageChangeToLiquidation =
+            (((collRatio * 1000) - (LIQUIDATION_CR - 1000)) / (collRatio)) * 100;
+        uint256 newWethPrice =
+            startingWethPrice * (MAX_PPH - percentageChangeToLiquidation) / MAX_PPH;
+
+        priceOracle.setWethUSDPrice(startingWethPrice);
+        _openHealthyPosition(user1, debtAmount, collRatio);
 
         Balances memory _before = _getBalances(user1);
         UserBalance memory _liquidatorBefore = _getUserBalance(user2);
 
-        priceOracle.setWethUSDPrice(1100 * 10 ** 18);
+        priceOracle.setWethUSDPrice(newWethPrice);
 
         uint256 protocolFee = _before.user.collateral * PROTOCOL_FEE / MAX_PPH;
         uint256 liquidationReward =
@@ -566,9 +597,10 @@ contract CDPPoolTest is BaseSetup {
 
     /// computeCR()
 
-    function testComputeCR() public {
-        uint256 debtAmount = ONE_THOUSAND_D18;
-        uint256 collateralAmount = 2 * ONE_D18;
+    function testComputeCR(uint256 debtAmount, uint256 collateralAmount) public {
+        debtAmount = bound(debtAmount, ONE_THOUSAND_D18, ONE_MILLION_D18);
+        collateralAmount =
+            bound(collateralAmount, wethPool.debtToCollateral(debtAmount), TEN_THOUSAND_D18);
         uint256 collateralInUSD = priceOracle.getPrice(WETH_ADDRESS) * collateralAmount / 10 ** 18;
         uint256 expectedCR = collateralInUSD * MAX_PPH / debtAmount;
 
