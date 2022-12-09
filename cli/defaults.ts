@@ -1,5 +1,5 @@
 import { Options } from "yargs";
-import { Overrides } from "ethers";
+import { Overrides, utils } from "ethers";
 require("dotenv").config();
 
 export const local = {
@@ -44,4 +44,11 @@ export const rpcUrls = {
   42069: process.env.FORKED_MAINNET_URL,
 };
 
-export const coreContracts = ["PHO", "TON", "Kernel", "ModuleManager", "ChainlinkPriceFeed", "CurvePool"];
+export const coreContracts = [
+  "PHO",
+  "TON",
+  "Kernel",
+  "ModuleManager",
+  "ChainlinkPriceFeed",
+  "CurvePool",
+];

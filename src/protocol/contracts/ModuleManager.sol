@@ -57,7 +57,7 @@ contract ModuleManager is IModuleManager {
         PHOGovernance = _PHOGovernance;
         TONGovernance = _TONGovernance;
         pauseGuardian = _pauseGuardian;
-        moduleDelay = 2 weeks;
+        moduleDelay = 1 seconds; // NOTE - to speed up testing in the future. Normally is 2 weeks
     }
 
     /// @notice updates module accounting && mints PHO through Kernel

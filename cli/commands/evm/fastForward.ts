@@ -2,6 +2,7 @@ import yargs, { Argv } from "yargs";
 import { loadEnv } from "../../env";
 import { CLIArgs, CLIEnvironment } from "../../types";
 import { execute } from "../deploy";
+import { logger } from "../../logging";
 
 const buildHelp = () => {
   let help = "To fast forward -> evm fast-forward [seconds] [minutes] [hours]";
@@ -23,6 +24,7 @@ export const fastForward = async (cli: CLIEnvironment, cliArgs: CLIArgs): Promis
   await execute(
     `curl -H "Content-Type: application/json" -X POST --data '{"jsonrpc":"2.0","method":"evm_mine","params":[],"id":67}' ${cli.providerUrl}`,
   );
+  logger.info(`Jumped MAINNET_FORK up by ${toJump} seconds`);
 };
 
 export const fastForwardCommand = {
