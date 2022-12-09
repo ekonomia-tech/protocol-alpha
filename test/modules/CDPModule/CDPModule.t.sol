@@ -290,7 +290,7 @@ contract CDPPoolTest is BaseSetup {
 
     /// removeCollateral()
 
-    function testRemoveCollateralFor(uint256 collReduction) public {
+    function testRemoveCollateral(uint256 collReduction) public {
         _openHealthyPosition(user1, ONE_THOUSAND_D18, 400);
         (uint256 debt, uint256 coll) = wethPool.cdps(user1);
         /// Calculate the minimum collateral needed to maintain a healthy position
@@ -353,9 +353,13 @@ contract CDPPoolTest is BaseSetup {
 
     /// removeCollateralFor()
 
-    function testRemoveCollateral() public {
-        uint256 collReduction = ONE_D18;
+    function testRemoveCollateralFor(uint256 collReduction) public {
         _openHealthyPosition(user1, ONE_THOUSAND_D18, 400);
+        (uint256 debt, uint256 coll) = wethPool.cdps(user1);
+        /// Calculate the minimum collateral needed to maintain a healthy position
+        uint256 minColl = wethPool.debtToCollateral(debt) * MIN_CR / MAX_PPH;
+        /// cap the reduction boundaries between 1 wei and the difference between the current collateral and the minimum collateral
+        collReduction = bound(collReduction, 1, coll - minColl);
 
         Balances memory _before = _getBalances(user1);
 
@@ -520,15 +524,22 @@ contract CDPPoolTest is BaseSetup {
 
     /// liquidate()
 
-    function testLiquidate() public {
-        uint256 debtAmount = ONE_THOUSAND_D18;
-        priceOracle.setWethUSDPrice(1500 * 10 ** 18);
-        _openHealthyPosition(user1, debtAmount, 175);
+    function testLiquidate(uint256 debtAmount, uint256 collRatio, uint256 startingWethPrice) public {
+        uint256 debtAmount = bound(debtAmount, ONE_THOUSAND_D18, ONE_MILLION_D18);
+        uint256 collRatio = bound(collRatio, 175, 225);
+        /// calculate the starting WETH price between YTD low to high
+        uint256 startingWethPrice = bound(startingWethPrice, 921 * 10 ** 18, 3869 * 10 ** 18);
+        /// calculate the percentage change needed in Weth price in order to get from the current CR to liquidationCR - 1%
+        uint256 percentageChangeToLiquidation = (((collRatio * 1000) - (LIQUIDATION_CR - 1000)) / (collRatio)) * 100;
+        uint256 newWethPrice = startingWethPrice * (MAX_PPH - percentageChangeToLiquidation) / MAX_PPH;
+        
+        priceOracle.setWethUSDPrice(startingWethPrice);
+        _openHealthyPosition(user1, debtAmount, collRatio);
 
         Balances memory _before = _getBalances(user1);
         UserBalance memory _liquidatorBefore = _getUserBalance(user2);
 
-        priceOracle.setWethUSDPrice(1100 * 10 ** 18);
+        priceOracle.setWethUSDPrice(newWethPrice);
 
         uint256 protocolFee = _before.user.collateral * PROTOCOL_FEE / MAX_PPH;
         uint256 liquidationReward =
