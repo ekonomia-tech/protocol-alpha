@@ -524,15 +524,19 @@ contract CDPPoolTest is BaseSetup {
 
     /// liquidate()
 
-    function testLiquidate(uint256 debtAmount, uint256 collRatio, uint256 startingWethPrice) public {
+    function testLiquidate(uint256 debtAmount, uint256 collRatio, uint256 startingWethPrice)
+        public
+    {
         uint256 debtAmount = bound(debtAmount, ONE_THOUSAND_D18, ONE_MILLION_D18);
         uint256 collRatio = bound(collRatio, 175, 225);
         /// calculate the starting WETH price between YTD low to high
         uint256 startingWethPrice = bound(startingWethPrice, 921 * 10 ** 18, 3869 * 10 ** 18);
         /// calculate the percentage change needed in Weth price in order to get from the current CR to liquidationCR - 1%
-        uint256 percentageChangeToLiquidation = (((collRatio * 1000) - (LIQUIDATION_CR - 1000)) / (collRatio)) * 100;
-        uint256 newWethPrice = startingWethPrice * (MAX_PPH - percentageChangeToLiquidation) / MAX_PPH;
-        
+        uint256 percentageChangeToLiquidation =
+            (((collRatio * 1000) - (LIQUIDATION_CR - 1000)) / (collRatio)) * 100;
+        uint256 newWethPrice =
+            startingWethPrice * (MAX_PPH - percentageChangeToLiquidation) / MAX_PPH;
+
         priceOracle.setWethUSDPrice(startingWethPrice);
         _openHealthyPosition(user1, debtAmount, collRatio);
 
@@ -595,7 +599,8 @@ contract CDPPoolTest is BaseSetup {
 
     function testComputeCR(uint256 debtAmount, uint256 collateralAmount) public {
         debtAmount = bound(debtAmount, ONE_THOUSAND_D18, ONE_MILLION_D18);
-        collateralAmount = bound(collateralAmount, wethPool.debtToCollateral(debtAmount), TEN_THOUSAND_D18);
+        collateralAmount =
+            bound(collateralAmount, wethPool.debtToCollateral(debtAmount), TEN_THOUSAND_D18);
         uint256 collateralInUSD = priceOracle.getPrice(WETH_ADDRESS) * collateralAmount / 10 ** 18;
         uint256 expectedCR = collateralInUSD * MAX_PPH / debtAmount;
 
