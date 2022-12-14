@@ -1,56 +1,56 @@
-import yargs, { Argv } from "yargs";
-import { logger } from "../../../logging";
-import { loadEnv } from "../../../env";
-import { execute, generateForgeCommand, generateSignature } from "../../deploy";
-import { verifyModule } from "../../../helpers";
-import { CLIArgs, CLIEnvironment, CommandParams } from "../../../types";
-import { ethers } from "ethers";
+import yargs, { Argv } from 'yargs'
+import { logger } from '../../../logging'
+import { loadEnv } from '../../../env'
+import { execute, generateForgeCommand, generateSignature } from '../../deploy'
+import { verifyModule } from '../../../helpers'
+import { CLIArgs, CLIEnvironment, CommandParams } from '../../../types'
+import { ethers } from 'ethers'
 
-const buildHelp = () => {
-  let help = "To update module ceiling -> core update-ceiling [moduleId] [ceiling]";
-  return help;
-};
+const buildHelp = (): string => {
+  const help = 'To update module ceiling -> core update-ceiling [moduleId] [ceiling]'
+  return help
+}
 
 export const updateCeiling = async (cli: CLIEnvironment, cliArgs: CLIArgs): Promise<void> => {
-  let { c: networkId, moduleId, ceiling } = cliArgs;
+  const { c: networkId, moduleId, ceiling } = cliArgs
 
-  if (!verifyModule(networkId, moduleId)) return;
-  let ceilingD18 = ethers.utils.parseUnits(ceiling, 18);
-  let sig: string = await generateSignature([
+  if (!verifyModule(networkId, moduleId)) return
+  const ceilingD18 = ethers.utils.parseUnits(ceiling, 18)
+  const sig: string = await generateSignature([
     {
-      type: "string",
-      value: networkId.toString(),
+      type: 'string',
+      value: networkId.toString()
     },
     {
-      type: "address",
-      value: moduleId,
+      type: 'address',
+      value: moduleId
     },
     {
-      type: "uint256",
-      value: ceilingD18,
-    },
-  ]);
+      type: 'uint256',
+      value: ceilingD18
+    }
+  ])
 
-  let commandParams: CommandParams = {
-    contractName: "UpdateModulePHOCeiling",
+  const commandParams: CommandParams = {
+    contractName: 'UpdateModulePHOCeiling',
     forkUrl: cli.providerUrl,
     privateKey: cli.wallet.privateKey,
     sig,
-    networkId,
-  };
-  let forgeCommand = generateForgeCommand(commandParams);
-  await execute(forgeCommand);
+    networkId
+  }
+  const forgeCommand = generateForgeCommand(commandParams)
+  await execute(forgeCommand)
 
-  logger.info(`Successfully updated PHO ceiling for module ${moduleId}`);
-};
+  logger.info(`Successfully updated PHO ceiling for module ${moduleId as string}`)
+}
 
 export const updateModuleCeilingCommand = {
-  command: "update-ceiling [moduleId] [ceiling]",
-  describe: "Updates PHO ceiling for a given module",
+  command: 'update-ceiling [moduleId] [ceiling]',
+  describe: 'Updates PHO ceiling for a given module',
   builder: (yargs: Argv): yargs.Argv => {
-    return yargs.usage(buildHelp());
+    return yargs.usage(buildHelp())
   },
   handler: async (argv: CLIArgs): Promise<void> => {
-    return updateCeiling(await loadEnv(argv), argv);
-  },
-};
+    return await updateCeiling(await loadEnv(argv), argv)
+  }
+}

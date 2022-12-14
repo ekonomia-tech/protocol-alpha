@@ -1,10 +1,10 @@
-import winston, { format } from "winston";
+import winston, { format } from 'winston'
 
 export const logger: winston.Logger = winston.createLogger({
-  level: "info",
+  level: 'info',
   format: format.combine(
     format.colorize(),
-    format.printf(({ message }) => `${message as string}`),
+    format.printf(({ message }) => `${message as string}`)
   ),
-  transports: [new winston.transports.Console({ level: "info" })],
-});
+  transports: [new winston.transports.Console({ level: 'info' })]
+})

@@ -1,9 +1,9 @@
-import { exec } from "child_process";
-import { copyFile } from "fs/promises";
-import { writeFileSync, readdirSync, lstatSync, existsSync, mkdirSync } from "fs";
-import path from "path";
-import { logger } from "../logging";
-import { loadEnv } from "../env";
+import { exec } from 'child_process'
+import { copyFile } from 'fs/promises'
+import { writeFileSync, readdirSync, lstatSync, existsSync, mkdirSync } from 'fs'
+import path from 'path'
+import { logger } from '../logging'
+import { loadEnv } from '../env'
 import {
   DeployParams,
   SignatureParam,
@@ -11,156 +11,165 @@ import {
   CommandParams,
   AddressParams,
   CLIEnvironment,
-  CLIArgs,
-} from "../types";
-import addresses from "../../addresses.json";
-import { deployData } from "../deployParams.json";
-require("dotenv").config();
+  CLIArgs
+} from '../types'
+import addresses from '../../addresses.json'
+import { deployData } from '../deployParams.json'
+import dotenv from 'dotenv'
+dotenv.config()
 
 export const deploy = async (cli: CLIEnvironment, cliArgs: CLIArgs): Promise<void> => {
-  const { c: networkId } = cliArgs;
-  const privateKey = cli.wallet.privateKey;
+  const { c: networkId } = cliArgs
+  const privateKey = cli.wallet.privateKey
   try {
-    let dArray: DeployParams[] = deployData.filter((d: DeployParams) => d.deploy);
+    const dArray: DeployParams[] = deployData.filter((d: DeployParams) => d.deploy)
     for (const data of dArray) {
-      let sig = await generateSignature(data.sigParams);
-      let forgeCommand = generateForgeCommand({
+      const sig = await generateSignature(data.sigParams)
+      const forgeCommand = generateForgeCommand({
         contractName: data.contractName,
         forkUrl: cli.providerUrl,
-        privateKey: privateKey,
+        privateKey,
         sig,
-        networkId,
-      });
-      await execute(forgeCommand);
+        networkId
+      })
+      await execute(forgeCommand)
       await updateAddresses({
         contractName: data.contractName,
         truncSig: sig.substring(2, 10),
         networkId,
         isCore: data.isCore,
-        contractLabel: data.contractLabel,
-      });
-      console.log(`Finished deploying ${data.name}`);
+        contractLabel: data.contractLabel
+      })
+      console.log(`Finished deploying ${data.name}`)
     }
-    await execute("npm run prettier:addresses");
+    await execute('npm run prettier:addresses')
   } catch (err) {
-    logger.info(err);
-    return;
+    logger.info(err)
   }
-};
+}
 
 export async function generateSignature(params: SignatureParam[]): Promise<string> {
-  let typeString: string = "";
-  let valueString: string = "";
+  let typeString: string = ''
+  let valueString: string = ''
 
-  if (params.length == 0) {
-    return "0xc0406226";
+  if (params.length === 0) {
+    return '0xc0406226'
   }
 
   params.forEach((param: SignatureParam, i: number) => {
-    let { type, value } = param;
-    typeString += type;
-    valueString += type == "string" ? `"${value}"` : value;
-    if (i + 1 != params.length) {
-      typeString += ",";
-      valueString += " ";
+    const { type, value } = param
+    typeString += type
+    valueString += type === 'string' ? `"${value as string}"` : value.toString()
+    if (i + 1 !== params.length) {
+      typeString += ','
+      valueString += ' '
     }
-  });
+  })
 
-  let command: string = `cast calldata "run(${typeString})" ${valueString}`;
-  return await execute(command);
+  const command: string = `cast calldata "run(${typeString})" ${valueString}`
+  return await execute(command)
 }
 
 export async function execute(command: string): Promise<any> {
-  return new Promise((resolve) => {
+  return await new Promise((resolve) => {
     exec(command, (e, r) => {
       if (e) {
-        console.log(e);
-        return;
+        console.log(e)
+        return
       }
-      let res: string = r.replace(/^\s+|\s+$/g, "");
-      resolve(res);
-    });
-  });
+      const res: string = r.replace(/^\s+|\s+$/g, '')
+      resolve(res)
+    })
+  })
 }
 
 export function generateForgeCommand(p: CommandParams): string {
-  return `forge script scripts/${p.contractName}.s.sol:${p.contractName} --fork-url ${p.forkUrl} --private-key ${p.privateKey} --sig ${p.sig} --chain-id ${p.networkId} --broadcast -vvvv`;
+  return `forge script scripts/${p.contractName}.s.sol:${p.contractName} --fork-url ${p.forkUrl} --private-key ${p.privateKey} --sig ${p.sig} --chain-id ${p.networkId} --broadcast -vvvv`
 }
 
 export async function updateAddresses(p: AddressParams): Promise<void> {
-  await copyFile("deployments/addresses_last.example.json", "deployments/addresses_last.json", 0);
-  let tempAddresses: { [key: string]: string } = require("../../deployments/addresses_last.json");
-  let updated: MasterAddresses = prepareAddressesJson(addresses, p.networkId);
-  return new Promise<{
-    updated: MasterAddresses;
-    tempAddresses: { [key: string]: string };
+  await copyFile('deployments/addresses_last.example.json', 'deployments/addresses_last.json', 0)
+  const tempAddresses = await import('../../deployments/addresses_last.json')
+  const updated: MasterAddresses = prepareAddressesJson(addresses, p.networkId)
+  const latestLog: string | undefined = getMostRecentFile(
+    `broadcast/${p.contractName}.s.sol/${getCorrectNetworkId(p.networkId)}/`
+  )
+  if (!latestLog) return
+  const json = await import(
+    `../../broadcast/${p.contractName}.s.sol/${getCorrectNetworkId(p.networkId)}/${latestLog}`
+  )
+  return await new Promise<{
+    updated: MasterAddresses
+    tempAddresses: any
   }>((resolve) => {
-    let latestLog: string | undefined = getMostRecentFile(
-      `broadcast/${p.contractName}.s.sol/${p.networkId}/`,
-    );
-    if (!latestLog) return;
-    let json = require(`../../broadcast/${p.contractName}.s.sol/${p.networkId}/${latestLog}`);
     json.transactions.forEach((trx: any) => {
-      if (p.contractName == "DeployCurvePool") {
-        let { transactionType, address } = trx.additionalContracts[0];
-        if (transactionType == "CREATE") {
-          updated[p.networkId].core.CurvePool = address;
-          tempAddresses.CurvePool = address;
+      if (p.contractName === 'DeployCurvePool') {
+        const { transactionType, address } = trx.additionalContracts[0]
+        if (transactionType === 'CREATE') {
+          updated[p.networkId].core.CurvePool = address
+          tempAddresses.CurvePool = address
         }
       } else {
-        if (trx.transactionType == "CREATE") {
-          let cl = p.contractLabel || trx.contractName;
+        if (trx.transactionType === 'CREATE') {
+          const cl = p.contractLabel || trx.contractName
           if (p.isCore) {
-            updated[p.networkId].core[cl] = trx.contractAddress;
+            updated[p.networkId].core[cl] = trx.contractAddress
           } else {
-            updated[p.networkId].modules[cl] = trx.contractAddress;
+            updated[p.networkId].modules[cl] = trx.contractAddress
           }
-          tempAddresses[cl] = trx.contractAddress;
+          tempAddresses[cl] = trx.contractAddress
         }
       }
-    });
-    resolve({ updated, tempAddresses });
+    })
+    resolve({ updated, tempAddresses })
   }).then((res) => {
-    let { updated, tempAddresses } = res;
-    writeFileSync("addresses.json", JSON.stringify(updated), { flag: "w+" });
-    writeFileSync("deployments/addresses_last.json", JSON.stringify(tempAddresses), { flag: "w+" });
+    const { updated, tempAddresses } = res
+    writeFileSync('addresses.json', JSON.stringify(updated), { flag: 'w+' })
+    writeFileSync('deployments/addresses_last.json', JSON.stringify(tempAddresses), { flag: 'w+' })
     if (!existsSync(`deployments/${p.networkId}`)) {
-      mkdirSync(`deployments/${p.networkId}`);
+      mkdirSync(`deployments/${p.networkId}`)
     }
     writeFileSync(
       `deployments/${p.networkId}/addresses_latest.json`,
       JSON.stringify(tempAddresses),
-      { flag: "w+" },
-    );
-  });
+      { flag: 'w+' }
+    )
+  })
+}
+
+function getCorrectNetworkId(networkId: number): number {
+  if (networkId === 42069) {
+    return 1
+  }
+  return networkId
 }
 
 function getMostRecentFile(dir: string): string | undefined {
-  const files = orderRecentFiles(dir);
-  return files.length ? files[0].file : undefined;
+  const files = orderRecentFiles(dir)
+  return files.length ? files[0].file : undefined
 }
 
-function orderRecentFiles(dir: string): { file: string; mtime: Date }[] {
+function orderRecentFiles(dir: string): Array<{ file: string; mtime: Date }> {
   return readdirSync(dir)
     .filter((file) => lstatSync(path.join(dir, file)).isFile())
     .map((file) => ({ file, mtime: lstatSync(path.join(dir, file)).mtime }))
-    .sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
+    .sort((a, b) => b.mtime.getTime() - a.mtime.getTime())
 }
 
 function prepareAddressesJson(json: MasterAddresses, networkId: number): MasterAddresses {
-  if (typeof json[networkId] == "undefined") {
+  if (typeof json[networkId] === 'undefined') {
     json[networkId] = {
       core: {},
-      modules: {},
-    };
+      modules: {}
+    }
   }
-  return json;
+  return json
 }
 
 export const deployCommand = {
-  command: "deploy",
-  describe: "deploy contracts from deployParams.json",
+  command: 'deploy',
+  describe: 'deploy contracts from deployParams.json',
   handler: async (argv: CLIArgs): Promise<void> => {
-    return deploy(await loadEnv(argv), argv);
-  },
-};
+    return await deploy(await loadEnv(argv), argv)
+  }
+}
