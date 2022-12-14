@@ -14,4 +14,3 @@ export const evmCommand = {
     yargs.showHelp();
   },
 };
-

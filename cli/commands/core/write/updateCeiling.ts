@@ -6,7 +6,6 @@ import { verifyModule } from "../../../helpers";
 import { CLIArgs, CLIEnvironment, CommandParams } from "../../../types";
 import { ethers } from "ethers";
 
-
 const buildHelp = () => {
   let help = "To update module ceiling -> core update-ceiling [moduleId] [ceiling]";
   return help;

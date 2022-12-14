@@ -50,7 +50,7 @@ export const sendTransaction = async (
   contract: Contract,
   fn: string,
   // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-  params?: Array<any>,
+  params?: any[],
   overrides?: PayableOverrides,
 ): Promise<providers.TransactionReceipt> => {
   // Setup overrides
@@ -64,16 +64,16 @@ export const sendTransaction = async (
   const tx: ContractTransaction = await contract.connect(sender).functions[fn](...params);
   if (tx === undefined) {
     logger.error(
-      `It appears the function does not exist on this contract, or you have the wrong contract address`,
+      "It appears the function does not exist on this contract, or you have the wrong contract address",
     );
     throw new Error("Transaction error");
   }
   logger.info(
-    `> Sent transaction ${fn}: [${params.slice(0, -1)}] \n  contract: ${
+    `> Sent transaction ${fn}: [${params.slice(0, -1).toString()}] \n  contract: ${
       contract.address
     }\n  txHash: ${tx.hash}`,
   );
 
   // Wait for transaction to be mined
-  return waitTransaction(sender, tx);
+  return await waitTransaction(sender, tx);
 };

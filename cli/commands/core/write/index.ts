@@ -1,10 +1,5 @@
 import { addModuleCommand } from "./addModule";
-import { updateModuleCeilingCommand } from "./updateCeiling"
-import { executePHOUpdateCommand } from "./executeCeiling"
+import { updateModuleCeilingCommand } from "./updateCeiling";
+import { executePHOUpdateCommand } from "./executeCeiling";
 
-
-export {
-    addModuleCommand,
-    updateModuleCeilingCommand,
-    executePHOUpdateCommand
-}
+export { addModuleCommand, updateModuleCeilingCommand, executePHOUpdateCommand };
