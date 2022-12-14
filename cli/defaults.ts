@@ -1,6 +1,7 @@
 import { Options } from "yargs";
-import { Overrides, utils } from "ethers";
-require("dotenv").config();
+import { Overrides } from "ethers";
+import dotenv from "dotenv";
+dotenv.config();
 
 export const local = {
   mnemonic: "myth like bonus scare over problem client lizard pioneer submit female collect",
@@ -36,7 +37,7 @@ export const cliOpts = {
     group: "Ethereum",
     default: local.accountNumber,
   },
-} as { [key: string]: Options };
+} as Record<string, Options>;
 
 export const rpcUrls = {
   1: process.env.MAINNET_RPC,

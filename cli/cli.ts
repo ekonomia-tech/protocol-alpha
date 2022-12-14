@@ -24,4 +24,4 @@ yargs
   .command(evmCommand)
   .command(adminCommand)
   .demandCommand(1, "Choose a command from the above list")
-  .help().argv;
+  .help();

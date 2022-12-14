@@ -47,4 +47,3 @@ export const addModuleCommand = {
     return addModule(await loadEnv(argv), argv);
   },
 };
-

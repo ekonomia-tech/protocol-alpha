@@ -42,29 +42,30 @@ export const listProtocolParams = async (cli: CLIEnvironment): Promise<void> => 
   }
 
   const { ModuleManager } = cli.contracts;
-    const { c: networkId } = cli.argv;
-    const { modules } = getNetworkContractAddresses(networkId);
+  const { c: networkId } = cli.argv;
+  const { modules } = getNetworkContractAddresses(networkId);
 
-    for (const [ name, address ] of Object.entries(modules)) {
-      const moduleData = await ModuleManager.modules(address);
-      if (moduleData.status == 0) return;
-      const table = new Table({
-        head: [name, "Result"],
-        colWidths: [30, 50],
-      });
-      
-      table.push(["Address", address]);
-      Object.entries(moduleData).slice(-6).forEach(([ name, value ]) => {
+  for (const [name, address] of Object.entries(modules)) {
+    const moduleData = await ModuleManager.modules(address);
+    if (moduleData.status == 0) return;
+    const table = new Table({
+      head: [name, "Result"],
+      colWidths: [30, 50],
+    });
+
+    table.push(["Address", address]);
+    Object.entries(moduleData)
+      .slice(-6)
+      .forEach(([name, value]) => {
         let stringValue = value.toString();
         if (["phoCeiling", "phoMinted", "upcomingCeiling"].includes(name)) {
           stringValue = ethers.utils.formatEther(value);
         }
-          table.push([name, stringValue]);
+        table.push([name, stringValue]);
       });
 
-      logger.info(table.toString());
-     
-    }
+    logger.info(table.toString());
+  }
 };
 
 export const listCommand = {

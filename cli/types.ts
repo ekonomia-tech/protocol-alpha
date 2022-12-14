@@ -27,22 +27,14 @@ export interface AddressLogData {
   sig: string;
 }
 
-export interface MasterAddresses {
-  [key: string]: NetworkContracts;
-}
+export type MasterAddresses = Record<string, NetworkContracts>;
 
 export interface NetworkContracts {
-  core: {
-    [key: string]: string;
-  };
-  modules: {
-    [key: string]: string;
-  };
+  core: Record<string, string>;
+  modules: Record<string, string>;
 }
 
-export interface Networks {
-  [key: string]: string;
-}
+export type Networks = Record<string, string>;
 
 export interface CommandParams {
   contractName: string;
@@ -69,7 +61,7 @@ export interface PhotonContracts {
   CurvePool: ICurvePool;
 }
 
-export type CLIArgs = { [key: string]: any } & Argv["argv"];
+export type CLIArgs = Record<string, any> & Argv["argv"];
 
 export interface CLIEnvironment {
   balance: BigNumber;

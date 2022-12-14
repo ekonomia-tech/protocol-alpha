@@ -5,18 +5,17 @@ import { rpcUrls } from "./defaults";
 
 export const verifyModule = (networkId: number, moduleId: string): boolean => {
   try {
-    let addresses = require(`../addresses.json`);
-    let modules = addresses[networkId].modules;
-    let moduleAddresses = Object.values(modules);
+    const modules = addresses[networkId].modules;
+    const moduleAddresses = Object.values(modules);
     for (let i = 0; i < moduleAddresses.length; i++) {
-      if (moduleAddresses[i] == moduleId) {
+      if (moduleAddresses[i] === moduleId) {
         return true;
       }
     }
-    logger.info(`Could not find the module in addresses.json`);
+    logger.info("Could not find the module in addresses.json");
     return false;
   } catch (err) {
-    logger.info(`Error verifying module - ${err}`);
+    logger.info(`Error verifying module - ${err as string}`);
     return false;
   }
 };
@@ -33,9 +32,9 @@ export const verifyNetwork = (networkId: number): boolean => {
 };
 
 export const getNetworkRPC = (networkId: number): string => {
-  let rpcUrl = rpcUrls[networkId];
+  const rpcUrl = rpcUrls[networkId];
   if (!rpcUrl) {
-    throw `Network id ${networkId} does not have a corresponding value in the .env file`;
+    throw new Error(`Network id ${networkId} does not have a corresponding value in the .env file`);
   }
   return rpcUrl;
 };

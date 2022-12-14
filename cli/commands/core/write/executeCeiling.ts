@@ -6,10 +6,10 @@ import { verifyModule } from "../../../helpers";
 import { CLIArgs, CLIEnvironment, CommandParams } from "../../../types";
 
 const buildHelp = () => {
-    let help = "To execute module ceiling -> core execute-ceiling [moduleId]";
-    return help;
-  };
-  
+  let help = "To execute module ceiling -> core execute-ceiling [moduleId]";
+  return help;
+};
+
 export const executeCeilingUpdate = async (
   cli: CLIEnvironment,
   cliArgs: CLIArgs,
