@@ -16,10 +16,10 @@
     {
       "files": "*.ts",
       "options": {
-        "semi": true,
-        "trailingComma": "all",
+        "semi": false,
+        "trailingComma": "none",
         "tabWidth": 2,
-        "singleQuote": false,
+        "singleQuote": true,
         "explicitTypes": "always"
       }
     },

@@ -1,4 +1,4 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-eslint cli/**/*.ts && npm run prettier:ts && forge fmt --check
+npx eslint cli/**/*.ts && npm run prettier:ts && forge fmt --check
