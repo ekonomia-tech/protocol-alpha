@@ -39,7 +39,7 @@ contract CDP_stETHTest is BaseSetup {
     error FullAmountNotPresent();
     error NotInLiquidationZone();
     error MinDebtNotMet();
-    error NotTONGovernance();
+    error NotTONTimelock();
 
     event Opened(address indexed user, uint256 debt, uint256 collateral);
     event CollateralAdded(address indexed user, uint256 addedCollateral, uint256 collateral);
@@ -78,7 +78,7 @@ contract CDP_stETHTest is BaseSetup {
             address(moduleManager),
             address(priceOracle),
             STETH_ADDRESS,
-            TONGovernance,
+            address(TONTimelock),
             MIN_CR,
             LIQUIDATION_CR,
             MIN_DEBT,
@@ -87,10 +87,10 @@ contract CDP_stETHTest is BaseSetup {
 
         collToken = IStETH(STETH_ADDRESS);
 
-        vm.prank(PHOGovernance);
+        vm.prank(address(PHOTimelock));
         moduleManager.addModule(address(cdpPool));
 
-        vm.prank(TONGovernance);
+        vm.prank(address(TONTimelock));
         moduleManager.setPHOCeilingForModule(address(cdpPool), MINTING_CEILING);
 
         vm.warp(block.timestamp + moduleManager.moduleDelay());

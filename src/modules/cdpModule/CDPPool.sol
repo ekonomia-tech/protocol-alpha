@@ -44,14 +44,14 @@ contract CDPPool is ICDPPool {
     uint256 public protocolFee;
     uint256 public feesCollected;
 
-    address public TONGovernance;
+    address public TONTimelock;
 
     PoolBalances public pool;
 
     mapping(address => CDP) public cdps;
 
-    modifier onlyTONGovernance() {
-        if (msg.sender != TONGovernance) revert NotTONGovernance();
+    modifier onlyTONTimelock() {
+        if (msg.sender != TONTimelock) revert NotTONTimelock();
         _;
     }
 
@@ -59,7 +59,7 @@ contract CDPPool is ICDPPool {
         address _moduleManager,
         address _priceOracle,
         address _collateral,
-        address _TONGovernance,
+        address _TONTimelock,
         uint256 _minCR,
         uint256 _liquidationCR,
         uint256 _minDebt,
@@ -67,7 +67,7 @@ contract CDPPool is ICDPPool {
     ) {
         if (
             _moduleManager == address(0) || _priceOracle == address(0) || _collateral == address(0)
-                || _TONGovernance == address(0)
+                || _TONTimelock == address(0)
         ) {
             revert ZeroAddress();
         }
@@ -81,7 +81,7 @@ contract CDPPool is ICDPPool {
         moduleManager = IModuleManager(_moduleManager);
         priceOracle = IPriceOracle(_priceOracle);
         collateral = IERC20Metadata(_collateral);
-        TONGovernance = _TONGovernance;
+        TONTimelock = _TONTimelock;
         minCR = _minCR;
         liquidationCR = _liquidationCR;
         minDebt = _minDebt;

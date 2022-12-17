@@ -56,10 +56,10 @@ contract PriceControllerTest is BaseSetup {
         priceController =
         new PriceController(address(pho), address(moduleManager), address(kernel), address(priceOracle), address(dexPool), 1 weeks, 10 ** 4, 50000,99000);
 
-        vm.prank(PHOGovernance);
+        vm.prank(address(PHOTimelock));
         moduleManager.addModule(address(priceController));
 
-        vm.prank(TONGovernance);
+        vm.prank(address(TONTimelock));
         moduleManager.setPHOCeilingForModule(address(priceController), ONE_MILLION_D18 * 2);
 
         vm.warp(block.timestamp + moduleManager.moduleDelay());

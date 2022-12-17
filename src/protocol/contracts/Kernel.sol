@@ -14,26 +14,26 @@ contract Kernel is IKernel {
     uint256 public moduleDelay = 2 weeks;
 
     address public moduleManager;
-    address public TONGovernance;
+    address public TONTimelock;
 
     modifier onlyModuleManager() {
         if (msg.sender != moduleManager) revert NotModuleManager(msg.sender);
         _;
     }
 
-    modifier onlyTONGovernance() {
-        if (msg.sender != TONGovernance) revert NotTONGovernance(msg.sender);
+    modifier onlyTONTimelock() {
+        if (msg.sender != TONTimelock) revert NotTONTimelock();
         _;
     }
 
     /// @param _pho the $PHO contract address
-    /// @param _TONGovernance the governance address for $TON
-    constructor(address _pho, address _TONGovernance) {
-        if (_pho == address(0) || _TONGovernance == address(0)) {
+    /// @param _TONTimelock the governance timelock address for $TON
+    constructor(address _pho, address _TONTimelock) {
+        if (_pho == address(0) || _TONTimelock == address(0)) {
             revert ZeroAddress();
         }
         pho = IPHO(_pho);
-        TONGovernance = _TONGovernance;
+        TONTimelock = _TONTimelock;
     }
 
     /// @notice function to mint $PHO that can be called only by moduleManager
@@ -64,7 +64,7 @@ contract Kernel is IKernel {
 
     /// @notice function to update the module manager delay for updating a module manager
     /// @param newDelay the new delay in seconds
-    function updateModuleManagerDelay(uint256 newDelay) external onlyTONGovernance {
+    function updateModuleManagerDelay(uint256 newDelay) external onlyTONTimelock {
         if (newDelay == 0) revert ZeroValue();
         if (newDelay == moduleManagerDelay) revert SameValue();
         moduleManagerDelay = newDelay;
@@ -73,7 +73,7 @@ contract Kernel is IKernel {
 
     /// @notice update the module manager address in the kernel
     /// @param newModuleManager the new module manager address
-    function updateModuleManager(address newModuleManager) external onlyTONGovernance {
+    function updateModuleManager(address newModuleManager) external onlyTONTimelock {
         if (newModuleManager == address(0)) revert ZeroAddress();
         if (newModuleManager == moduleManager) revert SameAddress();
         moduleManager = newModuleManager;

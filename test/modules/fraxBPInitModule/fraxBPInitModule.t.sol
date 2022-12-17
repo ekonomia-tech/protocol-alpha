@@ -80,10 +80,10 @@ contract FraxBPInitModuleTest is BaseSetup {
             redemptionStartDate
         );
 
-        vm.prank(PHOGovernance);
+        vm.prank(address(PHOTimelock));
         moduleManager.addModule(address(fraxBPInitModule));
 
-        vm.prank(TONGovernance);
+        vm.prank(address(TONTimelock));
         moduleManager.setPHOCeilingForModule(address(fraxBPInitModule), ONE_MILLION_D18 * 100);
 
         vm.warp(block.timestamp + moduleManager.moduleDelay());

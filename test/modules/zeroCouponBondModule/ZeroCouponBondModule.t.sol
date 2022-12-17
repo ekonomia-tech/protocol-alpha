@@ -104,14 +104,14 @@ contract ZeroCouponBondModuleTest is BaseSetup {
         assertEq(phoZeroCouponBondModule.totalSupply(), 0);
 
         // Add module to ModuleManager
-        vm.startPrank(PHOGovernance);
+        vm.startPrank(address(PHOTimelock));
         moduleManager.addModule(address(usdcZeroCouponBondModule));
         moduleManager.addModule(address(daiZeroCouponBondModule));
         moduleManager.addModule(address(phoZeroCouponBondModule));
         vm.stopPrank();
 
         // Increase PHO ceilings for modules
-        vm.startPrank(TONGovernance);
+        vm.startPrank(address(TONTimelock));
         moduleManager.setPHOCeilingForModule(address(usdcZeroCouponBondModule), ONE_MILLION_D18);
         moduleManager.setPHOCeilingForModule(address(daiZeroCouponBondModule), ONE_MILLION_D18);
         moduleManager.setPHOCeilingForModule(address(phoZeroCouponBondModule), ONE_MILLION_D18);

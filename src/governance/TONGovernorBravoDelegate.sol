@@ -8,7 +8,7 @@ contract TONGovernorBravoDelegate is GovernorBravoDelegateStorageV2, GovernorBra
     string public constant name = "TON Governor Bravo";
 
     /// @notice The minimum setable proposal threshold
-    uint256 public constant MIN_PROPOSAL_THRESHOLD = 1000e18; // 1,000 TON
+    uint256 public constant MIN_PROPOSAL_THRESHOLD = 100e18; // 100 TON
 
     /// @notice The maximum setable proposal threshold
     uint256 public constant MAX_PROPOSAL_THRESHOLD = 1000e18; // NOTE - originally set to 100,000 COMP but for us we are setting it to 1,000 TON for tests.
@@ -103,7 +103,7 @@ contract TONGovernorBravoDelegate is GovernorBravoDelegateStorageV2, GovernorBra
             ton.getPriorVotes(msg.sender, sub256(block.number, 1)) > proposalThreshold
                 || isWhitelisted(msg.sender),
             "GovernorBravo::propose: proposer votes below proposal threshold"
-        ); // TODO - comment this out as per KHou convo to get deployment functioning properly
+        );
         require(
             targets.length == values.length && targets.length == signatures.length
                 && targets.length == calldatas.length,
@@ -508,15 +508,13 @@ contract TONGovernorBravoDelegate is GovernorBravoDelegateStorageV2, GovernorBra
     /**
      * @notice Initiate the GovernorBravo contract
      * @dev Admin only. Sets initial proposal id which initiates the contract, ensuring a continuous proposal id count
-     * @param governorAlpha The address for the Governor to continue the proposal id count from
      */
-    function _initiate(address governorAlpha) external {
+    function _initiate() external {
         require(msg.sender == admin, "GovernorBravo::_initiate: admin only");
         require(initialProposalId == 0, "GovernorBravo::_initiate: can only initiate once");
         proposalCount = 1;
-        // proposalCount = GovernorAlpha(governorAlpha).proposalCount(); // TODO - as per convo w/ KHou change this to `proposalCount = 1;`
         initialProposalId = proposalCount;
-        // timelock.acceptAdmin(); // TODO - comment this out as per KHou convo to get deployment functioning properly
+        // timelock.acceptAdmin();
     }
 
     /**

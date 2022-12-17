@@ -13,7 +13,7 @@ interface ICDPPool {
     error FullAmountNotPresent();
     error NotInLiquidationZone();
     error MinDebtNotMet();
-    error NotTONGovernance();
+    error NotTONTimelock();
 
     /// @notice Event emitted when a CDP is opened
     /// @param user The user that opens the CDP

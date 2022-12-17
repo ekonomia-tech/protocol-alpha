@@ -12,7 +12,7 @@ contract KernelTest is BaseSetup {
     error SameAddress();
     error SameValue();
     error NotModuleManager(address caller);
-    error NotTONGovernance(address caller);
+    error NotTONTimelock();
 
     event ModuleManagerDelayUpdated(uint256 newDelay);
     event ModuleManagerUpdated(address indexed newModuleManager);
@@ -96,25 +96,25 @@ contract KernelTest is BaseSetup {
         uint256 newDelay = 2 weeks;
         vm.expectEmit(true, false, false, true);
         emit ModuleManagerDelayUpdated(newDelay);
-        vm.prank(TONGovernance);
+        vm.prank(address(TONTimelock));
         kernel.updateModuleManagerDelay(newDelay);
     }
 
     function testCannotUpdateModuleManagerDelayUnauthorized() public {
-        vm.expectRevert(abi.encodeWithSelector(NotTONGovernance.selector, user1));
+        vm.expectRevert(abi.encodeWithSelector(NotTONTimelock.selector));
         vm.prank(user1);
         kernel.updateModuleManagerDelay(2 weeks);
     }
 
     function testCannotUpdateModuleManagerDelayZeroValue() public {
         vm.expectRevert(abi.encodeWithSelector(ZeroValue.selector));
-        vm.prank(TONGovernance);
+        vm.prank(address(TONTimelock));
         kernel.updateModuleManagerDelay(0);
     }
 
     function testCannotUpdateModuleManagerDelaySameValue() public {
         vm.expectRevert(abi.encodeWithSelector(SameValue.selector));
-        vm.prank(TONGovernance);
+        vm.prank(address(TONTimelock));
         kernel.updateModuleManagerDelay(4 weeks);
     }
 
@@ -124,25 +124,25 @@ contract KernelTest is BaseSetup {
         address newModuleManager = address(205);
         vm.expectEmit(true, false, false, true);
         emit ModuleManagerUpdated(newModuleManager);
-        vm.prank(TONGovernance);
+        vm.prank(address(TONTimelock));
         kernel.updateModuleManager(newModuleManager);
     }
 
     function testCannotAddModuleManagerUnauthorized() public {
-        vm.expectRevert(abi.encodeWithSelector(NotTONGovernance.selector, user1));
+        vm.expectRevert(abi.encodeWithSelector(NotTONTimelock.selector));
         vm.prank(user1);
         kernel.updateModuleManager(address(205));
     }
 
     function testCannotAddModuleManagerZeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(ZeroAddress.selector));
-        vm.prank(TONGovernance);
+        vm.prank(address(TONTimelock));
         kernel.updateModuleManager(address(0));
     }
 
     function testCannotAddModuleManagerSameAddress() public {
         vm.expectRevert(abi.encodeWithSelector(SameAddress.selector));
-        vm.prank(TONGovernance);
+        vm.prank(address(TONTimelock));
         kernel.updateModuleManager(address(moduleManager));
     }
 }

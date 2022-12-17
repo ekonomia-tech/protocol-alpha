@@ -40,7 +40,7 @@ contract CDPPoolTest is BaseSetup {
     error FullAmountNotPresent();
     error NotInLiquidationZone();
     error MinDebtNotMet();
-    error NotTONGovernance();
+    error NotTONTimelock();
 
     event Opened(address indexed user, uint256 debt, uint256 collateral);
     event CollateralAdded(address indexed user, uint256 addedCollateral, uint256 collateral);
@@ -76,17 +76,17 @@ contract CDPPoolTest is BaseSetup {
             address(moduleManager),
             address(priceOracle),
             WETH_ADDRESS,
-            TONGovernance,
+            address(TONTimelock),
             MIN_CR,
             LIQUIDATION_CR,
             MIN_DEBT,
             PROTOCOL_FEE
         );
 
-        vm.prank(PHOGovernance);
+        vm.prank(address(PHOTimelock));
         moduleManager.addModule(address(wethPool));
 
-        vm.prank(TONGovernance);
+        vm.prank(address(TONTimelock));
         moduleManager.setPHOCeilingForModule(address(wethPool), MINTING_CEILING);
 
         vm.warp(block.timestamp + moduleManager.moduleDelay());
