@@ -47,15 +47,15 @@ contract StablecoinDepositModuleTest is BaseSetup {
         );
 
         // Add module to ModuleManager
-        vm.prank(PHOGovernance);
+        vm.prank(address(PHOTimelock));
         moduleManager.addModule(address(usdcStablecoinDepositModule));
-        vm.prank(PHOGovernance);
+        vm.prank(address(PHOTimelock));
         moduleManager.addModule(address(daiStablecoinDepositModule));
 
         // Increase PHO ceilings for modules
-        vm.prank(TONGovernance);
+        vm.prank(address(TONTimelock));
         moduleManager.setPHOCeilingForModule(address(usdcStablecoinDepositModule), ONE_MILLION_D18);
-        vm.prank(TONGovernance);
+        vm.prank(address(TONTimelock));
         moduleManager.setPHOCeilingForModule(address(daiStablecoinDepositModule), ONE_MILLION_D18);
 
         moduleDelay = moduleManager.moduleDelay();

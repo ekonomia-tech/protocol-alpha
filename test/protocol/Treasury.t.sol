@@ -23,7 +23,7 @@ contract TreasuryTest is BaseSetup {
 
         vm.expectEmit(true, true, false, true);
         emit WithdrawTo(user1, _amount);
-        vm.prank(TONGovernance);
+        vm.prank(address(TONTimelock));
         treasury.withdrawTo(IERC20(USDC_ADDRESS), _amount, user1);
 
         uint256 treasuryBalanceAfter = usdc.balanceOf(address(treasury));
@@ -42,7 +42,7 @@ contract TreasuryTest is BaseSetup {
     function testExecute() public {
         uint256 treasuryBalanceBefore = address(treasury).balance;
         uint256 treasuryStEthBalanceBefore = ERC20(STETH_ADDRESS).balanceOf(address(treasury));
-        vm.prank(TONGovernance);
+        vm.prank(address(TONTimelock));
         (bool success,) = treasury.execute(
             STETH_ADDRESS, ONE_D18, abi.encodeWithSignature("submit(address)", ONE_D18)
         );

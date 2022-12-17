@@ -46,17 +46,14 @@ abstract contract BaseSetup is Test {
     ICurvePool fraxBP;
     ICurveFactory curveFactory;
     ICurvePool fraxBPPhoMetapool;
-    Timelock public timelock;
+    Timelock public PHOTimelock;
+    Timelock public TONTimelock;
     PHOGovernorBravoDelegate public phoGovernanceDelegate;
     PHOGovernorBravoDelegator public phoGovernanceDelegator;
     TONGovernorBravoDelegate public tonGovernanceDelegate;
     TONGovernorBravoDelegator public tonGovernanceDelegator;
 
-    address public TONGovernance = address(105);
-    address public PHOGovernance = address(106);
-
     address public owner = 0xed320Bf569E5F3c4e9313391708ddBFc58e296bb;
-    address public timelock_address = address(100);
     address public controller = address(101);
     address public user1 = address(1);
     address public user2 = address(2);
@@ -144,12 +141,14 @@ abstract contract BaseSetup is Test {
         ton = new TON("TON", "TON");
         vm.stopPrank();
 
-        timelock = new Timelock(owner, 3 days);
+        PHOTimelock = new Timelock(owner, 3 days);
+        TONTimelock = new Timelock(owner, 3 days);
 
         phoGovernanceDelegate = new PHOGovernorBravoDelegate();
+        tonGovernanceDelegate = new TONGovernorBravoDelegate();
 
         phoGovernanceDelegator = new PHOGovernorBravoDelegator(
-            address(timelock),
+            address(PHOTimelock),
             address(pho),
             owner,
             address(phoGovernanceDelegate),
@@ -158,32 +157,44 @@ abstract contract BaseSetup is Test {
             ONE_HUNDRED_D18
         );
 
-        vm.prank(address(timelock));
-        timelock.setPendingAdmin(address(phoGovernanceDelegator));
-        vm.prank(address(phoGovernanceDelegator));
-        timelock.acceptAdmin();
-
-        PHOGovernance = address(phoGovernanceDelegator);
-
-        vm.startPrank(owner);
-        address(phoGovernanceDelegator).call(
-            abi.encodeWithSignature("_initiate(address)", address(0))
+        tonGovernanceDelegator = new TONGovernorBravoDelegator(
+            address(TONTimelock),
+            address(ton),
+            owner,
+            address(tonGovernanceDelegate),
+            VOTING_PERIOD,
+            VOTING_DELAY,
+            ONE_HUNDRED_D18
         );
 
-        kernel = new Kernel(address(pho), TONGovernance);
-        treasury = new Treasury(TONGovernance);
+        vm.prank(address(PHOTimelock));
+        PHOTimelock.setPendingAdmin(address(phoGovernanceDelegator));
+        vm.prank(address(phoGovernanceDelegator));
+        PHOTimelock.acceptAdmin();
+
+        vm.prank(address(TONTimelock));
+        TONTimelock.setPendingAdmin(address(tonGovernanceDelegator));
+        vm.prank(address(tonGovernanceDelegator));
+        TONTimelock.acceptAdmin();
+
+        vm.startPrank(owner);
+        address(phoGovernanceDelegator).call(abi.encodeWithSignature("_initiate()"));
+
+        address(tonGovernanceDelegator).call(abi.encodeWithSignature("_initiate()"));
+
+        kernel = new Kernel(address(pho), address(TONTimelock));
+        treasury = new Treasury(address(TONTimelock));
 
         moduleManager = new ModuleManager(
             address(kernel),
-            address(timelock),
-            PHOGovernance,
-            TONGovernance,
+            address(PHOTimelock),
+            address(TONTimelock),
             guardianAddress
         );
 
         vm.stopPrank();
 
-        vm.prank(TONGovernance);
+        vm.prank(address(TONTimelock));
         kernel.updateModuleManager(address(moduleManager));
 
         vm.startPrank(owner);

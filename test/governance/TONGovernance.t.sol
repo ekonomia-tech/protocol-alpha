@@ -5,19 +5,16 @@ pragma solidity ^0.8.13;
 import "../BaseSetup.t.sol";
 import "@protocol/interfaces/IModuleManager.sol";
 
-contract GovernanceTest is BaseSetup {
-    address public TON_timelock_address = address(103);
-
+contract TONGovernanceTest is BaseSetup {
     function setUp() public {
         vm.prank(owner);
-        pho.delegate(owner);
+        ton.delegate(owner);
 
         vm.prank(user1);
-        pho.delegate(user1);
+        ton.delegate(user1);
 
-        vm.startPrank(address(kernel));
-        pho.mint(owner, TEN_THOUSAND_D18);
-        pho.mint(user1, TEN_THOUSAND_D18);
+        vm.startPrank(owner);
+        ton.transfer(user1, TEN_THOUSAND_D18);
 
         vm.stopPrank();
         vm.roll(block.number + 100);
@@ -27,16 +24,16 @@ contract GovernanceTest is BaseSetup {
         vm.startPrank(owner);
 
         address[] memory targets = new address[](1);
-        targets[0] = address(moduleManager);
+        targets[0] = address(kernel);
         uint256[] memory values = new uint256[](1);
         values[0] = 0;
         string[] memory signatures = new string[](1);
-        signatures[0] = "addModule(address)";
+        signatures[0] = "updateModuleManagerDelay(uint256)";
         bytes[] memory callDatas = new bytes[](1);
-        callDatas[0] = abi.encode(module1);
-        string memory description = "Add new module";
+        callDatas[0] = abi.encode(2 weeks);
+        string memory description = "Change module delay";
 
-        (bool proposeSuccess, bytes memory proposeResult) = address(phoGovernanceDelegator).call(
+        (bool proposeSuccess, bytes memory proposeResult) = address(tonGovernanceDelegator).call(
             abi.encodeWithSignature(
                 "propose(address[],uint256[],string[],bytes[],string)",
                 targets,
@@ -75,12 +72,11 @@ contract GovernanceTest is BaseSetup {
         _vote(proposalId, user1, 1);
         _endProposal(proposalId);
         _queue(proposalId);
-        console.log(_getProposalState(proposalId));
         assertEq(_getProposalState(proposalId), 5);
     }
 
     function testExecuteProposal() public {
-        (,,,,, IModuleManager.Status statusBefore) = moduleManager.modules(module1);
+        uint256 moduleManagerDelayBefore = kernel.moduleManagerDelay();
         uint256 proposalId = testSetUpProposal();
         _vote(proposalId, user1, 1);
         _endProposal(proposalId);
@@ -88,20 +84,20 @@ contract GovernanceTest is BaseSetup {
         vm.warp(_getProposalETA(proposalId) + 1 hours);
         _execute(proposalId);
 
-        (,,,,, IModuleManager.Status statusAfter) = moduleManager.modules(module1);
-        assertEq(uint8(statusBefore), 0);
-        assertEq(uint8(statusAfter), 1);
+        uint256 moduleManagerDelayAfter = kernel.moduleManagerDelay();
+        assertEq(moduleManagerDelayBefore, 4 weeks);
+        assertEq(moduleManagerDelayAfter, 2 weeks);
     }
 
     function _execute(uint256 proposalId) public {
-        address(phoGovernanceDelegator).call(
+        address(tonGovernanceDelegator).call(
             abi.encodeWithSignature("execute(uint256)", proposalId)
         );
     }
 
     function _vote(uint256 proposalId, address user, uint8 vote) private {
         vm.prank(user);
-        address(phoGovernanceDelegator).call(
+        address(tonGovernanceDelegator).call(
             abi.encodeWithSignature("castVote(uint256,uint8)", proposalId, vote)
         );
     }
@@ -112,17 +108,17 @@ contract GovernanceTest is BaseSetup {
     }
 
     function _queue(uint256 proposalId) private {
-        address(phoGovernanceDelegator).call(abi.encodeWithSignature("queue(uint256)", proposalId));
+        address(tonGovernanceDelegator).call(abi.encodeWithSignature("queue(uint256)", proposalId));
     }
 
     function _getCurrentProposalId() private returns (uint256) {
         (, bytes memory data) =
-            address(phoGovernanceDelegator).call(abi.encodeWithSignature("proposalCount()"));
+            address(tonGovernanceDelegator).call(abi.encodeWithSignature("proposalCount()"));
         return abi.decode(data, (uint256));
     }
 
     function _getProposalData(uint256 proposalId) private returns (bytes memory) {
-        (, bytes memory data) = address(phoGovernanceDelegator).call(
+        (, bytes memory data) = address(tonGovernanceDelegator).call(
             abi.encodeWithSignature("proposals(uint256)", proposalId)
         );
         return data;
@@ -163,7 +159,7 @@ contract GovernanceTest is BaseSetup {
     }
 
     function _getProposalState(uint256 proposalId) private returns (uint256) {
-        (, bytes memory data) = address(phoGovernanceDelegator).call(
+        (, bytes memory data) = address(tonGovernanceDelegator).call(
             abi.encodeWithSignature("state(uint256)", proposalId)
         );
         return abi.decode(data, (uint256));

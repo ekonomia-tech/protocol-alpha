@@ -17,8 +17,6 @@ contract ModuleManagerTest is BaseSetup {
     error ModuleCeilingExceeded();
     error KernelCeilingExceeded();
     error ModuleBurnExceeded();
-    error NotPHOGovernance(address caller);
-    error NotTONGovernance(address caller);
     error ModuleUnavailable(address module, Status status);
     error ModuleRegistered();
     error UnregisteredModule();
@@ -26,6 +24,8 @@ contract ModuleManagerTest is BaseSetup {
     error DelayNotMet();
     error UpdateNotAvailable();
     error NotPauseGuardian();
+    error NotPHOTimelock();
+    error NotTONTimelock();
 
     /// events
 
@@ -59,14 +59,14 @@ contract ModuleManagerTest is BaseSetup {
     }
 
     function setUp() public {
-        vm.prank(PHOGovernance);
+        vm.prank(address(PHOTimelock));
         moduleManager.addModule(module1);
 
         (,,,, uint256 startTime, ModuleManager.Status status) = moduleManager.modules(module1);
         assertEq(uint8(status), uint8(Status.Active));
         assertEq(startTime, block.timestamp + moduleManager.moduleDelay());
 
-        vm.prank(TONGovernance);
+        vm.prank(address(TONTimelock));
         moduleManager.setPHOCeilingForModule(module1, ONE_MILLION_D18);
 
         vm.warp(block.timestamp + moduleManager.moduleDelay());
@@ -80,8 +80,8 @@ contract ModuleManagerTest is BaseSetup {
     function testModuleManagerConstructor() public {
         IKernel kernelCheck = moduleManager.kernel();
         assertEq(address(kernelCheck), address(kernel));
-        assertEq(moduleManager.PHOGovernance(), PHOGovernance);
-        assertEq(moduleManager.TONGovernance(), TONGovernance);
+        assertEq(moduleManager.PHOTimelock(), address(PHOTimelock));
+        assertEq(moduleManager.TONTimelock(), address(TONTimelock));
     }
 
     /// mintPHO() tests
@@ -123,7 +123,7 @@ contract ModuleManagerTest is BaseSetup {
         vm.prank(module1);
         moduleManager.mintPHO(user1, ONE_HUNDRED_THOUSAND_D18);
 
-        vm.prank(PHOGovernance);
+        vm.prank(address(PHOTimelock));
         moduleManager.deprecateModule(module1);
 
         uint256 burnAmount = TEN_THOUSAND_D18 * 5;
@@ -192,18 +192,18 @@ contract ModuleManagerTest is BaseSetup {
 
     function testCannotAddModuleAlreadyRegistered() public {
         vm.expectRevert(abi.encodeWithSelector(ModuleRegistered.selector));
-        vm.prank(PHOGovernance);
+        vm.prank(address(PHOTimelock));
         moduleManager.addModule(module1);
     }
 
     function testCannotAddZeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(ZeroAddress.selector));
-        vm.prank(PHOGovernance);
+        vm.prank(address(PHOTimelock));
         moduleManager.addModule(address(0));
     }
 
     function testCannotAddDeprecatedModule() public {
-        vm.startPrank(PHOGovernance);
+        vm.startPrank(address(PHOTimelock));
         moduleManager.deprecateModule(module1);
 
         vm.expectRevert(abi.encodeWithSelector(ModuleRegistered.selector));
@@ -212,7 +212,7 @@ contract ModuleManagerTest is BaseSetup {
     }
 
     function testCannotAddModuleNonPHOGovernance() public {
-        vm.expectRevert(abi.encodeWithSelector(NotPHOGovernance.selector, user1));
+        vm.expectRevert(abi.encodeWithSelector(NotPHOTimelock.selector));
         vm.prank(user1);
         moduleManager.addModule(dummyAddress);
     }
@@ -222,7 +222,7 @@ contract ModuleManagerTest is BaseSetup {
 
         vm.expectEmit(true, false, false, true);
         emit ModuleAdded(module2);
-        vm.prank(PHOGovernance);
+        vm.prank(address(PHOTimelock));
         moduleManager.addModule(module2);
 
         (,,,, uint256 newStartTime, ModuleManager.Status newStatus) = moduleManager.modules(module2);
@@ -236,18 +236,18 @@ contract ModuleManagerTest is BaseSetup {
         address unregisteredModule = address(10);
 
         vm.expectRevert(abi.encodeWithSelector(UnregisteredModule.selector));
-        vm.prank(PHOGovernance);
+        vm.prank(address(PHOTimelock));
         moduleManager.deprecateModule(unregisteredModule);
     }
 
     function testCannotRemoveZeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(ZeroAddress.selector));
-        vm.prank(PHOGovernance);
+        vm.prank(address(PHOTimelock));
         moduleManager.deprecateModule(address(0));
     }
 
     function testCannotRemoveModuleNonPHOGovernance() public {
-        vm.expectRevert(abi.encodeWithSelector(NotPHOGovernance.selector, dummyAddress));
+        vm.expectRevert(abi.encodeWithSelector(NotPHOTimelock.selector));
         vm.prank(dummyAddress);
         moduleManager.deprecateModule(module1);
     }
@@ -255,7 +255,7 @@ contract ModuleManagerTest is BaseSetup {
     function testRemoveModule() public {
         vm.expectEmit(true, false, false, true);
         emit ModuleDeprecated(module1);
-        vm.prank(PHOGovernance);
+        vm.prank(address(PHOTimelock));
         moduleManager.deprecateModule(module1);
 
         (uint256 newPhoCeiling,,,,, ModuleManager.Status newStatus) = moduleManager.modules(module1);
@@ -267,7 +267,7 @@ contract ModuleManagerTest is BaseSetup {
 
     function testCannotSetPHOCeilingZeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(ZeroAddress.selector));
-        vm.prank(TONGovernance);
+        vm.prank(address(TONTimelock));
         moduleManager.setPHOCeilingForModule(address(0), 0);
     }
 
@@ -275,30 +275,30 @@ contract ModuleManagerTest is BaseSetup {
         vm.expectRevert(
             abi.encodeWithSelector(ModuleUnavailable.selector, dummyAddress, Status.Unregistered)
         );
-        vm.prank(TONGovernance);
+        vm.prank(address(TONTimelock));
         moduleManager.setPHOCeilingForModule(dummyAddress, ONE_MILLION_D18);
     }
 
     function testCannotSetPHOCeilingDeprecated() public {
-        vm.prank(PHOGovernance);
+        vm.prank(address(PHOTimelock));
         moduleManager.deprecateModule(module1);
 
         vm.expectRevert(
             abi.encodeWithSelector(ModuleUnavailable.selector, module1, Status.Deprecated)
         );
-        vm.prank(TONGovernance);
+        vm.prank(address(TONTimelock));
         moduleManager.setPHOCeilingForModule(module1, ONE_MILLION_D18);
     }
 
     function testCannotSetPHOCeilingSameValue() public {
         (uint256 currentCeiling,,,,,) = moduleManager.modules(module1);
         vm.expectRevert(abi.encodeWithSelector(SameValue.selector));
-        vm.prank(TONGovernance);
+        vm.prank(address(TONTimelock));
         moduleManager.setPHOCeilingForModule(module1, currentCeiling);
     }
 
     function testCannotSetPHOCeilingNonTONGovernance() public {
-        vm.expectRevert(abi.encodeWithSelector(NotTONGovernance.selector, dummyAddress));
+        vm.expectRevert(abi.encodeWithSelector(NotTONTimelock.selector));
         vm.prank(dummyAddress);
         moduleManager.setPHOCeilingForModule(module1, ONE_MILLION_D18 * 10);
     }
@@ -309,7 +309,7 @@ contract ModuleManagerTest is BaseSetup {
 
         vm.expectEmit(true, false, false, true);
         emit PHOCeilingUpdateScheduled(module1, newPhoCeiling, newCeilingUpdateTime);
-        vm.prank(TONGovernance);
+        vm.prank(address(TONTimelock));
         moduleManager.setPHOCeilingForModule(module1, newPhoCeiling);
 
         (, uint256 upcomingCeiling, uint256 ceilingUpdateTime,,,) = moduleManager.modules(module1);
@@ -339,7 +339,7 @@ contract ModuleManagerTest is BaseSetup {
         vm.prank(guardianAddress);
         moduleManager.unpauseModule(module1);
 
-        vm.prank(PHOGovernance);
+        vm.prank(address(PHOTimelock));
         moduleManager.deprecateModule(module1);
 
         vm.expectRevert(
@@ -355,7 +355,7 @@ contract ModuleManagerTest is BaseSetup {
 
     function testCannotExecuteCeilingUpdateModuleDelayNotMet() public {
         (uint256 ceilingBefore,,,,,) = moduleManager.modules(module1);
-        vm.prank(TONGovernance);
+        vm.prank(address(TONTimelock));
         moduleManager.setPHOCeilingForModule(module1, 2 * ceilingBefore);
 
         vm.expectRevert(abi.encodeWithSelector(DelayNotMet.selector));
@@ -366,7 +366,7 @@ contract ModuleManagerTest is BaseSetup {
         (uint256 ceilingBefore,,,,,) = moduleManager.modules(module1);
         uint256 newCeiling = ceilingBefore * 2;
 
-        vm.prank(TONGovernance);
+        vm.prank(address(TONTimelock));
         moduleManager.setPHOCeilingForModule(module1, newCeiling);
 
         vm.warp(block.timestamp + moduleManager.moduleDelay());
@@ -387,12 +387,12 @@ contract ModuleManagerTest is BaseSetup {
 
     function testCannotSetModuleDelayToZero() public {
         vm.expectRevert(abi.encodeWithSelector(ZeroValue.selector));
-        vm.prank(PHOGovernance);
+        vm.prank(address(PHOTimelock));
         moduleManager.setModuleDelay(0);
     }
 
-    function testCannotSetModuleDelayOnlyPHOGovernance() public {
-        vm.expectRevert(abi.encodeWithSelector(NotPHOGovernance.selector, dummyAddress));
+    function testCannotSetModuleDelayOnlyPHOTimelock() public {
+        vm.expectRevert(abi.encodeWithSelector(NotPHOTimelock.selector));
         vm.prank(dummyAddress);
         moduleManager.setModuleDelay(0);
     }
@@ -400,7 +400,7 @@ contract ModuleManagerTest is BaseSetup {
     function testSetModuleDelay() public {
         vm.expectEmit(false, false, false, true);
         emit UpdatedModuleDelay(3 weeks);
-        vm.prank(PHOGovernance);
+        vm.prank(address(PHOTimelock));
         moduleManager.setModuleDelay(3 weeks);
         assertEq(moduleManager.moduleDelay(), 3 weeks);
     }
@@ -421,7 +421,7 @@ contract ModuleManagerTest is BaseSetup {
     }
 
     function testCannotPauseModuleNotActive() public {
-        vm.prank(PHOGovernance);
+        vm.prank(address(PHOTimelock));
         moduleManager.deprecateModule(module1);
 
         vm.prank(guardianAddress);
@@ -446,7 +446,7 @@ contract ModuleManagerTest is BaseSetup {
     }
 
     function testCannotPauseModuleNotPauseGuardian() public {
-        vm.prank(PHOGovernance);
+        vm.prank(address(PHOTimelock));
         vm.expectRevert(abi.encodeWithSelector(NotPauseGuardian.selector));
         moduleManager.pauseModule(module1);
     }
@@ -479,7 +479,7 @@ contract ModuleManagerTest is BaseSetup {
 
         vm.stopPrank();
 
-        vm.prank(PHOGovernance);
+        vm.prank(address(PHOTimelock));
         moduleManager.deprecateModule(module1);
 
         vm.prank(guardianAddress);
@@ -491,7 +491,7 @@ contract ModuleManagerTest is BaseSetup {
         vm.prank(guardianAddress);
         moduleManager.pauseModule(module1);
 
-        vm.prank(PHOGovernance);
+        vm.prank(address(PHOTimelock));
         vm.expectRevert(abi.encodeWithSelector(NotPauseGuardian.selector));
         moduleManager.unpauseModule(module1);
     }
@@ -502,12 +502,12 @@ contract ModuleManagerTest is BaseSetup {
         address newPauseGuardian = address(667);
         vm.expectEmit(false, false, false, true);
         emit PauseGuardianUpdated(newPauseGuardian);
-        vm.prank(TONGovernance);
+        vm.prank(address(TONTimelock));
         moduleManager.setPauseGuardian(newPauseGuardian);
     }
 
-    function testCannotSetPauseGuardianNotTonGovernance() public {
-        vm.expectRevert(abi.encodeWithSelector(NotTONGovernance.selector, user1));
+    function testCannotSetPauseGuardianNotTONTimelock() public {
+        vm.expectRevert(abi.encodeWithSelector(NotTONTimelock.selector));
         vm.prank(user1);
         moduleManager.setPauseGuardian(address(667));
     }
@@ -515,7 +515,7 @@ contract ModuleManagerTest is BaseSetup {
     function testCannotSetPauseGuardianSameAddress() public {
         address newPauseGuardian = guardianAddress;
         vm.expectRevert(abi.encodeWithSelector(SameAddress.selector));
-        vm.prank(TONGovernance);
+        vm.prank(address(TONTimelock));
         moduleManager.setPauseGuardian(newPauseGuardian);
     }
 }

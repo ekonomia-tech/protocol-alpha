@@ -59,17 +59,17 @@ contract wstETHCDPWrapperTest is BaseSetup {
             address(moduleManager),
             address(priceOracle),
             WSTETH_ADDRESS,
-            TONGovernance,
+            address(TONTimelock),
             MIN_CR,
             LIQUIDATION_CR,
             MIN_DEBT,
             PROTOCOL_FEE
         );
 
-        vm.prank(PHOGovernance);
+        vm.prank(address(PHOTimelock));
         moduleManager.addModule(address(pool));
 
-        vm.prank(TONGovernance);
+        vm.prank(address(TONTimelock));
         moduleManager.setPHOCeilingForModule(address(pool), MINTING_CEILING);
 
         vm.warp(block.timestamp + moduleManager.moduleDelay());

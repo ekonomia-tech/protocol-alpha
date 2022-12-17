@@ -12,7 +12,8 @@ import "@protocol/interfaces/IKernel.sol";
 
 contract ModuleManager is IModuleManager {
     IKernel public kernel;
-    address public timelock;
+    address public PHOTimelock;
+    address public TONTimelock;
     address public PHOGovernance;
     address public TONGovernance;
     address public pauseGuardian;
@@ -27,43 +28,36 @@ contract ModuleManager is IModuleManager {
         _;
     }
 
-    modifier onlyPHOGovernance() {
-        if (msg.sender != PHOGovernance) revert NotPHOGovernance(msg.sender);
-        _;
-    }
-
-    modifier onlyTONGovernance() {
-        if (msg.sender != TONGovernance) revert NotTONGovernance(msg.sender);
-        _;
-    }
-
     modifier onlyPauseGuardian() {
         if (msg.sender != pauseGuardian) revert NotPauseGuardian();
         _;
     }
 
-    modifier onlyTimelock() {
-        if (msg.sender != timelock) revert NotTimelock();
+    modifier onlyPHOTimelock() {
+        if (msg.sender != PHOTimelock) revert NotPHOTimelock();
+        _;
+    }
+
+    modifier onlyTONTimelock() {
+        if (msg.sender != TONTimelock) revert NotTONTimelock();
         _;
     }
 
     constructor(
         address _kernel,
-        address _timelock,
-        address _PHOGovernance,
-        address _TONGovernance,
+        address _PHOTimelock,
+        address _TONTimelock,
         address _pauseGuardian
     ) {
         if (
-            _kernel == address(0) || _timelock == address(0) || _PHOGovernance == address(0)
-                || _TONGovernance == address(0) || _pauseGuardian == address(0)
+            _kernel == address(0) || _PHOTimelock == address(0) || _TONTimelock == address(0)
+                || _pauseGuardian == address(0)
         ) {
             revert ZeroAddress();
         }
         kernel = IKernel(_kernel);
-        timelock = _timelock;
-        PHOGovernance = _PHOGovernance;
-        TONGovernance = _TONGovernance;
+        PHOTimelock = _PHOTimelock;
+        TONTimelock = _TONTimelock;
         pauseGuardian = _pauseGuardian;
         moduleDelay = 1 seconds; // NOTE - to speed up testing in the future. Normally is 2 weeks
     }
@@ -97,7 +91,7 @@ contract ModuleManager is IModuleManager {
 
     /// @notice adds new module to registry
     /// @param _newModule address of module to add
-    function addModule(address _newModule) external onlyTimelock {
+    function addModule(address _newModule) external onlyPHOTimelock {
         if (_newModule == address(0)) revert ZeroAddress();
         Module storage module = modules[_newModule];
         if (module.status != Status.Unregistered) revert ModuleRegistered();
@@ -108,7 +102,7 @@ contract ModuleManager is IModuleManager {
 
     /// @notice deprecates new module from registry
     /// @param _existingModule address of module to remove
-    function deprecateModule(address _existingModule) external onlyTimelock {
+    function deprecateModule(address _existingModule) external onlyPHOTimelock {
         if (_existingModule == address(0)) revert ZeroAddress();
         Module storage module = modules[_existingModule];
         if (module.status == Status.Unregistered) revert UnregisteredModule();
@@ -122,7 +116,7 @@ contract ModuleManager is IModuleManager {
     /// @param _newPHOCeiling new PHO ceiling amount for module
     function setPHOCeilingForModule(address _module, uint256 _newPHOCeiling)
         external
-        onlyTONGovernance
+        onlyTONTimelock
     {
         if (_module == address(0)) revert ZeroAddress();
         _checkModuleActive(_module);
@@ -149,7 +143,7 @@ contract ModuleManager is IModuleManager {
 
     /// @notice set module delay
     /// @param _newDelay proposed delay before a newly deployed && registered module is functional
-    function setModuleDelay(uint256 _newDelay) external onlyPHOGovernance {
+    function setModuleDelay(uint256 _newDelay) external onlyPHOTimelock {
         if (_newDelay == 0) revert ZeroValue();
         moduleDelay = _newDelay;
         emit UpdatedModuleDelay(moduleDelay);
@@ -186,7 +180,7 @@ contract ModuleManager is IModuleManager {
 
     /// @notice set a new pause guardian
     /// @param _pauseGuardian the new pause guardian address
-    function setPauseGuardian(address _pauseGuardian) external onlyTONGovernance {
+    function setPauseGuardian(address _pauseGuardian) external onlyTONTimelock {
         if (_pauseGuardian == address(0)) revert ZeroAddress();
         if (_pauseGuardian == pauseGuardian) revert SameAddress();
         pauseGuardian = _pauseGuardian;

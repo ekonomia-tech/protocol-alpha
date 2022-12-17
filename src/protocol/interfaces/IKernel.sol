@@ -8,7 +8,7 @@ interface IKernel {
     error SameAddress();
     error SameValue();
     error NotModuleManager(address caller);
-    error NotTONGovernance(address caller);
+    error NotTONTimelock();
 
     event ModuleManagerDelayUpdated(uint256 newDelay);
     event ModuleManagerUpdated(address indexed newModuleManager);
