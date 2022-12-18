@@ -10,6 +10,7 @@ import "@protocol/interfaces/IPHO.sol";
 import "@protocol/interfaces/IModuleManager.sol";
 import "@external/curve/ICurvePool.sol";
 import "@oracle/IPriceOracle.sol";
+import "./FraxBPInitModuleAMO.sol";
 
 /// @title FraxBP Init module
 /// @author Ekonomia: https://github.com/ekonomia-tech
@@ -44,6 +45,9 @@ contract FraxBPInitModule is Ownable, ReentrancyGuard {
     uint256 public saleEndDate; // when sale ends
     uint256 public redemptionStartDate; // when redemptions are available
     IPHO public pho;
+    address public fraxBPInitModuleAMO;
+    address public stakingToken = 0x5f98805A4E8be255a32880FDeC7F6728C6568bA0; // LUSD
+    address rewardToken = 0xD533a949740bb3306d119CC777fa900bA034cd52; // CRV
 
     mapping(address => uint256) public metapoolBalance;
 
@@ -59,11 +63,12 @@ contract FraxBPInitModule is Ownable, ReentrancyGuard {
         address _pho,
         address _priceOracle,
         uint256 _saleEndDate,
-        uint256 _redemptionStartDate
+        uint256 _redemptionStartDate,
+        address _gauge
     ) {
         if (
             _moduleManager == address(0) || _fraxBPPHOMetapool == address(0) || _pho == address(0)
-                || _priceOracle == address(0)
+                || _priceOracle == address(0) || _gauge == address(0)
         ) {
             revert ZeroAddressDetected();
         }
@@ -79,6 +84,21 @@ contract FraxBPInitModule is Ownable, ReentrancyGuard {
 
         usdc.approve(address(fraxBPPool), type(uint256).max);
         frax.approve(address(fraxBPPool), type(uint256).max);
+
+        FraxBPInitModuleAMO fraxBPModuleAMO = new FraxBPInitModuleAMO(
+            "FRAXBPPHO Module AMO",
+            "FBPPHO-AMO",
+            stakingToken,
+            rewardToken,
+            msg.sender,
+            address(this),
+            address(fraxBPPHOMetapool),
+            _gauge
+        );
+
+        fraxBPInitModuleAMO = address(fraxBPModuleAMO);
+
+        IERC20(_fraxBPPHOMetapool).approve(fraxBPInitModuleAMO, type(uint256).max);
     }
 
     /// @notice Helper for user depositing both FRAX and USDC
@@ -112,27 +132,29 @@ contract FraxBPInitModule is Ownable, ReentrancyGuard {
 
         // call _depositFor() for user based on FraxBP LP received
         uint256 fraxBPLpAmount = fraxBPLpBalanceAfter - fraxBPLpBalanceBefore;
-        _depositFor(msg.sender, fraxBPLpAmount);
+        uint256 fraxBPPHOLpBalanceIssued = _depositFor(msg.sender, fraxBPLpAmount);
+        IModuleAMO(fraxBPInitModuleAMO).stakeFor(msg.sender, fraxBPPHOLpBalanceIssued);
     }
 
     /// @notice Helper function for deposits in FraxBP LP token for user
     /// @param depositor Depositor
     /// @param amount Amount in FraxBP LP
-    function _depositFor(address depositor, uint256 amount) private {
+    function _depositFor(address depositor, uint256 amount) private returns (uint256) {
         uint256 usdPerFraxBP = getUSDPerFraxBP();
         uint256 phoAmount = (usdPerFraxBP * amount) / 10 ** 18;
 
         moduleManager.mintPHO(address(this), phoAmount);
-        uint256 fraxBPPHOLpBalance = _addFraxBPPHOLiquidity(amount, phoAmount);
+        uint256 fraxBPPHOLpBalanceIssued = _addFraxBPPHOLiquidity(amount, phoAmount);
 
-        metapoolBalance[depositor] += fraxBPPHOLpBalance;
+        metapoolBalance[depositor] += fraxBPPHOLpBalanceIssued;
         emit Deposited(depositor, amount, phoAmount);
+        return fraxBPPHOLpBalanceIssued;
     }
 
     /// @notice Places deposits in FraxBP LP token for user
     /// @param depositor Depositor
     /// @param amount Amount in FraxBP LP
-    function depositFor(address depositor, uint256 amount) public {
+    function depositFor(address depositor, uint256 amount) public returns (uint256) {
         if (block.timestamp > saleEndDate) {
             revert CannotDepositAfterSaleEnded();
         }
@@ -140,13 +162,15 @@ contract FraxBPInitModule is Ownable, ReentrancyGuard {
             revert CannotDepositZero();
         }
         fraxBPLp.safeTransferFrom(depositor, address(this), amount);
-        _depositFor(depositor, amount);
+        uint256 fraxBPPHOLPNetBalance = _depositFor(depositor, amount);
+        return fraxBPPHOLPNetBalance;
     }
 
     /// @notice Accept deposits in FraxBP LP token
     /// @param amount Amount in FraxBP LP
     function deposit(uint256 amount) external nonReentrant {
-        depositFor(msg.sender, amount);
+        uint256 fraxBPPHOLpBalanceIssued = depositFor(msg.sender, amount);
+        IModuleAMO(fraxBPInitModuleAMO).stakeFor(msg.sender, fraxBPPHOLpBalanceIssued);
     }
 
     /// @notice Adds FraxBP LP and PHO to FraxBP/PHO pool
@@ -185,7 +209,9 @@ contract FraxBPInitModule is Ownable, ReentrancyGuard {
         }
 
         delete metapoolBalance[msg.sender];
-        fraxBPPHOMetapool.transfer(msg.sender, redeemAmount / 2);
+        // Note: Always a full withdrawal
+        IModuleAMO(fraxBPInitModuleAMO).withdrawAllFor(msg.sender);
+        //fraxBPPHOMetapool.transfer(msg.sender, redeemAmount / 2);
         emit Redeemed(msg.sender, redeemAmount);
     }
 
