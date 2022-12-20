@@ -17,7 +17,7 @@ contract TONGovernanceTest is BaseSetup {
         ton.transfer(user1, TEN_THOUSAND_D18);
 
         vm.stopPrank();
-        vm.roll(block.number + 100);
+        vm.roll(block.number + 100); // for votes to count, must roll some blocks
     }
 
     function testSetUpProposal() public returns (uint256) {
@@ -53,7 +53,7 @@ contract TONGovernanceTest is BaseSetup {
         assertEq(startBlock, block.number + VOTING_DELAY);
         assertEq(endBlock, block.number + VOTING_DELAY + VOTING_PERIOD);
 
-        vm.roll(block.number + VOTING_DELAY + 10);
+        vm.roll(block.number + VOTING_DELAY + 10); // for votes to count, must roll some blocks
         vm.stopPrank();
 
         return proposalId;
