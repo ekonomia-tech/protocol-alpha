@@ -508,6 +508,7 @@ contract TONGovernorBravoDelegate is GovernorBravoDelegateStorageV2, GovernorBra
     /**
      * @notice Initiate the GovernorBravo contract
      * @dev Admin only. Sets initial proposal id which initiates the contract, ensuring a continuous proposal id count
+     * @dev NOTE - This function has been changed in order to allow us to deploy GovernorBravo without having a GovernorAlpha exist
      */
     function _initiate() external {
         require(msg.sender == admin, "GovernorBravo::_initiate: admin only");

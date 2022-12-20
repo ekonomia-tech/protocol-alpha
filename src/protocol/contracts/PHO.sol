@@ -11,7 +11,7 @@ import "@protocol/interfaces/IPHO.sol";
 /// @title PHOTON protocol stablecoin
 /// @author Ekonomia: https://github.com/Ekonomia
 
-contract PHO is IPHO, ERC20Burnable, ERC20VotesComp, Ownable {
+contract PHO is IPHO, ERC20VotesComp, Ownable {
     address public kernel;
 
     modifier onlyKernel() {
@@ -31,10 +31,6 @@ contract PHO is IPHO, ERC20Burnable, ERC20VotesComp, Ownable {
         _mint(to, amount);
     }
 
-    function burnFrom(address account, uint256 amount) public override (ERC20Burnable, IPHO) {
-        super.burnFrom(account, amount);
-    }
-
     /// @notice set the kernel address, which will be the only address capable of minting
     function setKernel(address newKernel) external onlyOwner {
         require(newKernel != address(0), "PHO: zero address detected");
@@ -43,30 +39,12 @@ contract PHO is IPHO, ERC20Burnable, ERC20VotesComp, Ownable {
         emit KernelSet(kernel);
     }
 
-    /**
-     * @dev Move voting power when tokens are transferred.
-     *
-     * Emits a {DelegateVotesChanged} event.
-     */
-    function _afterTokenTransfer(address from, address to, uint256 amount)
-        internal
-        virtual
-        override (ERC20, ERC20Votes)
-    {
-        super._afterTokenTransfer(from, to, amount);
-    }
-
-    /**
-     * @dev Snapshots the totalSupply after it has been decreased.
-     */
-    function _burn(address account, uint256 amount) internal virtual override (ERC20, ERC20Votes) {
-        super._burn(account, amount);
-    }
-
-    /**
-     * @dev Snapshots the totalSupply after it has been increased.
-     */
-    function _mint(address account, uint256 amount) internal virtual override (ERC20, ERC20Votes) {
-        super._mint(account, amount);
+    /// @notice Destroys `amount` tokens from `account`, deducting from the caller's
+    /// @param account - account to burn from
+    /// @param amount - amount to burn
+    /// NOTE - function taken from OpenZeppelin ERC20Burnable contract
+    function burnFrom(address account, uint256 amount) public virtual {
+        _spendAllowance(account, _msgSender(), amount);
+        _burn(account, amount);
     }
 }
