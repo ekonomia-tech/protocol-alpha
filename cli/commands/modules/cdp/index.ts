@@ -1,5 +1,6 @@
 import yargs, { Argv } from 'yargs'
 import { overviewCommand } from './read/overview'
+import { positionCommand } from './read/position'
 import { addCollateralCommand } from './write/addCollateral'
 import { addDebtCommand } from './write/addDebt'
 import { closeCommand } from './write/close'
@@ -21,6 +22,7 @@ export const cdpCommand = {
       .command(closeCommand)
       .command(liquidateCommand)
       .command(overviewCommand)
+      .command(positionCommand)
   },
   handler: (): void => {
     yargs.showHelp()

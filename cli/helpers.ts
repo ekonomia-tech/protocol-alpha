@@ -60,3 +60,7 @@ export const getModuleAddress = (
   }
   return modules[contractName]
 }
+
+export const toReadablePrice = (value: string): string => {
+  return value.slice(0, value.length - 18) + "." + value.slice(-18);
+}
