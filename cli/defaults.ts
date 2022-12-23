@@ -58,7 +58,7 @@ export const moduleDictionary = {
   cdp: {
     wsteth: {
       deposit: 'wstETHCDPWrapper',
-      default: "CDPPool_wstETH"
+      default: 'CDPPool_wstETH'
     }
   }
 }

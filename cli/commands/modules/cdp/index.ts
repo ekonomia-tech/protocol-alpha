@@ -1,4 +1,4 @@
-import yargs, { Argv, command } from 'yargs'
+import yargs, { Argv } from 'yargs'
 import { overviewCommand } from './read/overview'
 import { addCollateralCommand } from './write/addCollateral'
 import { addDebtCommand } from './write/addDebt'

@@ -28,7 +28,7 @@ export const loadEnv = async (argv: CLIArgs): Promise<CLIEnvironment> => {
     const walletAddress = await wallet.getAddress()
     const { c: networkId } = argv
     if (!verifyNetwork(networkId)) {
-      logger.info(`Network id ${networkId} is invalid`)
+      logger.info(`Network id ${networkId as string} is invalid`)
     }
 
     const { core: coreContracts, modules: modulesContracts } =

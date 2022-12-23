@@ -10,18 +10,18 @@ import addresses from '../../../../../addresses.json'
 const getParams = (cliArgs: CLIArgs): CDPOpenParams => {
   let { _: parameters, c: networkId } = cliArgs
   parameters = parameters.slice(3)
-  let collateralToken = parameters[0]
+  const collateralToken = parameters[0]
   if (!moduleDictionary.cdp[collateralToken]) {
     logger.error('openPosition: Collateral token does not have a corresponding CDP')
     return {} as CDPOpenParams
   }
-  let contractAddress = getModuleAddress(networkId, 'cdp', collateralToken, "deposit")
+  const contractAddress = getModuleAddress(networkId, 'cdp', collateralToken, 'deposit')
 
-  if (collateralToken == 'wsteth') {
+  if (collateralToken === 'wsteth') {
     parameters = parameters.slice(1)
   }
 
-  if (parameters.length != 3) {
+  if (parameters.length !== 3) {
     logger.error('openPosition: Not enough parameters were supplied')
     return {} as CDPOpenParams
   }
@@ -31,8 +31,8 @@ const getParams = (cliArgs: CLIArgs): CDPOpenParams => {
     return {} as CDPOpenParams
   }
 
-  let collateralAmount = ethers.utils.parseUnits(parameters[1], 18)
-  let debtAmount = ethers.utils.parseUnits(parameters[2], 18)
+  const collateralAmount = ethers.utils.parseUnits(parameters[1], 18)
+  const debtAmount = ethers.utils.parseUnits(parameters[2], 18)
 
   return {
     contractAddress,
@@ -43,8 +43,8 @@ const getParams = (cliArgs: CLIArgs): CDPOpenParams => {
   }
 }
 
-const openPosition = async (cli: CLIEnvironment, cliArgs: CLIArgs) => {
-  let params: CDPOpenParams = getParams(cliArgs)
+const openPosition = async (cli: CLIEnvironment, cliArgs: CLIArgs): Promise<void> => {
+  const params: CDPOpenParams = getParams(cliArgs)
   if (!params.collateralToken) {
     logger.error('openPosition: bad parameters')
     return
@@ -54,31 +54,40 @@ const openPosition = async (cli: CLIEnvironment, cliArgs: CLIArgs) => {
   }
 }
 
-const depositWithWrapper = async (params: CDPOpenParams, cli: CLIEnvironment) => {
-  let depositTokenAddress = tokenAddresses[params.depositToken]
-  console.log(depositTokenAddress)
+const depositWithWrapper = async (params: CDPOpenParams, cli: CLIEnvironment): Promise<void> => {
+  const depositTokenAddress: string = tokenAddresses[params.depositToken]
   if (!depositTokenAddress) {
     logger.error('openPosition: deposit token address not found')
     return
   }
 
   if (cli.argv.c === 42069) {
-    let approveCommand = `cast send --rpc-url ${cli.providerUrl} ${depositTokenAddress} "approve(address,uint256)" ${params.contractAddress} ${params.collateralAmount} --from ${cli.wallet.address} --json`
-    let res = JSON.parse(await execute(approveCommand))
-    if (res.status == '0x1') {
+    const approveCommand: string = `cast send --rpc-url ${
+      cli.providerUrl
+    } ${depositTokenAddress} "approve(address,uint256)" ${
+      params.contractAddress
+    } ${params.collateralAmount.toString()} --from ${cli.wallet.address} --json`
+    const res = JSON.parse(await execute(approveCommand))
+    if (res.status === '0x1') {
       logger.info(
-        `${cli.wallet.address} approved ${params.collateralAmount} for ${depositTokenAddress}`
+        `${
+          cli.wallet.address
+        } approved ${params.collateralAmount.toString()} for ${depositTokenAddress}`
       )
     }
   }
 
-  let openCommand = `cast send --rpc-url ${cli.providerUrl} ${params.contractAddress} "open(uint256,uint256,address)" ${params.collateralAmount} ${params.debtAmount} ${depositTokenAddress} --from ${cli.wallet.address} --json`
-  let receipt = JSON.parse(await execute(openCommand));
-  if (receipt.status == '0x1') {
+  const openCommand: string = `cast send --rpc-url ${cli.providerUrl} ${
+    params.contractAddress
+  } "open(uint256,uint256,address)" ${params.collateralAmount.toString()} ${params.debtAmount.toString()} ${depositTokenAddress} --from ${
+    cli.wallet.address
+  } --json`
+  const receipt = JSON.parse(await execute(openCommand))
+  if (receipt.status === '0x1') {
     logger.info(`Open a new debt position for ${cli.wallet.address} successfully.`)
-    let cdpAddress = addresses[cli.argv.c].modules['CDPPool_wstETH']
-    let positionCommand = `cast call --rpc-url ${cli.providerUrl} ${cdpAddress} "cdps(address)((uint256,uint256))" ${cli.wallet.address}`
-    let positionReceipt = await execute(positionCommand)
+    const cdpAddress: string = addresses[cli.argv.c].modules.CDPPool_wstETH
+    const positionCommand: string = `cast call --rpc-url ${cli.providerUrl} ${cdpAddress} "cdps(address)((uint256,uint256))" ${cli.wallet.address}`
+    const positionReceipt = await execute(positionCommand)
     logger.info(positionReceipt)
   }
 }

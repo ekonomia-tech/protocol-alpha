@@ -26,4 +26,4 @@ yargs
   .command(deployCommand)
   .command(modulesCommand)
   .demandCommand(1, 'Choose a command from the above list')
-  .help().argv
+  .help().argv.catch

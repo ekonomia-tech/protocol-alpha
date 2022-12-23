@@ -1,5 +1,4 @@
 import { exec } from 'child_process'
-import { copyFile } from 'fs/promises'
 import { writeFileSync, readdirSync, lstatSync, existsSync, mkdirSync } from 'fs'
 import path from 'path'
 import { logger } from '../logging'
@@ -107,7 +106,7 @@ export async function updateAddresses(p: AddressParams): Promise<void> {
         const { transactionType, address } = trx.additionalContracts[0]
         if (transactionType === 'CREATE') {
           updated[p.networkId].core.CurvePool = address
-          tempAddresses['CurvePool'] = address
+          tempAddresses.CurvePool = address
         }
       } else {
         if (trx.transactionType === 'CREATE') {

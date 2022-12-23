@@ -2,7 +2,6 @@ import yargs, { Argv } from 'yargs'
 import { loadEnv } from '../../env'
 import { CLIArgs, CLIEnvironment } from '../../types'
 import { execute } from '../deploy'
-import { logger } from '../../logging'
 
 const buildHelp = (): string => {
   const help = 'To fast forward -> evm fast-forward [seconds] [minutes] [hours]'

@@ -43,13 +43,18 @@ export const getNetworkContractAddresses = (networkId: number): NetworkContracts
   return addresses[networkId]
 }
 
-export const getModuleAddress = (networkId: number, type: string, identifier: string, action: string): string => {
-  let contractName = moduleDictionary[type][identifier][action]
+export const getModuleAddress = (
+  networkId: number,
+  type: string,
+  identifier: string,
+  action: string
+): string => {
+  const contractName = moduleDictionary[type][identifier][action]
   if (!contractName || !verifyNetwork(networkId)) {
     logger.error('getModuleAddress: No module was found with the given params')
     return ''
   }
-  let modules = addresses[networkId].modules
+  const modules = addresses[networkId].modules
   if (!modules) {
     logger.error('getModuleAddress: Network does not have deployed contracts')
   }
