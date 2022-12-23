@@ -62,5 +62,5 @@ export const getModuleAddress = (
 }
 
 export const toReadablePrice = (value: string): string => {
-  return value.slice(0, value.length - 18) + "." + value.slice(-18);
+  return value.slice(0, value.length - 18) + '.' + value.slice(-18)
 }

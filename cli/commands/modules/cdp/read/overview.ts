@@ -30,14 +30,17 @@ const getOverview = async (cli: CLIEnvironment, cliArgs: CLIArgs): Promise<void>
   const collRatio: string = await execute(
     `cast call --rpc-url ${cli.providerUrl} ${cdpAddress} "computeCR(uint256,uint256)(uint256)" ${totalCollateral} ${totalDebt}`
   )
-  
+
   table.push(['Address', cdpAddress])
   table.push(['PHO Mined', toReadablePrice(phoMinted.toLocaleString())])
-  table.push(['startTime', startTime.toString().concat(` (${new Date(Number(startTime) * 1000).toLocaleDateString()})`)])
+  table.push([
+    'startTime',
+    startTime.toString().concat(` (${new Date(Number(startTime) * 1000).toLocaleDateString()})`)
+  ])
   table.push(['status', status.toString()])
   table.push(['Total Collateral', toReadablePrice(totalCollateral)])
   table.push(['Total Debt', toReadablePrice(totalDebt)])
-  table.push(['Collateral Ratio', collRatio.slice(0, -3).concat("%")])
+  table.push(['Collateral Ratio', collRatio.slice(0, -3).concat('%')])
   table.push(['feesCollected', toReadablePrice(feesCollected)])
   logger.info(table.toString())
 }
