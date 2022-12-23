@@ -42,7 +42,7 @@ export const deploy = async (cli: CLIEnvironment, cliArgs: CLIArgs): Promise<voi
       })
       console.log(`Finished deploying ${data.name}`)
     }
-    await execute('npm run prettier:addresses')
+    await execute('npm run prettier:ts')
   } catch (err) {
     logger.info(err)
   }
@@ -88,8 +88,8 @@ export function generateForgeCommand(p: CommandParams): string {
 }
 
 export async function updateAddresses(p: AddressParams): Promise<void> {
-  await copyFile('deployments/addresses_last.example.json', 'deployments/addresses_last.json', 0)
-  const tempAddresses = await import('../../deployments/addresses_last.json')
+  // await copyFile('deployments/addresses_last.example.json', 'deployments/addresses_last.json', 0)
+  const tempAddresses = require('../../deployments/addresses_last.json')
   const updated: MasterAddresses = prepareAddressesJson(addresses, p.networkId)
   const latestLog: string | undefined = getMostRecentFile(
     `broadcast/${p.contractName}.s.sol/${getCorrectNetworkId(p.networkId)}/`
@@ -107,7 +107,7 @@ export async function updateAddresses(p: AddressParams): Promise<void> {
         const { transactionType, address } = trx.additionalContracts[0]
         if (transactionType === 'CREATE') {
           updated[p.networkId].core.CurvePool = address
-          tempAddresses.CurvePool = address
+          tempAddresses['CurvePool'] = address
         }
       } else {
         if (trx.transactionType === 'CREATE') {
@@ -124,15 +124,15 @@ export async function updateAddresses(p: AddressParams): Promise<void> {
     resolve({ updated, tempAddresses })
   }).then((res) => {
     const { updated, tempAddresses } = res
-    writeFileSync('addresses.json', JSON.stringify(updated), { flag: 'w+' })
-    writeFileSync('deployments/addresses_last.json', JSON.stringify(tempAddresses), { flag: 'w+' })
+    writeFileSync('addresses.json', JSON.stringify(updated))
+    writeFileSync('deployments/addresses_last.json', JSON.stringify(tempAddresses))
     if (!existsSync(`deployments/${p.networkId}`)) {
       mkdirSync(`deployments/${p.networkId}`)
     }
     writeFileSync(
       `deployments/${p.networkId}/addresses_latest.json`,
       JSON.stringify(tempAddresses),
-      { flag: 'w+' }
+      { flag: 'w' }
     )
   })
 }

@@ -26,7 +26,7 @@ export const loadEnv = async (argv: CLIArgs): Promise<CLIEnvironment> => {
     const chainId = (await wallet.provider.getNetwork()).chainId
     const nonce = await wallet.getTransactionCount()
     const walletAddress = await wallet.getAddress()
-    const { c: networkId }: { c: number } = argv
+    const { c: networkId } = argv
     if (!verifyNetwork(networkId)) {
       logger.info(`Network id ${networkId} is invalid`)
     }

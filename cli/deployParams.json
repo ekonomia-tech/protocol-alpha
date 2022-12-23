@@ -3,7 +3,7 @@
     {
       "name": "protocol",
       "description": "deploys main protocol contracts: TON, PHO, Kernel, ModuleManager, ChainlinkPriceFeed",
-      "deploy": true,
+      "deploy": false,
       "contractName": "DeployProtocol",
       "sigParams": [
         {
@@ -17,7 +17,7 @@
     {
       "name": "CurvePool",
       "description": "Deploys a new FraxBP-PHO curve pool",
-      "deploy": true,
+      "deploy": false,
       "contractName": "DeployCurvePool",
       "sigParams": [],
       "isCore": true,
@@ -26,7 +26,7 @@
     {
       "name": "Price Controller",
       "description": "Deploys price controller module",
-      "deploy": true,
+      "deploy": false,
       "contractName": "DeployPriceController",
       "sigParams": [
         {
@@ -52,7 +52,7 @@
     {
       "name": "USDC stablecoin module",
       "description": "Deploys USDC Stablecoin module",
-      "deploy": true,
+      "deploy": false,
       "contractName": "DeployStablecoinDepositModule",
       "sigParams": [
         {
@@ -66,7 +66,7 @@
     {
       "name": "FRAX stablecoin module",
       "description": "Deploys FRAX Stablecoin module",
-      "deploy": true,
+      "deploy": false,
       "contractName": "DeployStablecoinDepositModule",
       "sigParams": [
         {
@@ -80,7 +80,7 @@
     {
       "name": "LUSD stablecoin module",
       "description": "Deploys LUSD Stablecoin module",
-      "deploy": true,
+      "deploy": false,
       "contractName": "DeployStablecoinDepositModule",
       "sigParams": [
         {
@@ -94,7 +94,7 @@
     {
       "name": "Maple deposit module",
       "description": "Deploys maple deposit module",
-      "deploy": true,
+      "deploy": false,
       "contractName": "DeployMapleDepositModule",
       "sigParams": [
         {
@@ -108,7 +108,7 @@
     {
       "name": "USDC Zero Coupon Bond module",
       "description": "Deploys Zero coupon bonds module with USDC",
-      "deploy": true,
+      "deploy": false,
       "contractName": "DeployZCBModule",
       "sigParams": [
         {
@@ -138,6 +138,54 @@
       ],
       "isCore": false,
       "contractLabel": "ZCBModuleUSDC"
+    },
+    {
+      "name": "Dummy oracle deployment",
+      "description": "Deploy dummy oracle",
+      "deploy": false,
+      "contractName": "DeployDummyOracle",
+      "sigParams": [],
+      "isCore": true,
+      "contractLabel": "ChainlinkPriceFeed"
+    },
+    {
+      "name": "wstETH CDP mechanism",
+      "description": "CDP Mechanism deployment using wstETH as collateral",
+      "deploy": true,
+      "contractName": "DeployCDPModule",
+      "sigParams": [
+        {
+          "type": "address",
+          "value": "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0"
+        },
+        {
+          "type": "uint256",
+          "value": "170000"
+        },
+        {
+          "type": "uint256",
+          "value": "150000"
+        },
+        {
+          "type": "uint256",
+          "value": 1000
+        },
+        {
+          "type": "uint256",
+          "value": 500
+        }
+      ],
+      "isCore": false,
+      "contractLabel": "CDPPool_wstETH"
+    },
+    {
+      "name": "wstETH CDP wrapper",
+      "description": "wrapper contract for wstETH based CDP",
+      "deploy": true,
+      "contractName": "DeployWstETHCDPWrapper",
+      "sigParams": [],
+      "isCore": false,
+      "contractLabel": "wstETHCDPWrapper"
     }
   ]
 }

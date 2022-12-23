@@ -26,6 +26,8 @@ contract wstETHCDPWrapper {
 
     constructor(address _pool) {
         pool = ICDPPool(_pool);
+        STETH.approve(address(WSTETH), type(uint256).max);
+        WSTETH.approve(_pool, type(uint256).max);
     }
 
     receive() external payable {}
