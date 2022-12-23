@@ -9,7 +9,7 @@ import { Argv } from 'yargs'
 
 export interface SignatureParam {
   type: string
-  value: string | number
+  value: string | number | BigNumber
 }
 
 export interface DeployParams {
@@ -77,4 +77,27 @@ export interface CLIEnvironment {
 export interface ProtocolFunction {
   contract: string
   name: string
+}
+
+export interface CDPBaseParams {
+  contractAddress: string
+  collateralToken: string
+  depositToken: string
+}
+export interface CDPOpenParams extends CDPBaseParams {
+  collateralAmount: BigNumber
+  debtAmount: BigNumber
+}
+
+export interface CDPCollateralParams extends CDPBaseParams {
+  collateralAmount: BigNumber
+}
+
+export interface CDPDebtParams extends CDPBaseParams {
+  debtAmount: BigNumber
+}
+
+export interface CDPLiquidationParams extends CDPBaseParams {
+  cdpOwner: string
+  liquidator: string
 }

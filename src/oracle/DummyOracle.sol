@@ -12,6 +12,7 @@ contract DummyOracle is IPriceOracle {
     uint256 public pho_usd_price;
     uint256 public usdc_usd_price;
 
+    address public constant ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address public constant WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant STETH_ADDRESS = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
     address public constant WSTETH_ADDRESS = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
@@ -27,6 +28,7 @@ contract DummyOracle is IPriceOracle {
         pho_usd_price = 10 ** 6;
         usdc_usd_price = 10 ** 6;
 
+        priceFeeds[ETH_ADDRESS] = weth_usd_price;
         priceFeeds[WETH_ADDRESS] = weth_usd_price;
         priceFeeds[STETH_ADDRESS] = weth_usd_price;
         priceFeeds[WSTETH_ADDRESS] = weth_usd_price * 11 / 10;
@@ -85,6 +87,7 @@ contract DummyOracle is IPriceOracle {
     }
 
     function setWethUSDPrice(uint256 _price) public {
+        priceFeeds[ETH_ADDRESS] = _price;
         priceFeeds[WETH_ADDRESS] = _price;
         priceFeeds[STETH_ADDRESS] = _price;
         priceFeeds[WSTETH_ADDRESS] = _price * 11 / 10;
@@ -94,5 +97,9 @@ contract DummyOracle is IPriceOracle {
     /// @param baseToken the base token to retrieve the price in USD with 18 decimals.
     function getPrice(address baseToken) external view returns (uint256) {
         return priceFeeds[baseToken];
+    }
+
+    function addPriceFeed(address baseToken, uint256 price) external {
+        priceFeeds[baseToken] = price;
     }
 }

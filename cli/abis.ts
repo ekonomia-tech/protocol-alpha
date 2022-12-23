@@ -6,6 +6,8 @@ import abiMM from '../build/abis/ModuleManager.sol/ModuleManager.json'
 import abiKernel from '../build/abis/Kernel.sol/Kernel.json'
 import abiCLPF from '../build/abis/ChainlinkPriceFeed.sol/ChainlinkPriceFeed.json'
 import abiCP from '../build/abis/ICurvePool.sol/ICurvePool.json'
+import abiWstETHCDPWrapper from '../build/abis/wstETHCDPWrapper.sol/wstETHCDPWrapper.json'
+import abiCDPPool from '../build/abis/CDPPool.sol/CDPPool.json'
 
 export const loadABI = (name: string): ContractInterface => {
   switch (name) {
@@ -21,6 +23,10 @@ export const loadABI = (name: string): ContractInterface => {
       return abiCLPF.abi
     case 'CurvePool':
       return abiCP.abi
+    case 'wstETHCDPWrapper':
+      return abiWstETHCDPWrapper.abi
+    case 'CDPPool':
+      return abiCDPPool.abi
     default:
       return 'ERROR_NO_ABI_FOUND' // TODO - DK - Improve error
   }
