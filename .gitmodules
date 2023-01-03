@@ -10,3 +10,6 @@
 [submodule "lib/bond-contracts"]
 	path = lib/bond-contracts
 	url = https://github.com/Bond-Protocol/bond-contracts
+[submodule "lib/solmate"]
+	path = lib/solmate
+	url = https://github.com/transmissions11/solmate
