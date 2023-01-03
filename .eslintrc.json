@@ -17,6 +17,7 @@
     "@typescript-eslint/consistent-type-assertions": "off",
     "@typescript-eslint/no-unused-expressions": "off",
     "@typescript-eslint/space-before-function-paren": "off",
+    "@typescript-eslint/no-floating-promises": "off",
     "@typescript-eslint/member-delimiter-style": [
       "error",
       {

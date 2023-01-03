@@ -1,7 +1,7 @@
 import "@oracle/IPriceOracle.sol";
 
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.13;
+pragma solidity ^0.8.13;
 
 contract DummyOracle is IPriceOracle {
     uint256 public weth_usd_price;

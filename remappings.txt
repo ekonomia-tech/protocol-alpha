@@ -6,3 +6,6 @@ forge-std/=lib/forge-std/src/
 @external=src/external/
 @oracle=src/oracle/
 @governance=src/governance/
+@bondprotocol/=lib/bond-contracts/src
+@solmate/=lib/solmate/src
+@clones/=lib/clones-with-immutable-args/src/
