@@ -7,3 +7,6 @@
 [submodule "lib/chainlink"]
 	path = lib/chainlink
 	url = https://github.com/smartcontractkit/chainlink
+[submodule "lib/bond-contracts"]
+	path = lib/bond-contracts
+	url = https://github.com/Bond-Protocol/bond-contracts
