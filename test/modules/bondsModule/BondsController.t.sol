@@ -8,7 +8,7 @@ import {IBondAuctioneer} from "@modules/bondsModule/interfaces/IBondAuctioneer.s
 import {IBondAggregator} from "@modules/bondsModule/interfaces/IBondAggregator.sol";
 import {IBondTeller} from "@modules/bondsModule/interfaces/IBondTeller.sol";
 import {IBondFixedTermTeller} from "@modules/bondsModule/interfaces/IBondFixedTermTeller.sol";
-import {ERC1155} from "@external/Tokens/ERC1155.sol";
+import {ERC1155} from "@external/tokens/ERC1155.sol";
 import {ERC20 as ERC20Solmate} from "@solmate/tokens/ERC20.sol";
 
 contract BondsControllerTest is BaseSetup {
