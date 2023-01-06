@@ -9,4 +9,4 @@
 	url = https://github.com/smartcontractkit/chainlink
 [submodule "lib/solmate"]
 	path = lib/solmate
-	url = https://github.com/transmitions11/solmate
+	url = https://github.com/transmissions11/solmate
