@@ -15,7 +15,7 @@ interface IZeroCouponBondModule {
 
     /// Events
     event BondIssued(address indexed depositor, uint256 depositAmount, uint256 mintAmount);
-    event BondRedeemed(address indexed redeemer, uint256 redeemAmount);
+    event FTBondRedeemed(address indexed redeemer, uint256 redeemAmount);
     event InterestRateSet(uint256 interestRate);
 
     function depositBond(uint256 depositAmount) external;

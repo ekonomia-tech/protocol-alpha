@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "../../BaseSetup.t.sol";
-import {BondsController} from "@modules/bondsModule/BondsController.sol";
+import {BondsFTController} from "@modules/bondsModule/BondsFTController.sol";
 import {BondsPHOCallback} from "@modules/bondsModule/BondsPHOCallback.sol";
 import {IBondAuctioneer} from "@modules/bondsModule/interfaces/IBondAuctioneer.sol";
 import {IBondAggregator} from "@modules/bondsModule/interfaces/IBondAggregator.sol";
@@ -11,13 +11,34 @@ import {IBondFixedTermTeller} from "@modules/bondsModule/interfaces/IBondFixedTe
 import {ERC1155} from "@external/tokens/ERC1155.sol";
 import {ERC20 as ERC20Solmate} from "@solmate/tokens/ERC20.sol";
 
-contract BondsControllerTest is BaseSetup {
+contract BondsFTControllerTest is BaseSetup {
     error ZeroAddress();
     error ZeroValue();
     error NotTONTimelock();
     error MarketIsNotLive();
     error MarketNotRegistered();
     error NoBalanceAvailable();
+    error TellerMismatch();
+    error CallerIsNotCallback();
+
+    event FTMarketRegistered(
+        address indexed auctioneer,
+        address indexed quoteToken,
+        address indexed payoutToken,
+        uint256 marketId,
+        uint256 internalMarketId
+    );
+    event FTBondPurchased(
+        address indexed user,
+        address auctioneer,
+        uint256 marketId,
+        uint256 payout,
+        uint256 expiry,
+        uint256 tokenId
+    );
+    event FTBondRedeemed(
+        address indexed user, address auctioneer, uint256 marketId, uint256 payout, uint256 tokenId
+    );
 
     struct MarketParams {
         address payoutToken;
@@ -34,25 +55,21 @@ contract BondsControllerTest is BaseSetup {
         int8 scaleAdjustment;
     }
 
-    BondsController public bondsController;
+    BondsFTController public bondsFTController;
     BondsPHOCallback public phoCallback;
     IBondAuctioneer public auctioneer;
     IBondTeller public teller;
 
     /// We set the prices as the prices of opening the bond. please review the bond protocol market creation for more info.
-    uint256 public constant TON_PRICE = 10 * ONE_D18;
-    uint256 public constant WETH_PRICE = 1250 * ONE_D18;
-    uint256 public constant TON_SCALED_ADJUSTMENT = 1;
-    uint256 public constant PHO_SCALED_ADJUSTMENT = 0;
+    uint256 public constant SCALED_ADJUSTMENT = 1;
     uint256 public constant SCALED_DECIMALS = 36;
     uint256 public constant VESTING_PERIOD = 7 days;
-    address public constant AUCTIONEER_OWNER = 0x007BD11FCa0dAaeaDD455b51826F9a015f2f0969;
 
     function setUp() public {
         auctioneer = IBondAuctioneer(BOND_PROTOCOL_FIXED_TERM_AUCTIONEER);
         teller = auctioneer.getTeller();
 
-        bondsController = new BondsController(
+        bondsFTController = new BondsFTController(
             address(moduleManager),
             address(TONTimelock), 
             address(treasury), 
@@ -60,26 +77,26 @@ contract BondsControllerTest is BaseSetup {
         );
 
         vm.prank(address(PHOTimelock));
-        moduleManager.addModule(address(bondsController));
+        moduleManager.addModule(address(bondsFTController));
 
         vm.startPrank(address(TONTimelock));
 
-        moduleManager.setPHOCeilingForModule(address(bondsController), 2000000 * 10 ** 18); // 2m ceiling
+        moduleManager.setPHOCeilingForModule(address(bondsFTController), 2000000 * 10 ** 18); // 2m ceiling
         vm.warp(block.timestamp + moduleManager.moduleDelay());
-        moduleManager.executeCeilingUpdate(address(bondsController));
+        moduleManager.executeCeilingUpdate(address(bondsFTController));
 
         phoCallback = new BondsPHOCallback(
             IBondAggregator(BOND_PROTOCOL_AGGREGATOR_ADDRESS), 
-            address(bondsController), 
+            address(bondsFTController), 
             address(treasury)
         );
 
         vm.stopPrank();
 
-        vm.prank(AUCTIONEER_OWNER);
+        vm.prank(BOND_PROTOCOL_AUCTIONEER_OWNER);
         auctioneer.setCallbackAuthStatus(owner, true);
 
-        _fundAndApproveWETH(user1, address(bondsController), 10 ether, 10 ether);
+        _fundAndApproveWETH(user1, address(bondsFTController), 10 ether, 10 ether);
 
         vm.prank(owner);
         ton.approve(address(teller), 10 * ONE_MILLION_D18);
@@ -89,10 +106,10 @@ contract BondsControllerTest is BaseSetup {
 
     function testRegisterMarket() public {
         uint256 newMarketId = _createTonWethMarket();
-        uint256 marketCountBefore = bondsController.internalMarketCount();
+        uint256 marketCountBefore = bondsFTController.internalMarketCount();
 
         vm.prank(address(TONTimelock));
-        uint256 marketInternalId = bondsController.registerMarket(newMarketId);
+        uint256 marketInternalId = bondsFTController.registerMarket(newMarketId);
 
         (
             uint256 marketId,
@@ -102,7 +119,7 @@ contract BondsControllerTest is BaseSetup {
             uint256 vesting
         ) = _getMarketData(marketInternalId);
 
-        uint256 marketCountAfter = bondsController.internalMarketCount();
+        uint256 marketCountAfter = bondsFTController.internalMarketCount();
 
         assertEq(newMarketId, marketId);
         assertEq(address(quoteToken), WETH_ADDRESS);
@@ -115,29 +132,35 @@ contract BondsControllerTest is BaseSetup {
     function testCannotRegisterMarketNotLive() public {
         vm.expectRevert(abi.encodeWithSelector(MarketIsNotLive.selector));
         vm.prank(address(TONTimelock));
-        bondsController.registerMarket(5);
+        bondsFTController.registerMarket(5);
     }
 
     function testCannotRegisterMarketNotTONTimelock() public {
         vm.expectRevert(abi.encodeWithSelector(NotTONTimelock.selector));
         vm.prank(user1);
-        bondsController.registerMarket(0);
+        bondsFTController.registerMarket(0);
     }
 
     /// purchaseBond()
 
-    function testPurchaseTonWethBond() public returns (uint256, uint256, uint256) {
+    function testPurchaseTonWethBond(uint256 secondsWarp)
+        public
+        returns (uint256, uint256, uint256)
+    {
         /// imitating WETH PRICE = 1250$, TON PRICE = $10
+        secondsWarp = bound(secondsWarp, 0, 86400);
 
         uint256 newMarketInternalId = _registerMarket(_createTonWethMarket());
         uint256 purchaseAmount = ONE_D18;
         uint256 ownerWethBalanceBefore = weth.balanceOf(owner);
 
+        vm.warp(block.timestamp + secondsWarp);
+
         (,,, uint256 marketPrice,) = _getMarketData(newMarketInternalId);
 
         vm.startPrank(user1);
         (uint256 payout, uint256 expiry) =
-            bondsController.purchaseBond(newMarketInternalId, purchaseAmount, 0);
+            bondsFTController.purchaseBond(newMarketInternalId, purchaseAmount, 0);
         vm.stopPrank();
 
         ERC20Solmate solmateTON = ERC20Solmate(address(ton));
@@ -149,8 +172,10 @@ contract BondsControllerTest is BaseSetup {
 
         /// maximum gap of 1 day since ERC1155 is determined by days and not seconds
         assertApproxEqAbs(expiry, block.timestamp + 7 days, 1 days);
-        assertEq(
-            payout * marketPrice / (10 ** (SCALED_DECIMALS + TON_SCALED_ADJUSTMENT)), purchaseAmount
+        assertApproxEqAbs(
+            payout * marketPrice / (10 ** (SCALED_DECIMALS + SCALED_ADJUSTMENT)),
+            purchaseAmount,
+            1 wei
         );
         assertEq(payout, balanceAfter);
         assertEq(ownerWethBalanceAfter, ownerWethBalanceBefore + purchaseAmount);
@@ -158,19 +183,24 @@ contract BondsControllerTest is BaseSetup {
         return (newMarketInternalId, tokenId, payout);
     }
 
-    function testPurchasePhoWethBond() public returns (uint256, uint256, uint256) {
+    function testPurchasePhoWethBond(uint256 secondsWarp)
+        public
+        returns (uint256, uint256, uint256)
+    {
         /// imitating WETH PRICE = 1250$, PHO PRICE = $1
-
+        secondsWarp = bound(secondsWarp, 0, 86400);
         uint256 newMarketInternalId = _registerMarket(_createPhoWethMarket());
         uint256 purchaseAmount = ONE_D18;
         uint256 treasuryWethBalanceBefore = weth.balanceOf(address(treasury));
-        (,,, uint256 bcPhoMintedBefore,,) = moduleManager.modules(address(bondsController));
+        (,,, uint256 bcPhoMintedBefore,,) = moduleManager.modules(address(bondsFTController));
+
+        vm.warp(block.timestamp + secondsWarp);
 
         (,,, uint256 marketPrice,) = _getMarketData(newMarketInternalId);
 
         vm.startPrank(user1);
         (uint256 payout, uint256 expiry) =
-            bondsController.purchaseBond(newMarketInternalId, purchaseAmount, 0);
+            bondsFTController.purchaseBond(newMarketInternalId, purchaseAmount, 0);
         vm.stopPrank();
 
         ERC20Solmate solmatePHO = ERC20Solmate(address(pho));
@@ -179,15 +209,21 @@ contract BondsControllerTest is BaseSetup {
 
         uint256 balanceAfter = ERC1155(address(teller)).balanceOf(user1, tokenId);
         uint256 treasuryWethBalanceAfter = weth.balanceOf(address(treasury));
-        (,,, uint256 bcPhoMintedAfter,,) = moduleManager.modules(address(bondsController));
+        (,,, uint256 bcPhoMintedAfter,,) = moduleManager.modules(address(bondsFTController));
+        uint256 unbackedAmount =
+            payout - (priceOracle.getPrice(WETH_ADDRESS) * purchaseAmount / 10 ** 18);
 
         /// maximum gap of 1 day since ERC1155 is determined by days and not seconds
         assertApproxEqAbs(expiry, block.timestamp + 7 days, 1 days);
-        assertEq(payout * marketPrice / (10 ** (SCALED_DECIMALS + 1)), purchaseAmount);
+        assertApproxEqAbs(
+            payout * marketPrice / (10 ** (SCALED_DECIMALS + SCALED_ADJUSTMENT)),
+            purchaseAmount,
+            1 wei
+        );
         assertEq(payout, balanceAfter);
         assertEq(treasuryWethBalanceAfter, treasuryWethBalanceBefore + purchaseAmount);
         assertEq(bcPhoMintedAfter, bcPhoMintedBefore + payout);
-        assertEq(phoCallback.totalUnbacked(), 0);
+        assertEq(phoCallback.totalUnbacked(), unbackedAmount);
 
         return (newMarketInternalId, tokenId, payout);
     }
@@ -195,30 +231,30 @@ contract BondsControllerTest is BaseSetup {
     function testCannotPurchaseBondMarketNotRegistered() public {
         vm.expectRevert(abi.encodeWithSelector(MarketNotRegistered.selector));
         vm.prank(user1);
-        bondsController.purchaseBond(12, ONE_D18, 0);
+        bondsFTController.purchaseBond(12, ONE_D18, 0);
     }
 
     /// redeemBond()
 
     function testRedeemTonWethBond() public {
-        (uint256 internalMarketId, uint256 tokenId, uint256 amount) = testPurchaseTonWethBond();
+        (uint256 internalMarketId, uint256 tokenId, uint256 amount) = testPurchaseTonWethBond(0);
 
         (,,,, uint256 vesting) = _getMarketData(internalMarketId);
 
         uint256 user1ERC1155BalanceBefore = ERC1155(address(teller)).balanceOf(user1, tokenId);
         uint256 user1TonBalanceBefore = ton.balanceOf(user1);
-        uint256 bcTonBalanceBefore = ton.balanceOf(address(bondsController));
+        uint256 bcTonBalanceBefore = ton.balanceOf(address(bondsFTController));
 
         vm.warp(block.timestamp + vesting);
 
         vm.startPrank(user1);
-        ERC1155(address(teller)).setApprovalForAll(address(bondsController), true);
-        bondsController.redeemBond(internalMarketId, tokenId, amount);
+        ERC1155(address(teller)).setApprovalForAll(address(bondsFTController), true);
+        bondsFTController.redeemBond(internalMarketId, tokenId, amount);
         vm.stopPrank();
 
         uint256 user1ERC1155BalanceAfter = ERC1155(address(teller)).balanceOf(user1, tokenId);
         uint256 user1TonBalanceAfter = ton.balanceOf(user1);
-        uint256 bcTonBalanceAfter = ton.balanceOf(address(bondsController));
+        uint256 bcTonBalanceAfter = ton.balanceOf(address(bondsFTController));
 
         assertEq(user1ERC1155BalanceAfter, user1ERC1155BalanceBefore - amount);
         assertEq(user1TonBalanceAfter, user1TonBalanceBefore + amount);
@@ -226,7 +262,7 @@ contract BondsControllerTest is BaseSetup {
     }
 
     function testRedeemPhoWethBond() public {
-        (uint256 internalMarketId, uint256 tokenId, uint256 amount) = testPurchasePhoWethBond();
+        (uint256 internalMarketId, uint256 tokenId, uint256 amount) = testPurchasePhoWethBond(0);
 
         (,,,, uint256 vesting) = _getMarketData(internalMarketId);
 
@@ -236,8 +272,8 @@ contract BondsControllerTest is BaseSetup {
         vm.warp(block.timestamp + vesting);
 
         vm.startPrank(user1);
-        ERC1155(address(teller)).setApprovalForAll(address(bondsController), true);
-        bondsController.redeemBond(internalMarketId, tokenId, amount);
+        ERC1155(address(teller)).setApprovalForAll(address(bondsFTController), true);
+        bondsFTController.redeemBond(internalMarketId, tokenId, amount);
         vm.stopPrank();
 
         uint256 user1ERC1155BalanceAfter = ERC1155(address(teller)).balanceOf(user1, tokenId);
@@ -251,19 +287,27 @@ contract BondsControllerTest is BaseSetup {
         uint256 internalMarketId = _registerMarket(_createTonWethMarket());
 
         vm.expectRevert(abi.encodeWithSelector(ZeroValue.selector));
-        bondsController.redeemBond(internalMarketId, 0, ONE_D18);
+        bondsFTController.redeemBond(internalMarketId, 0, ONE_D18);
 
         vm.expectRevert(abi.encodeWithSelector(ZeroValue.selector));
-        bondsController.redeemBond(internalMarketId, 1, 0);
+        bondsFTController.redeemBond(internalMarketId, 1, 0);
     }
 
     function testCannotRedeemTonWethBondMarketNotRegistered() public {
         vm.expectRevert(abi.encodeWithSelector(MarketNotRegistered.selector));
         vm.prank(user1);
-        bondsController.redeemBond(12, 1, 1);
+        bondsFTController.redeemBond(12, 1, 1);
     }
 
-    /// test PHO-WETH market
+    /// mintPHOForCallback()
+
+    function testCannotMintMarketNotRegisteredWrongCallback() public {
+        uint256 newMarketInternalId = _registerMarket(_createTonWethMarket());
+        uint256 marketId = bondsFTController.marketsInternalIds(newMarketInternalId);
+        vm.expectRevert(abi.encodeWithSelector(CallerIsNotCallback.selector));
+        vm.prank(address(phoCallback));
+        bondsFTController.mintPHOForCallback(marketId, 100);
+    }
 
     function _createNewMarket(
         address quoteToken,
@@ -304,7 +348,7 @@ contract BondsControllerTest is BaseSetup {
             10000000 * 10 ** 18,
             8 * 10 ** 34, // initial price gap
             5 * 10 ** 34, // min price gap
-            TON_SCALED_ADJUSTMENT
+            SCALED_ADJUSTMENT
         );
     }
 
@@ -318,9 +362,9 @@ contract BondsControllerTest is BaseSetup {
             address(pho),
             address(phoCallback),
             10000000 * 10 ** 18,
-            8 * 10 ** 35, // initial price gap
-            5 * 10 ** 35, // min price gap
-            1
+            8 * 10 ** 33, // initial price gap
+            5 * 10 ** 33, // min price gap
+            SCALED_ADJUSTMENT
         );
 
         vm.startPrank(address(TONTimelock));
@@ -336,7 +380,7 @@ contract BondsControllerTest is BaseSetup {
 
     function _registerMarket(uint256 marketId) private returns (uint256) {
         vm.prank(address(TONTimelock));
-        return bondsController.registerMarket(marketId);
+        return bondsFTController.registerMarket(marketId);
     }
 
     function _getMarketData(uint256 internalMarketId)
@@ -345,7 +389,7 @@ contract BondsControllerTest is BaseSetup {
         returns (uint256, IERC20, IERC20, uint256, uint256)
     {
         (uint256 marketId, uint256 vesting,,,,, IERC20 quoteToken, IERC20 payoutToken,) =
-            bondsController.markets(internalMarketId);
+            bondsFTController.markets(internalMarketId);
 
         uint256 marketPrice = auctioneer.marketPrice(marketId);
 

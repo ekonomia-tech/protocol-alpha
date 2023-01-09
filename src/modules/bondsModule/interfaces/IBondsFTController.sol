@@ -6,7 +6,7 @@ import "@modules/bondsModule/interfaces/IBondAuctioneer.sol";
 import "@modules/bondsModule/interfaces/IBondTeller.sol";
 import "@external/tokens/ERC1155.sol";
 
-interface IBondsController is ERC1155TokenReceiver {
+interface IBondsFTController is ERC1155TokenReceiver {
     error ZeroAddress();
     error ZeroValue();
     error NotTONTimelock();
@@ -15,6 +15,26 @@ interface IBondsController is ERC1155TokenReceiver {
     error NoBalanceAvailable();
     error TellerMismatch();
     error CallerIsNotCallback();
+    error BadMarketData();
+
+    event FTMarketRegistered(
+        address indexed auctioneer,
+        address indexed quoteToken,
+        address indexed payoutToken,
+        uint256 marketId,
+        uint256 internalMarketId
+    );
+    event FTBondPurchased(
+        address indexed user,
+        address auctioneer,
+        uint256 marketId,
+        uint256 payout,
+        uint256 expiry,
+        uint256 tokenId
+    );
+    event FTBondRedeemed(
+        address indexed user, address auctioneer, uint256 marketId, uint256 payout, uint256 tokenId
+    );
 
     struct MarketData {
         uint256 marketId;
@@ -33,5 +53,5 @@ interface IBondsController is ERC1155TokenReceiver {
         external
         returns (uint256, uint256);
     function redeemBond(uint256 internalMarketId, uint256 tokenId, uint256 amount) external;
-    function mintPHOForCallback(address to, uint256 marketId, uint256 amount) external;
+    function mintPHOForCallback(uint256 marketId, uint256 amount) external;
 }

@@ -3,7 +3,7 @@ pragma solidity 0.8.13;
 
 import {BondBaseCallback} from "@modules/bondsModule/interfaces/BondBaseCallback.sol";
 import {IBondAggregator} from "@modules/bondsModule/interfaces/IBondAggregator.sol";
-import {IBondsController} from "@modules/bondsModule/interfaces/IBondsController.sol";
+import {IBondsFTController} from "@modules/bondsModule/interfaces/IBondsFTController.sol";
 import {IBondsPHOCallback} from "@modules/bondsModule/interfaces/IBondsPHOCallback.sol";
 import {ERC20} from "@solmate/tokens/ERC20.sol";
 import {TransferHelper} from "@external/utils/TransferHelper.sol";
@@ -35,7 +35,7 @@ contract BondsPHOCallback is BondBaseCallback, IBondsPHOCallback {
 
     uint256 public totalUnbacked;
 
-    IBondsController public bondsController;
+    IBondsFTController public bondsFTController;
 
     address public treasury;
 
@@ -44,7 +44,7 @@ contract BondsPHOCallback is BondBaseCallback, IBondsPHOCallback {
     constructor(IBondAggregator aggregator_, address bondsController_, address treasury_)
         BondBaseCallback(aggregator_)
     {
-        bondsController = IBondsController(bondsController_);
+        bondsFTController = IBondsFTController(bondsController_);
         treasury = treasury_;
     }
 
@@ -74,7 +74,7 @@ contract BondsPHOCallback is BondBaseCallback, IBondsPHOCallback {
         quoteToken_.safeTransfer(treasury, inputAmount_);
 
         /// mint PHO back to the msg.sender
-        bondsController.mintPHOForCallback(msg.sender, id_, outputAmount_);
+        bondsFTController.mintPHOForCallback(id_, outputAmount_);
     }
 
     function updateQuoteOracle(uint256 marketId, address oracleAddress) external onlyOwner {
