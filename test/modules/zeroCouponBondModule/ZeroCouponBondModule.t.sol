@@ -19,7 +19,7 @@ contract ZeroCouponBondModuleTest is BaseSetup {
 
     /// Events
     event BondIssued(address indexed depositor, uint256 depositAmount, uint256 mintAmount);
-    event BondRedeemed(address indexed redeemer, uint256 redeemAmount);
+    event FTBondRedeemed(address indexed redeemer, uint256 redeemAmount);
     event InterestRateSet(uint256 interestRate);
 
     ZeroCouponBondModule public usdcZeroCouponBondModule;
@@ -458,7 +458,7 @@ contract ZeroCouponBondModuleTest is BaseSetup {
         // Redeem
         vm.warp(_redeemTimestamp);
         vm.expectEmit(true, true, true, true);
-        emit BondRedeemed(user1, _redeemAmount);
+        emit FTBondRedeemed(user1, _redeemAmount);
         vm.prank(user1);
         _module.redeemBond();
 

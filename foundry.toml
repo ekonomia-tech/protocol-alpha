@@ -3,6 +3,8 @@ src = 'src'
 out = 'build/abis'
 libs = ['lib']
 fs_permissions = [{ access = "read-write", path = "./"}]
+test='test'
+auto_detect_remappings=false
 
 
 [fmt]

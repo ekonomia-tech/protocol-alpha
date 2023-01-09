@@ -89,6 +89,13 @@ abstract contract BaseSetup is Test {
     address public constant PRICEFEED_FRAXUSD = 0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD;
     address public constant PRICEFEED_STETH = 0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8;
 
+    address public constant BOND_PROTOCOL_AGGREGATOR_ADDRESS =
+        0x007A66A2a13415DB3613C1a4dd1C942A285902d1;
+    address public constant BOND_PROTOCOL_FIXED_TERM_AUCTIONEER =
+        0x007F7A1cb838A872515c8ebd16bE4b14Ef43a222;
+    address public constant BOND_PROTOCOL_AUCTIONEER_OWNER =
+        0x007BD11FCa0dAaeaDD455b51826F9a015f2f0969;
+
     uint256 public constant USDC_DECIMALS = 6;
     uint256 public constant DAI_DECIMALS = 18;
     uint256 public constant PHO_DECIMALS = 18;

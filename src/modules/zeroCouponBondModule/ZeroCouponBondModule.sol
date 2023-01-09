@@ -106,7 +106,7 @@ contract ZeroCouponBondModule is ERC20, IZeroCouponBondModule, Ownable, Reentran
         // transfer PHO to caller
         moduleManager.mintPHO(msg.sender, redeemAmount);
 
-        emit BondRedeemed(msg.sender, redeemAmount);
+        emit FTBondRedeemed(msg.sender, redeemAmount);
     }
 
     /// @notice Set interest rate
